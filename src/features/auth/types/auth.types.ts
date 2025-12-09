@@ -18,7 +18,7 @@ export type ApiResponse<T> = {
   meta: { request_id: string; timestamp: string };
 };
 
-/** POST /auth/login/ response data when login succeeds (no MFA). */
+/** POST /auth/login/ — no MFA. */
 export type LoginTokens = {
   mfa_required: false;
   user_id: string;
@@ -26,7 +26,7 @@ export type LoginTokens = {
   refresh_token: string;
 };
 
-/** POST /auth/login/ response data when MFA is required. */
+/** POST /auth/login/ — MFA required. */
 export type MFAChallenge = {
   mfa_required: true;
   user_id: string;
@@ -54,6 +54,9 @@ export type MFAChallengeResponse = ApiResponse<{
   used_backup_code: boolean;
 }>;
 
+/** POST /auth/email/verify/ */
+export type VerifyEmailRequest = { email: string; otp: string };
+
 /** POST /auth/password/reset/ */
 export type PasswordResetRequest = { email: string };
 
@@ -66,6 +69,29 @@ export type ConfirmResetRequest = {
   otp: string;
   new_password: string;
   confirm_password: string;
+};
+
+/** POST /auth/password/change/ */
+export type ChangePasswordRequest = {
+  current_password: string;
+  new_password: string;
+  confirm_password: string;
+};
+
+/** PATCH /profile/me/ */
+export type ProfileUpdateRequest = {
+  first_name?: string;
+  last_name?: string;
+  avatar_url?: string | null;
+};
+
+/** GET /auth/sessions/ */
+export type SessionInfo = {
+  jti: string;
+  ip_address: string | null;
+  user_agent: string | null;
+  created_at: string;
+  last_seen_at: string;
 };
 
 export type MessageResponse = ApiResponse<{ message: string }>;
