@@ -13,25 +13,53 @@ export default function Navbar() {
   return (
     <nav className="sticky top-0 z-30 bg-white border-b border-[#e0dfd8]">
       <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
+        {/* wordmark */}
         <Link to="/" className="text-lg font-bold text-[#121d3f] font-['Manrope'] tracking-tight">
           Sansaar
         </Link>
 
-        <div className="flex items-center gap-3">
-          {isAuthenticated ? (
+        {/* centre links — public */}
+        <div className="hidden sm:flex items-center gap-5">
+          <Link
+            to="/events"
+            className="text-sm text-[#6b6c75] hover:text-[#19191e] font-['Manrope']"
+          >
+            Events
+          </Link>
+          {isAuthenticated && (
             <>
               <Link
                 to="/events/create"
-                className="text-sm text-[#6b6c75] hover:text-[#19191e] font-['Manrope'] hidden sm:block"
+                className="text-sm text-[#6b6c75] hover:text-[#19191e] font-['Manrope']"
               >
-                Create event
+                Create
               </Link>
               <Link
                 to="/events/mine"
-                className="text-sm text-[#6b6c75] hover:text-[#19191e] font-['Manrope'] hidden sm:block"
+                className="text-sm text-[#6b6c75] hover:text-[#19191e] font-['Manrope']"
               >
                 My events
               </Link>
+              <Link
+                to="/tickets"
+                className="text-sm text-[#6b6c75] hover:text-[#19191e] font-['Manrope']"
+              >
+                Tickets
+              </Link>
+              <Link
+                to="/notifications"
+                className="text-sm text-[#6b6c75] hover:text-[#19191e] font-['Manrope']"
+              >
+                🔔
+              </Link>
+            </>
+          )}
+        </div>
+
+        {/* right side */}
+        <div className="flex items-center gap-3">
+          {isAuthenticated ? (
+            <>
               <Link
                 to="/settings"
                 className="text-sm font-semibold text-[#19191e] font-['Manrope']"
