@@ -10,9 +10,24 @@ import VerifyResetOTPPage from "@/features/auth/pages/VerifyResetOTPPage";
 import CreateEventPage from "@/features/events/pages/CreateEventPage";
 import EditEventPage from "@/features/events/pages/EditEventPage";
 import EventDetailPage from "@/features/events/pages/EventDetailPage";
+import EventListPage from "@/features/events/pages/EventListPage";
+import EventRegistrationsPage from "@/features/events/pages/EventRegistrationsPage";
 import HomePage from "@/features/events/pages/HomePage";
 import OrgEventsPage from "@/features/events/pages/OrgEventsPage";
+import NotificationsPage from "@/features/notifications/pages/NotificationsPage";
+import ProfilePage from "@/features/profile/pages/ProfilePage";
 import SettingsPage from "@/features/profile/pages/SettingsPage";
+import TicketsPage from "@/features/registration/pages/TicketsPage";
+
+/** Wrap a page in ProtectedRoute. */
+function P({ children }: { children: React.ReactNode }) {
+  return <ProtectedRoute>{children}</ProtectedRoute>;
+}
+
+/** Wrap a page in GuestRoute. */
+function G({ children }: { children: React.ReactNode }) {
+  return <GuestRoute>{children}</GuestRoute>;
+}
 
 export default function App() {
   return (
@@ -20,65 +35,64 @@ export default function App() {
       <Routes>
         {/* public */}
         <Route path="/" element={<HomePage />} />
+        <Route path="/events" element={<EventListPage />} />
         <Route path="/events/:id" element={<EventDetailPage />} />
 
         {/* guest-only auth */}
         <Route
           path="/login"
           element={
-            <GuestRoute>
+            <G>
               <LoginPage />
-            </GuestRoute>
+            </G>
           }
         />
         <Route
           path="/register"
           element={
-            <GuestRoute>
+            <G>
               <RegisterPage />
-            </GuestRoute>
+            </G>
           }
         />
         <Route
           path="/verify-email"
           element={
-            <GuestRoute>
+            <G>
               <VerifyEmailPage />
-            </GuestRoute>
+            </G>
           }
         />
         <Route
           path="/mfa"
           element={
-            <GuestRoute>
+            <G>
               <MFAVerifyPage />
-            </GuestRoute>
+            </G>
           }
         />
-
-        {/* password reset flow (3 steps, no auth required) */}
         <Route
           path="/forgot-password"
           element={
-            <GuestRoute>
+            <G>
               <ForgotPasswordPage />
-            </GuestRoute>
+            </G>
           }
         />
         <Route
           path="/forgot-password/verify"
           element={
-            <GuestRoute>
+            <G>
               <VerifyResetOTPPage />
-            </GuestRoute>
+            </G>
           }
         />
         <Route
           path="/forgot-password/reset"
           element={
-            <GuestRoute>
+            <G>
               <ResetPasswordPage />
-            </GuestRoute>
+            </G>
           }
         />
 
@@ -86,33 +100,58 @@ export default function App() {
         <Route
           path="/settings"
           element={
-            <ProtectedRoute>
+            <P>
               <SettingsPage />
-            </ProtectedRoute>
+            </P>
+          }
+        />
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route
+          path="/notifications"
+          element={
+            <P>
+              <NotificationsPage />
+            </P>
+          }
+        />
+        <Route
+          path="/tickets"
+          element={
+            <P>
+              <TicketsPage />
+            </P>
           }
         />
         <Route
           path="/events/create"
           element={
-            <ProtectedRoute>
+            <P>
               <CreateEventPage />
-            </ProtectedRoute>
+            </P>
           }
         />
         <Route
           path="/events/mine"
           element={
-            <ProtectedRoute>
+            <P>
               <OrgEventsPage />
-            </ProtectedRoute>
+            </P>
           }
         />
         <Route
           path="/events/:id/edit"
           element={
-            <ProtectedRoute>
+            <P>
               <EditEventPage />
-            </ProtectedRoute>
+            </P>
+          }
+        />
+        <Route
+          path="/events/:id/registrations"
+          element={
+            <P>
+              <EventRegistrationsPage />
+            </P>
           }
         />
       </Routes>
