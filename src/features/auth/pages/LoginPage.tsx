@@ -125,7 +125,7 @@ export default function LoginPage() {
 
       <GoogleSignInButton
         onSuccess={() => navigate("/")}
-        onError={(msg) => loginMutation.reset()}
+        onError={() => loginMutation.reset()}
       />
 
       <p className="text-center text-sm text-[#6b6c75] mt-6 font-['Manrope']">

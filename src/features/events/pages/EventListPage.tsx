@@ -4,7 +4,7 @@ import { Input } from "@/shared/components/ui";
 import PublicLayout from "@/shared/layouts/PublicLayout";
 import { usePublicEvents } from "@/features/events/hooks/useEvents";
 import { cn } from "@/shared/lib/cn";
-import type { Event, EventVisibility } from "@/features/events/types/event.types";
+import type { Event } from "@/features/events/types/event.types";
 
 type SortOption = "newest" | "soonest" | "name";
 
