@@ -1,1 +1,47 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,500;1,500&family=JetBrains+Mono:wght@400;500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200");
 @import "tailwindcss";
+
+:root {
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --low: #eef0f3;
+  --mid: #e7e9ed;
+  --high: #dfe2e7;
+  --primary: #121d3f;
+  --primary-deep: #050a26;
+  --secondary: #e83151;
+  --tertiary: #dba13d;
+  --on-bg: #19191e;
+  --on-surf: #25262c;
+  --on-var: #45464e;
+  --on-mut: #6b6c75;
+  --outline: rgba(69, 70, 78, 0.12);
+  --outline-strong: rgba(69, 70, 78, 0.2);
+  --success: #16a34a;
+  --warning: #8a5a00;
+  --error: #b32a1f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--bg);
+  color: var(--on-bg);
+  font-family: "Manrope", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.55;
+}
+
+.ms {
+  font-family: "Material Symbols Outlined";
+  display: inline-block;
+  line-height: 1;
+  font-variation-settings: "FILL" 1, "wght" 500;
+  vertical-align: middle;
+  user-select: none;
+  font-feature-settings: "liga";
+  -webkit-font-feature-settings: "liga";
+}
