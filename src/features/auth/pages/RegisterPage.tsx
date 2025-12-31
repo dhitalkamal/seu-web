@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Button, Input } from "@/shared/components/ui";
 import AuthLayout from "@/shared/layouts/AuthLayout";
+import { SeuDivider, SeuField, SeuSubmitButton } from "@/shared/components/SeuField";
 import GoogleSignInButton from "@/features/auth/components/GoogleSignInButton";
 import { useAuth, getApiError } from "@/features/auth/hooks/useAuth";
 
-/** Register page — creates a new account and navigates to email verification. */
+/** Register page — SEU v8 glass modal design. */
 export default function RegisterPage() {
   const navigate = useNavigate();
   const { registerMutation } = useAuth();
@@ -38,100 +38,50 @@ export default function RegisterPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!validate()) return;
-
     registerMutation.mutate(form, {
-      onSuccess: () => {
-        navigate("/verify-email", { state: { email: form.email } });
-      },
+      onSuccess: () => navigate("/verify-email", { state: { email: form.email } }),
     });
   }
 
   return (
-    <AuthLayout title="Create your account" subtitle="Join Sansaar — the event universe">
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <AuthLayout eyebrow="Join the universe" title="Create your" titleAccent="account">
+      {/* SSO */}
+      <div className="mb-5">
+        <GoogleSignInButton
+          onSuccess={(isNew) => navigate("/", isNew ? undefined : { state: { flash: "Welcome back!" } })}
+          onError={() => {}}
+        />
+      </div>
+
+      <SeuDivider label="or register with email" />
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-5">
         {registerMutation.isError && (
-          <div className="rounded-xl bg-[#e83151]/10 border border-[#e83151]/30 px-4 py-3 text-sm text-[#e83151] font-['Manrope']">
+          <div
+            className="px-4 py-3 rounded-xl text-sm"
+            style={{ background: "rgba(232,49,81,0.08)", color: "var(--secondary)", border: "1px solid rgba(232,49,81,0.2)", fontFamily: "Manrope, sans-serif" }}
+          >
             {getApiError(registerMutation.error)}
           </div>
         )}
 
         <div className="grid grid-cols-2 gap-3">
-          <Input
-            label="First name"
-            type="text"
-            value={form.first_name}
-            onChange={set("first_name")}
-            error={errors.first_name}
-            placeholder="Kamal"
-            autoComplete="given-name"
-          />
-          <Input
-            label="Last name"
-            type="text"
-            value={form.last_name}
-            onChange={set("last_name")}
-            error={errors.last_name}
-            placeholder="Dhital"
-            autoComplete="family-name"
-          />
+          <SeuField label="First name" type="text" value={form.first_name} onChange={set("first_name")} error={errors.first_name} placeholder="Kamal" autoComplete="given-name" />
+          <SeuField label="Last name" type="text" value={form.last_name} onChange={set("last_name")} error={errors.last_name} placeholder="Dhital" autoComplete="family-name" />
         </div>
 
-        <Input
-          label="Email"
-          type="email"
-          value={form.email}
-          onChange={set("email")}
-          error={errors.email}
-          placeholder="you@example.com"
-          autoComplete="email"
-        />
+        <SeuField label="Email" type="email" value={form.email} onChange={set("email")} error={errors.email} placeholder="you@example.com" autoComplete="email" />
+        <SeuField label="Password" type="password" value={form.password} onChange={set("password")} error={errors.password} placeholder="Min. 8 characters" autoComplete="new-password" />
+        <SeuField label="Confirm password" type="password" value={form.confirm_password} onChange={set("confirm_password")} error={errors.confirm_password} placeholder="Repeat password" autoComplete="new-password" />
 
-        <Input
-          label="Password"
-          type="password"
-          value={form.password}
-          onChange={set("password")}
-          error={errors.password}
-          placeholder="Min. 8 characters"
-          autoComplete="new-password"
-          hint="Must be at least 8 characters."
-        />
-
-        <Input
-          label="Confirm password"
-          type="password"
-          value={form.confirm_password}
-          onChange={set("confirm_password")}
-          error={errors.confirm_password}
-          placeholder="Repeat your password"
-          autoComplete="new-password"
-        />
-
-        <Button
-          type="submit"
-          variant="primary"
-          size="lg"
-          loading={registerMutation.isPending}
-          className="w-full mt-2"
-        >
+        <SeuSubmitButton type="submit" loading={registerMutation.isPending} className="mt-2">
           Create account
-        </Button>
+        </SeuSubmitButton>
       </form>
 
-      <div className="flex items-center gap-3 my-5">
-        <hr className="flex-1 border-[#e0dfd8]" />
-        <span className="text-xs text-[#9b9ca4] font-['Manrope']">or</span>
-        <hr className="flex-1 border-[#e0dfd8]" />
-      </div>
-
-      <GoogleSignInButton
-        onSuccess={(isNew) => navigate(isNew ? "/" : "/", { state: { flash: "Welcome back!" } })}
-        onError={() => {}}
-      />
-
-      <p className="text-center text-sm text-[#6b6c75] mt-6 font-['Manrope']">
+      <p className="text-center mt-6" style={{ fontSize: 13, color: "var(--on-var)", fontFamily: "Manrope, sans-serif" }}>
         Already have an account?{" "}
-        <Link to="/login" className="text-[#121d3f] font-semibold hover:underline">
+        <Link to="/login" className="font-bold no-underline hover:underline" style={{ color: "var(--primary)" }}>
           Sign in
         </Link>
       </p>
