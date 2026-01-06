@@ -1,11 +1,11 @@
 import { useNavigate, useParams } from "react-router-dom";
-import PublicLayout from "@/shared/layouts/PublicLayout";
+import AppLayout from "@/shared/layouts/AppLayout";
 import EventForm from "@/features/events/components/EventForm";
 import { useEvent, useEventMutations } from "@/features/events/hooks/useEvents";
 import { getApiError } from "@/features/auth/hooks/useAuth";
 import type { CreateEventRequest } from "@/features/events/types/event.types";
 
-/** Edit an existing event. Only the organiser can access this page. */
+/** Edit an existing event — SEU v8 app shell. */
 export default function EditEventPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -19,45 +19,46 @@ export default function EditEventPage() {
 
   if (isLoading) {
     return (
-      <PublicLayout>
-        <div className="max-w-2xl mx-auto px-4 py-10">
-          <div className="h-8 w-48 bg-[#e0dfd8] rounded-lg animate-pulse mb-6" />
-          <div className="h-96 bg-white border border-[#e0dfd8] rounded-2xl animate-pulse" />
+      <AppLayout title="Edit event">
+        <div style={{ maxWidth: 720 }}>
+          <div className="animate-pulse space-y-3">
+            <div style={{ height: 20, width: "30%", borderRadius: 8, background: "var(--low)" }} />
+            <div style={{ height: 400, borderRadius: 16, background: "var(--surface)" }} />
+          </div>
         </div>
-      </PublicLayout>
+      </AppLayout>
     );
   }
 
   if (!event) {
     return (
-      <PublicLayout>
-        <div className="text-center py-20">
-          <p className="text-[#6b6c75] font-['Manrope']">Event not found.</p>
-        </div>
-      </PublicLayout>
+      <AppLayout title="Event not found">
+        <p style={{ color: "var(--on-mut)", fontFamily: "Manrope, sans-serif" }}>Event not found.</p>
+      </AppLayout>
     );
   }
 
   return (
-    <PublicLayout>
-      <div className="max-w-2xl mx-auto px-4 py-10">
-        <h1 className="text-2xl font-bold text-[#19191e] font-['Manrope'] mb-8">Edit event</h1>
-
-        {updateMutation.isError && (
-          <div className="mb-6 rounded-xl bg-[#e83151]/10 border border-[#e83151]/30 px-4 py-3 text-sm text-[#e83151] font-['Manrope']">
-            {getApiError(updateMutation.error)}
-          </div>
-        )}
-
-        <div className="bg-white border border-[#e0dfd8] rounded-2xl p-8">
-          <EventForm
-            initial={event}
-            onSubmit={handleSubmit}
-            loading={updateMutation.isPending}
-            submitLabel="Save changes"
-          />
+    <AppLayout title="Edit event" subtitle={event.title}>
+      {updateMutation.isError && (
+        <div
+          className="mb-6 px-4 py-3 rounded-xl text-sm"
+          style={{ background: "rgba(232,49,81,0.08)", color: "var(--secondary)", border: "1px solid rgba(232,49,81,0.2)", fontFamily: "Manrope, sans-serif" }}
+        >
+          {getApiError(updateMutation.error)}
         </div>
+      )}
+      <div
+        style={{
+          maxWidth: 720,
+          background: "var(--surface)",
+          border: "1px solid var(--outline)",
+          borderRadius: 16,
+          padding: 32,
+        }}
+      >
+        <EventForm initial={event} onSubmit={handleSubmit} loading={updateMutation.isPending} submitLabel="Save changes" />
       </div>
-    </PublicLayout>
+    </AppLayout>
   );
 }
