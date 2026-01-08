@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, Input } from "@/shared/components/ui";
 import { useAuth, getApiError } from "@/features/auth/hooks/useAuth";
 import authApi from "@/features/auth/api/auth.api";
-import { cn } from "@/shared/lib/cn";
+import AppLayout from "@/shared/layouts/AppLayout";
 
 type Tab = "profile" | "security" | "mfa" | "sessions" | "gdpr";
 
@@ -21,29 +21,37 @@ export default function SettingsPage() {
   const [tab, setTab] = useState<Tab>("profile");
 
   return (
-    <div className="min-h-screen bg-[#f3f2ef]">
-      <div className="max-w-3xl mx-auto px-4 py-10">
-        <h1 className="text-2xl font-bold text-[#19191e] font-['Manrope'] mb-8">Settings</h1>
-
+    <AppLayout title="Settings" subtitle="Manage your account, security, and privacy.">
+      <div style={{ maxWidth: 720 }}>
         {/* tab bar */}
-        <div className="flex gap-1 bg-white border border-[#e0dfd8] rounded-xl p-1 mb-6 overflow-x-auto">
+        <div
+          className="flex gap-1 overflow-x-auto mb-6"
+          style={{ background: "var(--surface)", border: "1px solid var(--outline)", borderRadius: 12, padding: 4 }}
+        >
           {TABS.map((t) => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={cn(
-                "flex-shrink-0 px-4 py-2 rounded-lg text-sm font-semibold font-['Manrope'] transition-colors",
-                tab === t.id
-                  ? "bg-[#121d3f] text-white"
-                  : "text-[#6b6c75] hover:text-[#19191e] hover:bg-[#f3f2ef]"
-              )}
+              style={{
+                flexShrink: 0,
+                padding: "8px 16px",
+                borderRadius: 9,
+                fontSize: 13,
+                fontWeight: 600,
+                fontFamily: "Manrope, sans-serif",
+                border: "none",
+                cursor: "pointer",
+                transition: "all 150ms",
+                background: tab === t.id ? "#050a26" : "transparent",
+                color: tab === t.id ? "white" : "var(--on-var)",
+              }}
             >
               {t.label}
             </button>
           ))}
         </div>
 
-        <div className="bg-white border border-[#e0dfd8] rounded-2xl p-8">
+        <div style={{ background: "var(--surface)", border: "1px solid var(--outline)", borderRadius: 14, padding: 32 }}>
           {tab === "profile" && <ProfileTab />}
           {tab === "security" && <SecurityTab />}
           {tab === "mfa" && <MFATab />}
@@ -51,7 +59,7 @@ export default function SettingsPage() {
           {tab === "gdpr" && <GDPRTab />}
         </div>
       </div>
-    </div>
+    </AppLayout>
   );
 }
 

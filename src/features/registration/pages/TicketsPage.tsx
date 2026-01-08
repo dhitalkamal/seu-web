@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import PublicLayout from "@/shared/layouts/PublicLayout";
+import AppLayout from "@/shared/layouts/AppLayout";
+
 import registrationApi from "../api/registration.api";
 import type { Registration } from "../types";
 
@@ -77,7 +78,7 @@ export default function TicketsPage() {
   };
 
   return (
-    <PublicLayout>
+    <AppLayout title="My tickets" subtitle="Your event registrations and QR codes.">
       <div className="max-w-3xl mx-auto px-4 py-10">
         <h1 className="text-2xl font-bold text-[#19191e] font-['Manrope'] mb-8">My tickets</h1>
         {isLoading && <p className="text-sm text-[#6b6c75] font-['Manrope']">Loading your tickets...</p>}
@@ -96,6 +97,6 @@ export default function TicketsPage() {
           </div>
         )}
       </div>
-    </PublicLayout>
+    </AppLayout>
   );
 }
