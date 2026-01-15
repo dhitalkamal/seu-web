@@ -1,3 +1,4 @@
+import { Toaster } from "react-hot-toast";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { GuestRoute, ProtectedRoute } from "@/features/auth/components";
 import ForgotPasswordPage from "@/features/auth/pages/ForgotPasswordPage";
@@ -21,6 +22,10 @@ import CheckoutPage from "@/features/payment/pages/CheckoutPage";
 import FailurePage from "@/features/payment/pages/FailurePage";
 import SuccessPage from "@/features/payment/pages/SuccessPage";
 import TicketsPage from "@/features/registration/pages/TicketsPage";
+import OrgProfilePage from "@/features/orgs/pages/OrgProfilePage";
+import OrgSettingsPage from "@/features/orgs/pages/OrgSettingsPage";
+import EventAnalyticsPage from "@/features/events/pages/EventAnalyticsPage";
+import VolunteerManagementPage from "@/features/volunteers/pages/VolunteerManagementPage";
 
 /** Wrap a page in ProtectedRoute. */
 function P({ children }: { children: React.ReactNode }) {
@@ -35,11 +40,53 @@ function G({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <BrowserRouter>
+      {/* F9.6.3 - toast notifications available platform-wide */}
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          style: {
+            background: "var(--surface)",
+            color: "var(--on-bg)",
+            border: "1px solid var(--mid)",
+            fontFamily: "'Manrope', sans-serif",
+            fontSize: "14px",
+          },
+          success: { iconTheme: { primary: "#22c55e", secondary: "#fff" } },
+          error: { iconTheme: { primary: "var(--secondary)", secondary: "#fff" } },
+        }}
+      />
       <Routes>
         {/* public */}
         <Route path="/" element={<HomePage />} />
         <Route path="/events" element={<EventListPage />} />
         <Route path="/events/:id" element={<EventDetailPage />} />
+        <Route path="/orgs/:id" element={<OrgProfilePage />} />
+
+        {/* protected organiser extras */}
+        <Route
+          path="/org/settings"
+          element={
+            <P>
+              <OrgSettingsPage />
+            </P>
+          }
+        />
+        <Route
+          path="/events/:id/analytics"
+          element={
+            <P>
+              <EventAnalyticsPage />
+            </P>
+          }
+        />
+        <Route
+          path="/events/:id/volunteers"
+          element={
+            <P>
+              <VolunteerManagementPage />
+            </P>
+          }
+        />
 
         {/* guest-only auth */}
         <Route
