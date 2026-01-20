@@ -39,7 +39,11 @@ export default function EventTile({ event }: Props) {
           <div className="absolute inset-0 flex items-center justify-center">
             <span
               className="font-bold text-[var(--on-mut)] opacity-30"
-              style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 64, letterSpacing: "-0.04em" }}
+              style={{
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontSize: 64,
+                letterSpacing: "-0.04em",
+              }}
             >
               {event.title.charAt(0)}
             </span>

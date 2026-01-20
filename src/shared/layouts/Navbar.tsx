@@ -61,7 +61,11 @@ export default function Navbar() {
         </div>
         <span
           className="font-bold text-[var(--on-bg)] leading-none"
-          style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 17, letterSpacing: "-0.02em" }}
+          style={{
+            fontFamily: "'Space Grotesk', sans-serif",
+            fontSize: 17,
+            letterSpacing: "-0.02em",
+          }}
         >
           Sansaar
         </span>
@@ -76,7 +80,10 @@ export default function Navbar() {
               key={l.to}
               to={l.to}
               className="relative text-sm font-medium transition-colors no-underline"
-              style={{ color: active ? "var(--on-bg)" : "var(--on-var)", fontFamily: "Manrope, sans-serif" }}
+              style={{
+                color: active ? "var(--on-bg)" : "var(--on-var)",
+                fontFamily: "Manrope, sans-serif",
+              }}
             >
               {l.label}
               {active && (
@@ -113,7 +120,12 @@ export default function Navbar() {
             <button
               onClick={handleLogout}
               className="text-sm font-medium text-[var(--on-var)] hover:text-[var(--secondary)] transition-colors"
-              style={{ fontFamily: "Manrope, sans-serif", background: "none", border: "none", cursor: "pointer" }}
+              style={{
+                fontFamily: "Manrope, sans-serif",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+              }}
             >
               Sign out
             </button>

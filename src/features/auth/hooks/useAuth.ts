@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AxiosError } from "axios";
 import authApi from "@/features/auth/api/auth.api";
@@ -12,6 +13,7 @@ import type {
   VerifyResetOTPRequest,
 } from "@/features/auth/types/auth.types";
 import { useAuthStore } from "@/shared/store/auth.store";
+import { useOrgStore } from "@/shared/store/org.store";
 
 /** Extract the human-readable error message from an Axios API error. */
 export function getApiError(err: unknown): string {
@@ -39,6 +41,7 @@ export function useAuth() {
     },
     onSettled: () => {
       clearAuth();
+      useOrgStore.getState().clearOrg();
       qc.clear();
     },
   });
@@ -86,6 +89,7 @@ export function useAuth() {
     mutationFn: () => authApi.deleteAccount(),
     onSuccess: () => {
       clearAuth();
+      useOrgStore.getState().clearOrg();
       qc.clear();
     },
   });
@@ -128,4 +132,33 @@ export function useSessions() {
     select: (res) => res.data,
     enabled: !!useAuthStore.getState().isAuthenticated,
   });
+}
+
+/**
+ * Bootstraps user profile data on app mount. Call once near the app root
+ * (e.g. inside AppLayout). Fetches GET /profile/me/ and syncs the full
+ * user object (first_name, last_name, phone, bio, etc.) into the auth store
+ * so every page has real data instead of the skeleton set at login.
+ */
+export function useProfileBootstrap() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const setAuth = useAuthStore((s) => s.setAuth);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const refreshToken = useAuthStore((s) => s.refreshToken);
+  const fetched = useRef(false);
+
+  useEffect(() => {
+    if (!isAuthenticated || !accessToken || !refreshToken || fetched.current) return;
+    fetched.current = true;
+
+    authApi
+      .getProfile()
+      .then((res) => {
+        // ! sync the full user object into the store — replaces the skeleton from login
+        setAuth(res.data, accessToken, refreshToken);
+      })
+      .catch(() => {
+        // non-fatal — the user just keeps the skeleton data from login
+      });
+  }, [isAuthenticated, accessToken, refreshToken, setAuth]);
 }

@@ -21,6 +21,19 @@ const registrationApi = {
     client
       .post<{ data: Registration }>(`${BASE}/registrations/cancel/`, { registration_id })
       .then((r) => r.data.data),
+
+  /** Fetch a single registration by ID. */
+  getRegistration: (id: string) =>
+    client.get<{ data: Registration }>(`${BASE}/registrations/${id}/`).then((r) => r.data.data),
+
+  /** Get the QR token for a registration, used for check-in scanning. */
+  getQrToken: (id: string) =>
+    client
+      .get<{ data: { token: string; expires_at: string } }>(`${BASE}/registrations/${id}/qr-token/`)
+      .then((r) => r.data.data),
+
+  /** Delete a registration record. */
+  deleteRegistration: (id: string) => client.delete(`${BASE}/registrations/${id}/`),
 };
 
 export default registrationApi;

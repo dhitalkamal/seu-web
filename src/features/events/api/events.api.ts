@@ -56,6 +56,44 @@ async function deleteEvent(id: string): Promise<void> {
   await client.delete(`${BASE}/${id}/`);
 }
 
+/** Upload a cover image and get back the URL. */
+async function uploadCover(file: File): Promise<string> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await client.post<{ data: { url: string } }>("/event/api/v1/uploads/cover/", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data.data.url;
+}
+
+/** Mark an event as completed. */
+async function completeEvent(id: string): Promise<ApiResponse<Event>> {
+  const res = await client.post<ApiResponse<Event>>(`${BASE}/${id}/complete/`);
+  return res.data;
+}
+
+type MediaItem = { id: string; url: string; caption: string; position: number };
+
+/** List gallery media for an event. */
+async function listMedia(id: string): Promise<MediaItem[]> {
+  const res = await client.get<{ data: MediaItem[] }>(`${BASE}/${id}/media/`);
+  return res.data.data ?? [];
+}
+
+/** Add a media item to an event gallery. */
+async function addMedia(
+  id: string,
+  payload: { url: string; caption?: string; position?: number }
+): Promise<MediaItem> {
+  const res = await client.post<{ data: MediaItem }>(`${BASE}/${id}/media/`, payload);
+  return res.data.data;
+}
+
+/** Remove a media item from an event gallery. */
+function deleteMedia(eventId: string, mediaId: string) {
+  return client.delete(`${BASE}/${eventId}/media/${mediaId}/`);
+}
+
 const eventsApi = {
   listPublicEvents,
   listMyEvents,
@@ -64,6 +102,11 @@ const eventsApi = {
   updateEvent,
   publishEvent,
   deleteEvent,
+  uploadCover,
+  completeEvent,
+  listMedia,
+  addMedia,
+  deleteMedia,
 };
 
 export default eventsApi;

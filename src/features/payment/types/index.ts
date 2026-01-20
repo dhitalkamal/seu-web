@@ -31,3 +31,13 @@ export interface CreateOrderPayload {
   idempotency_key: string;
   promo_code?: string;
 }
+
+/**
+ * Response from the create-order endpoint — flat order fields
+ * plus gateway redirect info appended by the view.
+ */
+export type CreateOrderResponse = PaymentOrder & {
+  payment_url?: string;
+  esewa_form_data?: Record<string, string>;
+  esewa_form_url?: string;
+};

@@ -17,6 +17,12 @@ export type Event = {
   visibility: EventVisibility;
   is_free: boolean;
   price: string;
+  cover_image: string | null;
+  is_online: boolean;
+  online_url: string | null;
+  category_id: string | null;
+  tag_ids: string[];
+  allowed_domains: string[];
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -32,6 +38,12 @@ export type CreateEventRequest = {
   visibility: EventVisibility;
   is_free: boolean;
   price: string;
+  cover_image?: string | null;
+  is_online?: boolean;
+  online_url?: string | null;
+  category_id?: string | null;
+  tag_ids?: string[];
+  allowed_domains?: string[];
 };
 
 export type UpdateEventRequest = Partial<CreateEventRequest>;

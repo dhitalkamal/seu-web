@@ -1,8 +1,12 @@
+import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/shared/components/ui";
 import PublicLayout from "@/shared/layouts/PublicLayout";
+import AppLayout from "@/shared/layouts/AppLayout";
 import { useEvent, useEventMutations } from "@/features/events/hooks/useEvents";
 import { useAuthStore } from "@/shared/store/auth.store";
+import registrationApi from "@/features/registration/api/registration.api";
+import JourneyPanel from "@/features/events/components/JourneyPanel";
 
 const STATUS_CHIP: Record<string, { bg: string; color: string }> = {
   published: { bg: "#dcfce7", color: "#16a34a" },
@@ -11,7 +15,7 @@ const STATUS_CHIP: Record<string, { bg: string; color: string }> = {
   completed: { bg: "rgba(18,29,63,0.08)", color: "var(--primary)" },
 };
 
-/** Public event detail — full-width hero + two-column body + sticky registration rail. */
+/** Public event detail -full-width hero + two-column body + sticky registration rail. */
 export default function EventDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -19,9 +23,21 @@ export default function EventDetailPage() {
   const { data: event, isLoading } = useEvent(id ?? "");
   const { publishMutation, deleteMutation } = useEventMutations();
 
+  // ! hooks must be called before any early return to satisfy Rules of Hooks
+  const [registering, setRegistering] = useState(false);
+  const [regError, setRegError] = useState("");
+
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
+  /** Picks the right shell -authenticated users stay inside AppLayout, guests get PublicLayout. */
+  function Layout({ children }: { children: React.ReactNode }) {
+    if (isAuthenticated) return <AppLayout variant="user">{children}</AppLayout>;
+    return <PublicLayout>{children}</PublicLayout>;
+  }
+
   if (isLoading) {
     return (
-      <PublicLayout>
+      <Layout>
         <div style={{ maxWidth: 1200, margin: "0 auto", padding: "40px 32px" }}>
           <div className="animate-pulse space-y-4">
             <div style={{ height: 420, borderRadius: 24, background: "var(--low)" }} />
@@ -29,22 +45,32 @@ export default function EventDetailPage() {
             <div style={{ height: 16, width: "70%", borderRadius: 8, background: "var(--low)" }} />
           </div>
         </div>
-      </PublicLayout>
+      </Layout>
     );
   }
 
   if (!event) {
     return (
-      <PublicLayout>
+      <Layout>
         <div className="text-center py-24">
-          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 20, color: "var(--on-mut)" }}>
+          <p
+            style={{
+              fontFamily: "'Cormorant Garamond', serif",
+              fontStyle: "italic",
+              fontSize: 20,
+              color: "var(--on-mut)",
+            }}
+          >
             Event not found.
           </p>
-          <Link to="/" className="inline-block mt-4 text-sm font-semibold text-[var(--primary)] no-underline hover:underline">
+          <Link
+            to="/"
+            className="inline-block mt-4 text-sm font-semibold text-[var(--primary)] no-underline hover:underline"
+          >
             Back to events
           </Link>
         </div>
-      </PublicLayout>
+      </Layout>
     );
   }
 
@@ -55,9 +81,44 @@ export default function EventDetailPage() {
   const chip = STATUS_CHIP[event.status] ?? STATUS_CHIP.draft;
   const priceDisplay = event.is_free ? "Free" : `NPR ${parseFloat(event.price).toLocaleString()}`;
 
+  /** Register via participation service, then redirect to checkout (or confirm if free). */
+  async function handleRegister() {
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+    setRegistering(true);
+    setRegError("");
+    try {
+      const result = await registrationApi.register({ event_id: event.id });
+
+      // ! if the user got waitlisted, don't go to checkout
+      if ("waitlisted" in result && result.waitlisted) {
+        navigate(`/registrations?waitlisted=${event.id}`);
+        return;
+      }
+
+      // * free events -registration is enough, no payment needed
+      if (event.is_free) {
+        navigate(`/registrations?confirmed=${event.id}`);
+        return;
+      }
+
+      // * paid events -go to checkout with the real registration ID
+      navigate(
+        `/checkout?event_id=${event.id}&registration_id=${result.id}&subtotal=${event.price}`
+      );
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Registration failed. Please try again.";
+      setRegError(msg);
+    } finally {
+      setRegistering(false);
+    }
+  }
+
   return (
-    <PublicLayout>
-      {/* full-bleed hero — pulls into navbar area */}
+    <Layout>
+      {/* full-bleed hero -pulls into navbar area */}
       <div
         className="relative overflow-hidden"
         style={{
@@ -69,7 +130,10 @@ export default function EventDetailPage() {
         {/* gradient overlay */}
         <div
           className="absolute inset-0"
-          style={{ background: "linear-gradient(to bottom, rgba(5,10,38,0.15) 0%, rgba(5,10,38,0.72) 100%)" }}
+          style={{
+            background:
+              "linear-gradient(to bottom, rgba(5,10,38,0.15) 0%, rgba(5,10,38,0.72) 100%)",
+          }}
         />
 
         {/* content */}
@@ -144,16 +208,27 @@ export default function EventDetailPage() {
               style={{ fontSize: 14, color: "rgba(255,255,255,0.8)" }}
             >
               <span className="flex items-center gap-2">
-                <span className="ms" style={{ fontSize: 16 }}>event</span>
-                {start.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+                <span className="ms" style={{ fontSize: 16 }}>
+                  event
+                </span>
+                {start.toLocaleDateString("en-US", {
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                })}
               </span>
               <span className="flex items-center gap-2">
-                <span className="ms" style={{ fontSize: 16 }}>location_on</span>
+                <span className="ms" style={{ fontSize: 16 }}>
+                  location_on
+                </span>
                 {event.location}
               </span>
               <span className="flex items-center gap-2">
-                <span className="ms" style={{ fontSize: 16 }}>group</span>
-                {event.registered_count.toLocaleString()} / {event.capacity.toLocaleString()} registered
+                <span className="ms" style={{ fontSize: 16 }}>
+                  group
+                </span>
+                {event.registered_count.toLocaleString()} / {event.capacity.toLocaleString()}{" "}
+                registered
               </span>
             </div>
           </div>
@@ -173,7 +248,7 @@ export default function EventDetailPage() {
         }}
         className="grid-cols-1 lg:grid-cols-[1fr_380px]"
       >
-        {/* left — content */}
+        {/* left -content */}
         <div>
           {/* description */}
           <div style={{ marginBottom: 40 }}>
@@ -225,8 +300,14 @@ export default function EventDetailPage() {
               Schedule
             </h4>
             {[
-              { time: start.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }), label: "Event starts" },
-              { time: end.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }), label: "Event ends" },
+              {
+                time: start.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+                label: "Event starts",
+              },
+              {
+                time: end.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+                label: "Event ends",
+              },
             ].map(({ time, label }) => (
               <div
                 key={label}
@@ -244,7 +325,9 @@ export default function EventDetailPage() {
                 >
                   {time}
                 </span>
-                <span style={{ fontSize: 14, fontWeight: 600, color: "var(--on-surf)" }}>{label}</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: "var(--on-surf)" }}>
+                  {label}
+                </span>
               </div>
             ))}
           </div>
@@ -279,7 +362,7 @@ export default function EventDetailPage() {
           )}
         </div>
 
-        {/* right — sticky registration rail */}
+        {/* right -sticky registration rail */}
         <div
           style={{
             position: "sticky",
@@ -319,12 +402,16 @@ export default function EventDetailPage() {
             {
               icon: "event",
               label: "Date",
-              value: start.toLocaleDateString("en-US", { weekday: "short", month: "long", day: "numeric" }),
+              value: start.toLocaleDateString("en-US", {
+                weekday: "short",
+                month: "long",
+                day: "numeric",
+              }),
             },
             {
               icon: "schedule",
               label: "Time",
-              value: `${start.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })} – ${end.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`,
+              value: `${start.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })} to ${end.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`,
             },
             { icon: "location_on", label: "Location", value: event.location },
             {
@@ -333,15 +420,28 @@ export default function EventDetailPage() {
               value: `${spots > 0 ? spots.toLocaleString() + " spots left" : "Sold out"} of ${event.capacity.toLocaleString()}`,
             },
           ].map(({ icon, label, value }) => (
-            <div key={label} className="flex justify-between items-start" style={{ fontSize: 13.5 }}>
+            <div
+              key={label}
+              className="flex justify-between items-start"
+              style={{ fontSize: 13.5 }}
+            >
               <span
                 className="flex items-center gap-2"
                 style={{ color: "var(--on-var)", flexShrink: 0 }}
               >
-                <span className="ms" style={{ fontSize: 16, color: "var(--on-mut)" }}>{icon}</span>
+                <span className="ms" style={{ fontSize: 16, color: "var(--on-mut)" }}>
+                  {icon}
+                </span>
                 {label}
               </span>
-              <span style={{ fontWeight: 600, color: "var(--on-surf)", textAlign: "right", maxWidth: "55%" }}>
+              <span
+                style={{
+                  fontWeight: 600,
+                  color: "var(--on-surf)",
+                  textAlign: "right",
+                  maxWidth: "55%",
+                }}
+              >
                 {value}
               </span>
             </div>
@@ -349,27 +449,51 @@ export default function EventDetailPage() {
 
           {/* register CTA */}
           {!isOrganiser && (
-            <Link
-              to={`/checkout?event_id=${event.id}&registration_id=&subtotal=${event.price}`}
-              className="flex items-center justify-center gap-2 font-semibold text-white no-underline transition-all hover:opacity-90"
-              style={{
-                padding: "14px",
-                borderRadius: 12,
-                background: spots > 0
-                  ? "linear-gradient(135deg, #050a26, #121d3f)"
-                  : "var(--high)",
-                fontSize: 14.5,
-                fontFamily: "Manrope, sans-serif",
-                color: spots > 0 ? "white" : "var(--on-mut)",
-                pointerEvents: spots === 0 ? "none" : undefined,
-              }}
-            >
-              <span className="ms" style={{ fontSize: 18 }}>confirmation_number</span>
-              {spots > 0 ? "Register for this event" : "Sold out"}
-            </Link>
+            <>
+              {regError && (
+                <p
+                  style={{
+                    fontSize: 13,
+                    color: "var(--secondary)",
+                    fontFamily: "Manrope, sans-serif",
+                  }}
+                >
+                  {regError}
+                </p>
+              )}
+              <button
+                onClick={handleRegister}
+                disabled={spots === 0 || registering}
+                className="flex items-center justify-center gap-2 font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
+                style={{
+                  padding: "14px",
+                  borderRadius: 12,
+                  border: "none",
+                  cursor: spots === 0 ? "not-allowed" : "pointer",
+                  background:
+                    spots > 0 ? "linear-gradient(135deg, #050a26, #121d3f)" : "var(--high)",
+                  fontSize: 14.5,
+                  fontFamily: "Manrope, sans-serif",
+                  color: spots > 0 ? "white" : "var(--on-mut)",
+                  width: "100%",
+                }}
+              >
+                <span className="ms" style={{ fontSize: 18 }}>
+                  confirmation_number
+                </span>
+                {spots === 0
+                  ? "Sold out"
+                  : registering
+                    ? "Registering..."
+                    : event.is_free
+                      ? "Register (Free)"
+                      : "Register & Pay"}
+              </button>
+            </>
           )}
         </div>
       </div>
-    </PublicLayout>
+      {event?.id && <JourneyPanel eventId={event.id} />}
+    </Layout>
   );
 }
