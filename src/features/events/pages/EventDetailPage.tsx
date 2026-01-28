@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
 import { Button } from "@/shared/components/ui";
 import PublicLayout from "@/shared/layouts/PublicLayout";
 import AppLayout from "@/shared/layouts/AppLayout";
@@ -19,6 +19,7 @@ const STATUS_CHIP: Record<string, { bg: string; color: string }> = {
 export default function EventDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const user = useAuthStore((s) => s.user);
   const { data: event, isLoading } = useEvent(id ?? "");
   const { publishMutation, deleteMutation } = useEventMutations();
@@ -29,9 +30,14 @@ export default function EventDetailPage() {
 
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
-  /** Picks the right shell -authenticated users stay inside AppLayout, guests get PublicLayout. */
+  // when accessed via /org/events/:id use the org shell + org navigation targets
+  const isOrgContext = location.pathname.startsWith("/org/");
+
+  /** Picks the right shell based on auth state and route context. */
   function Layout({ children }: { children: React.ReactNode }) {
-    if (isAuthenticated) return <AppLayout variant="user">{children}</AppLayout>;
+    if (isAuthenticated) {
+      return <AppLayout variant={isOrgContext ? "org" : "user"}>{children}</AppLayout>;
+    }
     return <PublicLayout>{children}</PublicLayout>;
   }
 
@@ -83,6 +89,7 @@ export default function EventDetailPage() {
 
   /** Register via participation service, then redirect to checkout (or confirm if free). */
   async function handleRegister() {
+    if (!event) return;
     if (!user) {
       navigate("/login");
       return;
@@ -338,7 +345,7 @@ export default function EventDetailPage() {
               className="flex gap-3 flex-wrap pt-6"
               style={{ borderTop: "1px solid var(--outline)" }}
             >
-              <Button variant="secondary" onClick={() => navigate(`/events/${event.id}/edit`)}>
+              <Button variant="secondary" onClick={() => navigate(`/org/events/${event.id}/edit`)}>
                 Edit
               </Button>
               {event.status === "draft" && (
@@ -353,7 +360,7 @@ export default function EventDetailPage() {
                 variant="danger"
                 loading={deleteMutation.isPending}
                 onClick={() =>
-                  deleteMutation.mutate(event.id, { onSuccess: () => navigate("/events/mine") })
+                  deleteMutation.mutate(event.id, { onSuccess: () => navigate("/org/events") })
                 }
               >
                 Delete

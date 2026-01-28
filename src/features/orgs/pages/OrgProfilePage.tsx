@@ -17,7 +17,7 @@ type Org = {
   created_at: string;
 };
 
-/** Public profile page for an organisation. Route: /orgs/:id */
+/** Public profile page for an organization. Route: /orgs/:id */
 export default function OrgProfilePage() {
   const { id } = useParams<{ id: string }>();
   const [org, setOrg] = useState<Org | null>(null);
@@ -26,10 +26,10 @@ export default function OrgProfilePage() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await client.get(`/org/api/v1/organisations/${id}/`);
+        const res = await client.get(`/org/api/v1/organizations/${id}/`);
         setOrg(res.data.data);
       } catch {
-        toast.error("Could not load organisation.");
+        toast.error("Could not load organization.");
       } finally {
         setLoading(false);
       }
@@ -39,7 +39,7 @@ export default function OrgProfilePage() {
 
   if (loading) {
     return (
-      <AppLayout>
+      <AppLayout variant="user">
         <div className="flex items-center justify-center h-64">
           <div
             className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin"
@@ -52,16 +52,16 @@ export default function OrgProfilePage() {
 
   if (!org) {
     return (
-      <AppLayout>
+      <AppLayout variant="user">
         <div className="text-center py-24" style={{ color: "var(--on-bg)" }}>
-          Organisation not found.
+          Organization not found.
         </div>
       </AppLayout>
     );
   }
 
   return (
-    <AppLayout>
+    <AppLayout variant="user">
       <div className="max-w-3xl mx-auto px-6 py-12">
         {/* header */}
         <div

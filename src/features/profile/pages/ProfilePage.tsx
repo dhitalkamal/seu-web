@@ -15,7 +15,7 @@ import paymentApi from "@/features/payment/api/payment.api";
 import type { PaymentOrder } from "@/features/payment/types";
 import authApi from "@/features/auth/api/auth.api";
 
-// * ─── Types ──────────────────────────────────────────────────────────────────
+// * --- Types ------------------------------------------------------------------
 
 type Tab = "profile" | "org" | "billing" | "notifications" | "security" | "preferences";
 
@@ -23,14 +23,14 @@ type TabDef = { key: Tab; icon: string; label: string };
 
 const TABS: TabDef[] = [
   { key: "profile", icon: "person", label: "Profile" },
-  { key: "org", icon: "domain", label: "Organisation" },
+  { key: "org", icon: "domain", label: "Organization" },
   { key: "billing", icon: "credit_card", label: "Billing" },
   { key: "notifications", icon: "notifications", label: "Notifications" },
   { key: "security", icon: "shield", label: "Security" },
   { key: "preferences", icon: "tune", label: "Preferences" },
 ];
 
-// * ─── Shared Styles ──────────────────────────────────────────────────────────
+// * --- Shared Styles ----------------------------------------------------------
 
 const fieldStyle: React.CSSProperties = {
   width: "100%",
@@ -55,9 +55,9 @@ const labelStyle: React.CSSProperties = {
   fontFamily: "'JetBrains Mono', monospace",
 };
 
-// * ─── Main Component ─────────────────────────────────────────────────────────
+// * --- Main Component ---------------------------------------------------------
 
-/** Combined profile + settings page — sidebar with avatar card + vertical tabs. */
+/** Combined profile + settings page  - sidebar with avatar card + vertical tabs. */
 export default function ProfilePage() {
   const [tab, setTab] = useState<Tab>("profile");
   const user = useAuthStore((s) => s.user);
@@ -68,7 +68,7 @@ export default function ProfilePage() {
   return (
     <AppLayout variant="user">
       <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
-        {/* left: sticky sidebar — top-aligned with hero card, sticks below topbar */}
+        {/* left: sticky sidebar  - top-aligned with hero card, sticks below topbar */}
         <div
           style={{
             width: 220,
@@ -152,17 +152,17 @@ export default function ProfilePage() {
   );
 }
 
-// * ─── Profile Tab ────────────────────────────────────────────────────────────
+// * --- Profile Tab ------------------------------------------------------------
 
 type ProfileTabProps = { fullName: string; joinDate: Date | null };
 
-/** Profile tab — hero card, read-only personal info, "Edit Profile" opens a modal, quick stats, sessions. */
+/** Profile tab  - hero card, read-only personal info, "Edit Profile" opens a modal, quick stats, sessions. */
 function ProfileTab({ fullName, joinDate }: ProfileTabProps) {
   const user = useAuthStore((s) => s.user);
   const { data: sessions } = useSessions();
   const [modalOpen, setModalOpen] = useState(false);
 
-  // ! read-only field style — looks like plain text, not an input
+  // ! read-only field style  - looks like plain text, not an input
   const readOnlyStyle: React.CSSProperties = {
     fontSize: 14,
     color: "var(--on-bg)",
@@ -295,32 +295,32 @@ function ProfileTab({ fullName, joinDate }: ProfileTabProps) {
           value={
             joinDate
               ? joinDate.toLocaleDateString("en-US", { month: "short", year: "numeric" })
-              : "—"
+              : " -"
           }
           color="#0ea5e9"
         />
       </div>
 
-      {/* personal info — read-only, "Edit Profile" opens modal */}
+      {/* personal info  - read-only, "Edit Profile" opens modal */}
       <SectionCard title="Personal Information" icon="badge">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
           <div>
             <label style={labelStyle}>First Name</label>
-            <p style={readOnlyStyle}>{user?.first_name || "—"}</p>
+            <p style={readOnlyStyle}>{user?.first_name || " -"}</p>
           </div>
           <div>
             <label style={labelStyle}>Last Name</label>
-            <p style={readOnlyStyle}>{user?.last_name || "—"}</p>
+            <p style={readOnlyStyle}>{user?.last_name || " -"}</p>
           </div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
           <div>
             <label style={labelStyle}>Email</label>
-            <p style={readOnlyStyle}>{user?.email || "—"}</p>
+            <p style={readOnlyStyle}>{user?.email || " -"}</p>
           </div>
           <div>
             <label style={labelStyle}>Phone</label>
-            <p style={readOnlyStyle}>{user?.phone || "—"}</p>
+            <p style={readOnlyStyle}>{user?.phone || " -"}</p>
           </div>
         </div>
         <div>
@@ -345,7 +345,7 @@ function ProfileTab({ fullName, joinDate }: ProfileTabProps) {
   );
 }
 
-// * ─── Edit Profile Modal ─────────────────────────────────────────────────────
+// * --- Edit Profile Modal -----------------------------------------------------
 
 /** Full-screen overlay modal with form for all editable profile fields. */
 function EditProfileModal({ onClose }: { onClose: () => void }) {
@@ -459,7 +459,7 @@ function EditProfileModal({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
-        {/* modal body — all editable fields */}
+        {/* modal body  - all editable fields */}
         <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 16 }}>
           {/* avatar preview + url */}
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
@@ -578,9 +578,57 @@ function EditProfileModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+/** Extract JTI from a JWT access token without a library. */
+function extractJti(token: string | null): string | null {
+  if (!token) return null;
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return payload.jti ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** Fetches and renders the user's active login sessions with revoke action. */
 function SessionsList() {
-  const { data: sessions, isLoading } = useSessions();
+  const { data: sessions, isLoading, refetch } = useSessions();
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const currentJti = extractJti(accessToken);
+  const [revoking, setRevoking] = useState<string | null>(null);
+  const [revokingAll, setRevokingAll] = useState(false);
+
+  // filter out the current session
+  const otherSessions = (sessions ?? []).filter((s) => s.jti !== currentJti);
+
+  async function handleRevoke(jti: string) {
+    setRevoking(jti);
+    try {
+      await authApi.revokeSession(jti);
+      toast.success("Session revoked");
+      refetch();
+    } catch {
+      toast.error("Failed to revoke session");
+    } finally {
+      setRevoking(null);
+    }
+  }
+
+  async function handleRevokeAll() {
+    setRevokingAll(true);
+    try {
+      for (const s of otherSessions) {
+        await authApi.revokeSession(s.jti);
+      }
+      toast.success(
+        `Revoked ${otherSessions.length} session${otherSessions.length === 1 ? "" : "s"}`
+      );
+      refetch();
+    } catch {
+      toast.error("Failed to revoke all sessions");
+    } finally {
+      setRevokingAll(false);
+    }
+  }
 
   if (isLoading) {
     return (
@@ -589,17 +637,40 @@ function SessionsList() {
       </p>
     );
   }
-  if (!sessions || sessions.length === 0) {
+  if (otherSessions.length === 0) {
     return (
       <p style={{ fontSize: 13, color: "var(--on-mut)", fontFamily: "Manrope, sans-serif" }}>
-        No active sessions found.
+        No other active sessions.
       </p>
     );
   }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      {sessions.map((s) => (
+      {/* revoke all button */}
+      {otherSessions.length > 1 && (
+        <button
+          onClick={handleRevokeAll}
+          disabled={revokingAll}
+          style={{
+            alignSelf: "flex-end",
+            padding: "6px 14px",
+            borderRadius: 8,
+            border: "1px solid #e83151",
+            background: revokingAll ? "#e83151" : "transparent",
+            color: revokingAll ? "white" : "#e83151",
+            fontSize: 11,
+            fontWeight: 700,
+            fontFamily: "Manrope, sans-serif",
+            cursor: revokingAll ? "not-allowed" : "pointer",
+            marginBottom: 4,
+          }}
+        >
+          {revokingAll ? "Revoking all..." : `Revoke all ${otherSessions.length} sessions`}
+        </button>
+      )}
+
+      {otherSessions.map((s) => (
         <div
           key={s.jti}
           style={{
@@ -631,18 +702,37 @@ function SessionsList() {
                 marginTop: 2,
               }}
             >
-              {s.ip_address ?? "—"} · Last seen {new Date(s.last_seen_at).toLocaleDateString()}
+              {s.ip_address ?? "-"} · Last seen {new Date(s.last_seen_at).toLocaleDateString()}
             </p>
           </div>
+          <button
+            onClick={() => handleRevoke(s.jti)}
+            disabled={revoking === s.jti}
+            style={{
+              padding: "5px 10px",
+              borderRadius: 6,
+              border: "1px solid #e83151",
+              background: "transparent",
+              color: "#e83151",
+              fontSize: 11,
+              fontWeight: 600,
+              fontFamily: "Manrope, sans-serif",
+              cursor: revoking === s.jti ? "not-allowed" : "pointer",
+              opacity: revoking === s.jti ? 0.5 : 1,
+              flexShrink: 0,
+            }}
+          >
+            {revoking === s.jti ? "Revoking..." : "Revoke"}
+          </button>
         </div>
       ))}
     </div>
   );
 }
 
-// * ─── Organisation Tab ───────────────────────────────────────────────────────
+// * --- Organization Tab -------------------------------------------------------
 
-/** Organisation overview — create, view status, quick-edit. */
+/** Organization overview  - create, view status, quick-edit. */
 function OrgTab() {
   const navigate = useNavigate();
   useOrgContext();
@@ -681,7 +771,7 @@ function OrgTab() {
             marginBottom: 8,
           }}
         >
-          No organisation yet
+          No organization yet
         </p>
         <p
           style={{
@@ -693,9 +783,9 @@ function OrgTab() {
             margin: "0 auto 28px",
           }}
         >
-          Create an organisation to start hosting events and access the organiser dashboard.
+          Create an organization to start hosting events and access the organiser dashboard.
         </p>
-        <Btn label="Create Organisation" onClick={() => navigate("/org/new")} primary icon="add" />
+        <Btn label="Create Organization" onClick={() => navigate("/org/new")} primary icon="add" />
       </div>
     );
   }
@@ -710,7 +800,7 @@ function OrgTab() {
           border="rgba(245,158,11,0.2)"
           color="#b45309"
           title="Pending Review"
-          desc="Your organisation is being reviewed by our team."
+          desc="Your organization is being reviewed by our team."
         />
       )}
       {isOrgSuspended(org) && (
@@ -720,7 +810,7 @@ function OrgTab() {
           border="rgba(239,68,68,0.2)"
           color="#dc2626"
           title="Suspended"
-          desc="Your organisation has been suspended. Contact support."
+          desc="Your organization has been suspended. Contact support."
         />
       )}
       {isOrgActive(org) && (
@@ -730,11 +820,11 @@ function OrgTab() {
           border="rgba(34,197,94,0.2)"
           color="#16a34a"
           title="Active"
-          desc="Your organisation is verified and active."
+          desc="Your organization is verified and active."
         />
       )}
 
-      <SectionCard title="Organisation Details" icon="domain" style={{ marginTop: 16 }}>
+      <SectionCard title="Organization Details" icon="domain" style={{ marginTop: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 8 }}>
           <div
             style={{
@@ -803,7 +893,7 @@ function OrgTab() {
             <Btn
               label="Go to Dashboard"
               icon="space_dashboard"
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate("/org/dashboard")}
               primary
             />
           )}
@@ -813,9 +903,9 @@ function OrgTab() {
   );
 }
 
-// * ─── Billing Tab ───────────────────────────────────────────────────────────
+// * --- Billing Tab -----------------------------------------------------------
 
-/** Format a number as Nepali Rupees — e.g. Rs. 2,500 */
+/** Format a number as Nepali Rupees  - e.g. Rs. 2,500 */
 function formatNPR(amount: number): string {
   return `Rs. ${amount.toLocaleString("en-IN")}`;
 }
@@ -849,7 +939,7 @@ function statusStyle(status: string): { bg: string; color: string; icon: string 
   }
 }
 
-/** Attendee billing — purchase history fetched from payment API, payment methods, invoices. */
+/** Attendee billing  - purchase history fetched from payment API, payment methods, invoices. */
 function BillingTab() {
   const [orders, setOrders] = useState<PaymentOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1172,7 +1262,7 @@ function BillingTab() {
   );
 }
 
-// * ─── Notifications Tab ──────────────────────────────────────────────────────
+// * --- Notifications Tab ------------------------------------------------------
 
 /** Full notification history + mark-read actions. */
 function NotificationsTab() {
@@ -1331,7 +1421,7 @@ function NotificationsTab() {
               margin: "0 auto",
             }}
           >
-            Notifications about events, registrations, and your organisation will appear here.
+            Notifications about events, registrations, and your organization will appear here.
           </p>
         </div>
       )}
@@ -1443,9 +1533,9 @@ function NotificationsTab() {
   );
 }
 
-// * ─── Security Tab ───────────────────────────────────────────────────────────
+// * --- Security Tab -----------------------------------------------------------
 
-/** Change password, MFA, sign out, danger zone — settings-list layout with modals. */
+/** Change password, MFA, sign out, danger zone  - settings-list layout with modals. */
 function SecurityTab() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
@@ -1471,7 +1561,7 @@ function SecurityTab() {
   const [mfaBackupCodes, setMfaBackupCodes] = useState<string[]>([]);
   const [mfaLoading, setMfaLoading] = useState(false);
 
-  /** Kick off MFA setup — gets secret and provisioning URI from backend. */
+  /** Kick off MFA setup  - gets secret and provisioning URI from backend. */
   async function handleMfaSetup() {
     setMfaLoading(true);
     try {
@@ -1486,7 +1576,7 @@ function SecurityTab() {
     }
   }
 
-  /** Confirm TOTP code to enable MFA — returns backup codes on success. */
+  /** Confirm TOTP code to enable MFA  - returns backup codes on success. */
   async function handleMfaEnable() {
     if (!mfaCode.trim()) {
       toast.error("Enter the 6-digit code from your authenticator app.");
@@ -1507,7 +1597,7 @@ function SecurityTab() {
     }
   }
 
-  /** Disable MFA — asks for TOTP code first. */
+  /** Disable MFA  - asks for TOTP code first. */
   async function handleMfaDisable() {
     if (!mfaCode.trim()) {
       toast.error("Enter a TOTP code to confirm.");
@@ -1593,7 +1683,7 @@ function SecurityTab() {
           onAction={() => setPwModalOpen(true)}
         />
 
-        {/* Two-Factor Auth row — actionable */}
+        {/* Two-Factor Auth row  - actionable */}
         <SettingsRow
           icon="security"
           title="Two-Factor Authentication"
@@ -1923,7 +2013,7 @@ function SecurityTab() {
           {/* Step 2: show QR / secret + code input (also used for disable) */}
           {mfaStep === "verify" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              {/* QR code — only shown when enabling */}
+              {/* QR code  - only shown when enabling */}
               {!user?.mfa_enabled && mfaUri && (
                 <>
                   <p
@@ -2047,7 +2137,7 @@ function SecurityTab() {
                   lineHeight: 1.5,
                 }}
               >
-                MFA is now active. Save these one-time backup codes somewhere safe — you can use
+                MFA is now active. Save these one-time backup codes somewhere safe - you can use
                 them if you lose access to your authenticator app.
               </p>
               <div
@@ -2097,7 +2187,7 @@ function SecurityTab() {
   );
 }
 
-/** A single row in the security settings list — icon, title, description, action button on the right. */
+/** A single row in the security settings list  - icon, title, description, action button on the right. */
 function SettingsRow({
   icon,
   title,
@@ -2184,7 +2274,7 @@ function SettingsRow({
   );
 }
 
-/** Reusable modal shell matching the EditProfileModal pattern — fixed overlay, centered card, header/body/footer. */
+/** Reusable modal shell matching the EditProfileModal pattern  - fixed overlay, centered card, header/body/footer. */
 function SecurityModal({
   title,
   icon,
@@ -2298,9 +2388,9 @@ function SecurityModal({
   );
 }
 
-// * ─── Preferences Tab ────────────────────────────────────────────────────────
+// * --- Preferences Tab --------------------------------------------------------
 
-/** User preferences — volunteer mode toggle, theme, notification prefs. */
+/** User preferences  - volunteer mode toggle, theme, notification prefs. */
 function PreferencesTab() {
   const { volunteerEnabled, setVolunteerEnabled } = usePreferencesStore();
 
@@ -2449,7 +2539,7 @@ function PreferencesTab() {
           },
           {
             key: "org",
-            label: "Organisation Updates",
+            label: "Organization Updates",
             desc: "Status changes, approvals, and team notifications",
             enabled: true,
           },
@@ -2567,7 +2657,7 @@ function PreferencesTab() {
   );
 }
 
-// * ─── Shared UI ──────────────────────────────────────────────────────────────
+// * --- Shared UI --------------------------------------------------------------
 
 function SectionCard({
   title,
@@ -2681,7 +2771,7 @@ function InfoRow({ icon, label, value }: { icon: string; label: string; value: s
   );
 }
 
-/** Compact stat card — flat design, no icon backgrounds for consistency. */
+/** Compact stat card  - flat design, no icon backgrounds for consistency. */
 function StatCard({
   label,
   value,

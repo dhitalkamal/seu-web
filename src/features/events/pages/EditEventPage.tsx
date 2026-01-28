@@ -18,7 +18,10 @@ export default function EditEventPage() {
 
   function handleSubmit(data: CreateEventRequest) {
     if (!id) return;
-    updateMutation.mutate({ id, payload: data }, { onSuccess: () => navigate(`/events/${id}`) });
+    updateMutation.mutate(
+      { id, payload: data },
+      { onSuccess: () => navigate(`/org/events/${id}`) }
+    );
   }
 
   if (isLoading) {

@@ -12,7 +12,7 @@ export type Venue = {
   country: string;
   capacity: number;
   description: string;
-  organisation_id: string;
+  organization_id: string;
   created_at: string;
 };
 
@@ -38,6 +38,7 @@ const venuesApi = {
     country: string;
     capacity: number;
     description?: string;
+    website?: string;
   }) => client.post<ApiOk<Venue>>(`${BASE}/`, payload).then((r) => r.data.data),
 
   /** Fetch a single venue by ID. */

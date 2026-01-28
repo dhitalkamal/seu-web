@@ -1,25 +1,25 @@
 /**
- * UserAvatar — shows the user's photo if uploaded, otherwise picks one of
+ * UserAvatar  - shows the user's photo if uploaded, otherwise picks one of
  * 8 hand-crafted SVG illustrated characters based on a stable hash of the
  * user's ID. Every user always gets the same default avatar across sessions.
  */
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 type Props = {
-  /** User's uploaded avatar URL — if truthy we render an <img> instead. */
+  /** User's uploaded avatar URL  - if truthy we render an <img> instead. */
   src?: string | null;
   /** Stable identifier used to pick a default illustration (user ID, email, etc). */
   uid?: string;
-  /** Pixel size — used for both width and height. */
+  /** Pixel size  - used for both width and height. */
   size?: number;
-  /** Border radius in px — defaults to 16 (rounded square). */
+  /** Border radius in px  - defaults to 16 (rounded square). */
   radius?: number;
   /** Extra inline styles on the wrapper. */
   style?: React.CSSProperties;
 };
 
-// * ─── 8 illustrated character SVGs ──────────────────────────────────────────
+// * 8 illustrated character SVGs
 // Each is a self-contained SVG string rendered inside a coloured background.
 // Characters: business man, woman with glasses, bearded dev, hijabi woman,
 //             young man with hoodie, woman with bun, older gentleman, punk girl
@@ -37,7 +37,7 @@ const PALETTES = [
 
 /**
  * Builds an SVG string for a particular character variant.
- * @param idx - which of the 8 character designs to use (0–7)
+ * @param idx - which of the 8 character designs to use (0-7)
  * @returns raw SVG markup string
  */
 function buildCharacterSvg(idx: number): string {
@@ -45,7 +45,7 @@ function buildCharacterSvg(idx: number): string {
 
   // ! Each character has a unique head shape, hairstyle, and accessory
   const characters: string[] = [
-    // 0 — Business man with side-parted hair
+    // 0  - Business man with side-parted hair
     `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
       <rect width="120" height="120" fill="${p.bg}"/>
       <ellipse cx="60" cy="95" rx="36" ry="28" fill="${p.shirt}"/>
@@ -58,7 +58,7 @@ function buildCharacterSvg(idx: number): string {
       <rect x="56" y="72" width="8" height="14" fill="${p.accent}"/>
     </svg>`,
 
-    // 1 — Woman with glasses
+    // 1  - Woman with glasses
     `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
       <rect width="120" height="120" fill="${p.bg}"/>
       <ellipse cx="60" cy="95" rx="36" ry="28" fill="${p.shirt}"/>
@@ -75,7 +75,7 @@ function buildCharacterSvg(idx: number): string {
       <ellipse cx="60" cy="72" rx="8" ry="2" fill="${p.accent}" opacity="0.6"/>
     </svg>`,
 
-    // 2 — Bearded developer
+    // 2  - Bearded developer
     `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
       <rect width="120" height="120" fill="${p.bg}"/>
       <ellipse cx="60" cy="95" rx="36" ry="28" fill="${p.shirt}"/>
@@ -88,7 +88,7 @@ function buildCharacterSvg(idx: number): string {
       <rect x="56" y="74" width="8" height="10" fill="${p.accent}" rx="1"/>
     </svg>`,
 
-    // 3 — Hijabi woman
+    // 3  - Hijabi woman
     `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
       <rect width="120" height="120" fill="${p.bg}"/>
       <ellipse cx="60" cy="95" rx="36" ry="28" fill="${p.shirt}"/>
@@ -100,7 +100,7 @@ function buildCharacterSvg(idx: number): string {
       <path d="M54 62 Q60 66 66 62" stroke="#c0756b" stroke-width="1.5" fill="none" stroke-linecap="round"/>
     </svg>`,
 
-    // 4 — Young man with cap
+    // 4  - Young man with cap
     `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
       <rect width="120" height="120" fill="${p.bg}"/>
       <ellipse cx="60" cy="95" rx="36" ry="28" fill="${p.shirt}"/>
@@ -113,7 +113,7 @@ function buildCharacterSvg(idx: number): string {
       <path d="M48 70 L60 74 L72 70" stroke="white" stroke-width="1.5" fill="none" opacity="0.6"/>
     </svg>`,
 
-    // 5 — Woman with bun
+    // 5  - Woman with bun
     `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
       <rect width="120" height="120" fill="${p.bg}"/>
       <ellipse cx="60" cy="95" rx="36" ry="28" fill="${p.shirt}"/>
@@ -128,7 +128,7 @@ function buildCharacterSvg(idx: number): string {
       <ellipse cx="60" cy="74" rx="6" ry="2" fill="${p.accent}" opacity="0.5"/>
     </svg>`,
 
-    // 6 — Older gentleman with mustache
+    // 6  - Older gentleman with mustache
     `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
       <rect width="120" height="120" fill="${p.bg}"/>
       <ellipse cx="60" cy="95" rx="36" ry="28" fill="${p.shirt}"/>
@@ -143,7 +143,7 @@ function buildCharacterSvg(idx: number): string {
       <rect x="56" y="72" width="8" height="12" fill="${p.accent}"/>
     </svg>`,
 
-    // 7 — Creative woman with short coloured hair
+    // 7  - Creative woman with short coloured hair
     `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
       <rect width="120" height="120" fill="${p.bg}"/>
       <ellipse cx="60" cy="95" rx="36" ry="28" fill="${p.shirt}"/>
@@ -163,7 +163,7 @@ function buildCharacterSvg(idx: number): string {
 }
 
 /**
- * Simple hash of a string to a number — deterministic so the same user
+ * Simple hash of a string to a number  - deterministic so the same user
  * always gets the same avatar.
  * @param str - input string (user ID, email, etc.)
  * @returns positive integer
@@ -177,7 +177,7 @@ function stableHash(str: string): number {
 }
 
 /**
- * Reusable avatar component — renders uploaded photo or a deterministic
+ * Reusable avatar component  - renders uploaded photo or a deterministic
  * illustrated character based on the user's ID.
  *
  * @param props.src - user's avatar URL (renders <img> if truthy)
@@ -201,21 +201,23 @@ export default function UserAvatar({ src, uid = "", size = 48, radius = 16, styl
     ...style,
   };
 
-  // ! only show the <img> if src is a real URL — not empty, not just whitespace
-  const hasValidSrc = typeof src === "string" && src.trim().length > 0 && src.startsWith("http");
+  // ! only show the <img> if src is a real URL  - not empty, not just whitespace
+  const [imgFailed, setImgFailed] = useState(false);
+  const hasValidSrc = !imgFailed && typeof src === "string" && src.trim().length > 0 && src.startsWith("http");
 
   if (hasValidSrc) {
     return (
       <div style={wrapperStyle}>
         <img
           src={src}
-          alt="Avatar"
+          alt=""
           style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          onError={() => setImgFailed(true)}
         />
       </div>
     );
   }
 
-  // ! otherwise render the deterministic illustrated character
+  // falls back to the deterministic illustrated character
   return <div style={wrapperStyle} dangerouslySetInnerHTML={{ __html: svgMarkup }} />;
 }
