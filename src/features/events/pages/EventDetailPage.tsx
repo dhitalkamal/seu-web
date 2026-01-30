@@ -15,6 +15,20 @@ const STATUS_CHIP: Record<string, { bg: string; color: string }> = {
   completed: { bg: "rgba(18,29,63,0.08)", color: "var(--primary)" },
 };
 
+type LayoutProps = {
+  children: React.ReactNode;
+  isAuthenticated: boolean;
+  isOrgContext: boolean;
+};
+
+/** Picks the right shell based on auth state and route context. */
+function Layout({ children, isAuthenticated, isOrgContext }: LayoutProps) {
+  if (isAuthenticated) {
+    return <AppLayout variant={isOrgContext ? "org" : "user"}>{children}</AppLayout>;
+  }
+  return <PublicLayout>{children}</PublicLayout>;
+}
+
 /** Public event detail -full-width hero + two-column body + sticky registration rail. */
 export default function EventDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -33,17 +47,9 @@ export default function EventDetailPage() {
   // when accessed via /org/events/:id use the org shell + org navigation targets
   const isOrgContext = location.pathname.startsWith("/org/");
 
-  /** Picks the right shell based on auth state and route context. */
-  function Layout({ children }: { children: React.ReactNode }) {
-    if (isAuthenticated) {
-      return <AppLayout variant={isOrgContext ? "org" : "user"}>{children}</AppLayout>;
-    }
-    return <PublicLayout>{children}</PublicLayout>;
-  }
-
   if (isLoading) {
     return (
-      <Layout>
+      <Layout isAuthenticated={isAuthenticated} isOrgContext={isOrgContext}>
         <div style={{ maxWidth: 1200, margin: "0 auto", padding: "40px 32px" }}>
           <div className="animate-pulse space-y-4">
             <div style={{ height: 420, borderRadius: 24, background: "var(--low)" }} />
@@ -57,7 +63,7 @@ export default function EventDetailPage() {
 
   if (!event) {
     return (
-      <Layout>
+      <Layout isAuthenticated={isAuthenticated} isOrgContext={isOrgContext}>
         <div className="text-center py-24">
           <p
             style={{
@@ -124,7 +130,7 @@ export default function EventDetailPage() {
   }
 
   return (
-    <Layout>
+    <Layout isAuthenticated={isAuthenticated} isOrgContext={isOrgContext}>
       {/* full-bleed hero -pulls into navbar area */}
       <div
         className="relative overflow-hidden"
@@ -341,31 +347,34 @@ export default function EventDetailPage() {
 
           {/* organiser actions */}
           {isOrganiser && (
-            <div
-              className="flex gap-3 flex-wrap pt-6"
-              style={{ borderTop: "1px solid var(--outline)" }}
-            >
-              <Button variant="secondary" onClick={() => navigate(`/org/events/${event.id}/edit`)}>
-                Edit
-              </Button>
-              {event.status === "draft" && (
-                <Button
-                  loading={publishMutation.isPending}
-                  onClick={() => publishMutation.mutate(event.id, { onSuccess: () => navigate(0) })}
-                >
-                  Publish
-                </Button>
-              )}
-              <Button
-                variant="danger"
-                loading={deleteMutation.isPending}
-                onClick={() =>
-                  deleteMutation.mutate(event.id, { onSuccess: () => navigate("/org/events") })
-                }
+            <>
+              <div
+                className="flex gap-3 flex-wrap pt-6"
+                style={{ borderTop: "1px solid var(--outline)" }}
               >
-                Delete
-              </Button>
-            </div>
+                <Button variant="secondary" onClick={() => navigate(`/org/events/${event.id}/edit`)}>
+                  Edit
+                </Button>
+                {event.status === "draft" && (
+                  <Button
+                    loading={publishMutation.isPending}
+                    onClick={() => publishMutation.mutate(event.id, { onSuccess: () => navigate(0) })}
+                  >
+                    Publish
+                  </Button>
+                )}
+                <Button
+                  variant="danger"
+                  loading={deleteMutation.isPending}
+                  onClick={() =>
+                    deleteMutation.mutate(event.id, { onSuccess: () => navigate("/org/events") })
+                  }
+                >
+                  Delete
+                </Button>
+              </div>
+              <JourneyPanel eventId={event.id} />
+            </>
           )}
         </div>
 
@@ -500,7 +509,6 @@ export default function EventDetailPage() {
           )}
         </div>
       </div>
-      {event?.id && <JourneyPanel eventId={event.id} />}
     </Layout>
   );
 }

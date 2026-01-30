@@ -19,6 +19,7 @@ async function listPublicEvents(filters?: EventListFilters): Promise<PaginatedEv
   if (filters?.organiser_id) params.set("organiser_id", filters.organiser_id);
   if (filters?.is_free !== undefined) params.set("is_free", String(filters.is_free));
   if (filters?.search) params.set("search", filters.search);
+  if (filters?.category) params.set("category_id", filters.category);
   const res = await client.get<PaginatedEvents>(`${EVENTS_BASE}/?${params}`);
   return res.data;
 }
@@ -44,6 +45,12 @@ async function createEvent(payload: CreateEventRequest): Promise<ApiResponse<Eve
 /** Fetch all event categories. */
 async function listCategories(): Promise<ApiResponse<Category[]>> {
   const res = await client.get<ApiResponse<Category[]>>(`${CATEGORIES_BASE}/`);
+  return res.data;
+}
+
+/** Create a new root-level category. */
+async function createCategory(name: string, slug: string): Promise<ApiResponse<Category>> {
+  const res = await client.post<ApiResponse<Category>>(`${CATEGORIES_BASE}/`, { name, slug });
   return res.data;
 }
 
@@ -106,6 +113,7 @@ const eventsApi = {
   listPublicEvents,
   listMyEvents,
   listCategories,
+  createCategory,
   getEvent,
   createEvent,
   updateEvent,

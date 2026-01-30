@@ -45,7 +45,7 @@ export default function OrgEventsPage() {
   const completeMutation = useMutation({
     mutationFn: (id: string) => eventsApi.completeEvent(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["my-events"] });
+      queryClient.invalidateQueries({ queryKey: ["events", "mine"] });
       toast("Event marked as completed");
     },
   });
