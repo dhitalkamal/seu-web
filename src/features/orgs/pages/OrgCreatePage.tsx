@@ -12,7 +12,7 @@ import type { OrgType, OrgDocType } from "@/features/orgs/types/org.types";
 /**
  * Slugifies a name - lowercase, trim, replace spaces/special chars with hyphens.
  *
- * @param name - Raw organisation name
+ * @param name - Raw organization name
  * @returns URL-safe slug
  */
 function slugify(name: string): string {
@@ -89,7 +89,7 @@ const DOC_TYPES: { value: OrgDocType; label: string; desc: string }[] = [
   },
   { value: "pan_card", label: "PAN Card", desc: "Permanent Account Number card" },
   { value: "tax_clearance", label: "Tax Clearance", desc: "Latest tax clearance certificate" },
-  { value: "logo", label: "Organisation Logo", desc: "High-res logo (PNG/SVG preferred)" },
+  { value: "logo", label: "Organization Logo", desc: "High-res logo (PNG/SVG preferred)" },
   { value: "other", label: "Other", desc: "Any other supporting document" },
 ];
 
@@ -156,7 +156,7 @@ export default function OrgCreatePage() {
 
   /** Validate everything before submit. */
   function validate(): string | null {
-    if (!form.name.trim()) return "Organisation name is required.";
+    if (!form.name.trim()) return "Organization name is required.";
     if (!form.slug.trim()) return "Slug is required.";
     if (!form.contact_email.trim()) return "Contact email is required.";
     return null;
@@ -204,12 +204,12 @@ export default function OrgCreatePage() {
       }
 
       setOrg(org);
-      toast.success("Organisation created! It's pending admin review.");
+      toast.success("Organization created! It's pending admin review.");
       navigate("/profile");
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error
-          ?.message ?? "Failed to create organisation.";
+          ?.message ?? "Failed to create organization.";
       toast.error(msg);
     } finally {
       setSubmitting(false);
@@ -242,7 +242,7 @@ export default function OrgCreatePage() {
             Settings
           </span>
           <span style={{ opacity: 0.4 }}>/</span>
-          <span>Organisation</span>
+          <span>Organization</span>
           <span style={{ opacity: 0.4 }}>/</span>
           <span style={{ color: "var(--secondary)" }}>Create</span>
         </div>
@@ -257,7 +257,7 @@ export default function OrgCreatePage() {
             marginBottom: 6,
           }}
         >
-          Create Organisation
+          Create Organization
         </h1>
         <p
           style={{
@@ -268,7 +268,7 @@ export default function OrgCreatePage() {
             lineHeight: 1.5,
           }}
         >
-          Fill in the details below to register your organisation on Sansaar. After submission, our
+          Fill in the details below to register your organization on Sansaar. After submission, our
           team will review and verify your application.
         </p>
       </div>
@@ -295,7 +295,7 @@ export default function OrgCreatePage() {
             lineHeight: 1.55,
           }}
         >
-          After submission your organisation will be reviewed by our team. You'll get access to the
+          After submission your organization will be reviewed by our team. You'll get access to the
           organiser dashboard once approved. Adding documents speeds up verification.
         </p>
       </div>
@@ -645,13 +645,19 @@ type BasicProps = {
 };
 
 /** Name, slug, contact email, phone, website, description. */
-function BasicTab({ form, slugTouched, onNameChange, onSlugTouch, onChange }: BasicProps) {
+function BasicTab({
+  form,
+  slugTouched: _slugTouched,
+  onNameChange,
+  onSlugTouch,
+  onChange,
+}: BasicProps) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       {/* name + slug row */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         <div>
-          <label style={labelStyle}>Organisation Name *</label>
+          <label style={labelStyle}>Organization Name *</label>
           <input
             type="text"
             value={form.name}
@@ -736,10 +742,10 @@ function BasicTab({ form, slugTouched, onNameChange, onSlugTouch, onChange }: Ba
           rows={4}
           value={form.description}
           onChange={(e) => onChange("description", e.target.value)}
-          placeholder="Tell us about your organisation, what kind of events you host, your mission..."
+          placeholder="Tell us about your organization, what kind of events you host, your mission..."
           style={{ ...fieldStyle, resize: "vertical" }}
         />
-        <p style={hintStyle}>This will appear on your public organisation profile.</p>
+        <p style={hintStyle}>This will appear on your public organization profile.</p>
       </div>
 
       {/* logo URL */}
@@ -753,7 +759,7 @@ function BasicTab({ form, slugTouched, onNameChange, onSlugTouch, onChange }: Ba
           style={fieldStyle}
         />
         <p style={hintStyle}>
-          Direct link to your organisation logo. You can also upload it in the Documents tab.
+          Direct link to your organization logo. You can also upload it in the Documents tab.
         </p>
       </div>
     </div>
@@ -773,7 +779,7 @@ function AddressTab({ form, onChange }: AddressProps) {
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       {/* org type */}
       <div>
-        <label style={labelStyle}>Organisation Type</label>
+        <label style={labelStyle}>Organization Type</label>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
           {ORG_TYPES.map((t) => {
             const active = form.org_type === t.value;
@@ -889,7 +895,7 @@ function SocialTab({ form, onChange }: SocialProps) {
           marginBottom: 4,
         }}
       >
-        These links will be displayed on your public organisation profile. All fields are optional.
+        These links will be displayed on your public organization profile. All fields are optional.
       </p>
       {socials.map((s) => (
         <div key={s.key}>
@@ -971,8 +977,8 @@ function DocumentsTab({ docs, onDocsChange }: DocsProps) {
           lineHeight: 1.55,
         }}
       >
-        Upload verification documents to speed up the review process. Accepted formats: PDF, PNG,
-        JPG (max 10MB each).
+        Upload verification documents to speed up the review process. Accepted: PDF, PNG, JPG, WEBP,
+        SVG (max 10MB each).
       </p>
 
       {/* doc type selector */}
@@ -1022,7 +1028,7 @@ function DocumentsTab({ docs, onDocsChange }: DocsProps) {
           ref={fileRef}
           type="file"
           multiple
-          accept=".pdf,.png,.jpg,.jpeg"
+          accept=".pdf,.png,.jpg,.jpeg,.webp,.svg"
           onChange={(e) => addFiles(e.target.files)}
           style={{ display: "none" }}
         />
@@ -1055,7 +1061,7 @@ function DocumentsTab({ docs, onDocsChange }: DocsProps) {
           {dragOver ? "Drop files here" : "Drag & drop files or click to browse"}
         </p>
         <p style={{ fontSize: 12, color: "var(--on-mut)", fontFamily: "Manrope, sans-serif" }}>
-          PDF, PNG, JPG up to 10MB
+          PDF, PNG, JPG, WEBP, SVG up to 10MB
         </p>
       </div>
 

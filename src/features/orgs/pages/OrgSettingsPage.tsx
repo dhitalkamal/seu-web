@@ -56,7 +56,7 @@ const DOC_TYPES: { value: OrgDocType; label: string }[] = [
   { value: "registration_cert", label: "Registration Certificate" },
   { value: "pan_card", label: "PAN Card" },
   { value: "tax_clearance", label: "Tax Clearance" },
-  { value: "logo", label: "Organisation Logo" },
+  { value: "logo", label: "Organization Logo" },
   { value: "other", label: "Other" },
 ];
 
@@ -114,6 +114,7 @@ export default function OrgSettingsPage() {
   const [docs, setDocs] = useState<OrgDocument[]>([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // * Populate form from org store once available
   useEffect(() => {
@@ -172,7 +173,7 @@ export default function OrgSettingsPage() {
         linkedin_url: form.linkedin_url.trim(),
       });
       setOrg(updated);
-      toast.success("Organisation updated.");
+      toast.success("Organization updated.");
     } catch {
       toast.error("Failed to save changes.");
     } finally {
@@ -219,7 +220,7 @@ export default function OrgSettingsPage() {
               marginBottom: 8,
             }}
           >
-            No organisation yet
+            No organization yet
           </p>
           <p
             style={{
@@ -230,7 +231,7 @@ export default function OrgSettingsPage() {
               marginBottom: 24,
             }}
           >
-            Create an organisation to access these settings.
+            Create an organization to access these settings.
           </p>
           <button
             onClick={() => navigate("/org/new")}
@@ -246,7 +247,7 @@ export default function OrgSettingsPage() {
               cursor: "pointer",
             }}
           >
-            Create Organisation
+            Create Organization
           </button>
         </div>
       </AppLayout>
@@ -256,7 +257,7 @@ export default function OrgSettingsPage() {
   const tabIdx = TABS.findIndex((t) => t.key === tab);
 
   return (
-    <AppLayout variant={isOrgActive(org) ? "org" : "user"}>
+    <AppLayout variant="org">
       {/* page header */}
       <div style={{ marginBottom: 24 }}>
         <div
@@ -274,12 +275,12 @@ export default function OrgSettingsPage() {
         >
           <span
             style={{ cursor: "pointer" }}
-            onClick={() => navigate(isOrgActive(org) ? "/dashboard" : "/profile")}
+            onClick={() => navigate(isOrgActive(org) ? "/org/dashboard" : "/profile")}
           >
             Dashboard
           </span>
           <span style={{ opacity: 0.4 }}>/</span>
-          <span style={{ color: "var(--secondary)" }}>Organisation Settings</span>
+          <span style={{ color: "var(--secondary)" }}>Organization Settings</span>
         </div>
         <h1
           style={{
@@ -292,7 +293,7 @@ export default function OrgSettingsPage() {
             marginBottom: 6,
           }}
         >
-          Organisation Settings
+          Organization Settings
         </h1>
         <p
           style={{
@@ -303,7 +304,7 @@ export default function OrgSettingsPage() {
             lineHeight: 1.5,
           }}
         >
-          Update your organisation details. Changes are saved per section.
+          Update your organization details. Changes are saved per section.
         </p>
       </div>
 
@@ -319,183 +320,274 @@ export default function OrgSettingsPage() {
           Loading...
         </div>
       ) : (
-        <div style={{ display: "flex", gap: 24, minHeight: 480 }}>
-          {/* vertical tab sidebar */}
-          <div
-            style={{
-              width: 240,
-              flexShrink: 0,
-              background: "var(--surface)",
-              border: "1px solid var(--mid)",
-              borderRadius: 16,
-              padding: 10,
-              display: "flex",
-              flexDirection: "column",
-              gap: 4,
-              alignSelf: "flex-start",
-              position: "sticky",
-              top: 80,
-            }}
-          >
-            {TABS.map((t) => {
-              const active = tab === t.key;
-              return (
-                <button
-                  key={t.key}
-                  onClick={() => setTab(t.key)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    padding: "12px 14px",
-                    borderRadius: 10,
-                    border: "none",
-                    background: active ? "#050a26" : "transparent",
-                    cursor: "pointer",
-                    textAlign: "left",
-                    width: "100%",
-                    transition: "all 120ms",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 34,
-                      height: 34,
-                      borderRadius: 9,
-                      background: active ? "rgba(255,255,255,0.1)" : "var(--low)",
-                      display: "grid",
-                      placeItems: "center",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <MS
-                      n={t.icon}
-                      size={17}
-                      style={{ color: active ? "var(--tertiary)" : "var(--on-mut)" }}
-                    />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p
-                      style={{
-                        fontSize: 13,
-                        fontWeight: active ? 700 : 500,
-                        color: active ? "white" : "var(--on-bg)",
-                        fontFamily: "Manrope, sans-serif",
-                        lineHeight: 1.2,
-                        marginBottom: 2,
-                      }}
-                    >
-                      {t.label}
-                    </p>
-                    <p
-                      style={{
-                        fontSize: 10.5,
-                        color: active ? "rgba(255,255,255,0.5)" : "var(--on-mut)",
-                        fontFamily: "Manrope, sans-serif",
-                        lineHeight: 1.25,
-                      }}
-                    >
-                      {t.desc}
-                    </p>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* content area */}
-          <div style={{ flex: 1, minWidth: 0 }}>
+        <>
+          <div style={{ display: "flex", gap: 24, minHeight: 480 }}>
+            {/* vertical tab sidebar */}
             <div
               style={{
+                width: 240,
+                flexShrink: 0,
                 background: "var(--surface)",
                 border: "1px solid var(--mid)",
                 borderRadius: 16,
-                padding: 28,
+                padding: 10,
+                display: "flex",
+                flexDirection: "column",
+                gap: 4,
+                alignSelf: "flex-start",
+                position: "sticky",
+                top: 80,
               }}
             >
-              {/* tab title */}
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24 }}>
-                <div
-                  style={{
-                    width: 38,
-                    height: 38,
-                    borderRadius: 10,
-                    background: "var(--low)",
-                    display: "grid",
-                    placeItems: "center",
-                  }}
-                >
-                  <MS n={TABS[tabIdx].icon} size={20} style={{ color: "var(--on-mut)" }} />
-                </div>
-                <div>
-                  <h2
+              {TABS.map((t) => {
+                const active = tab === t.key;
+                return (
+                  <button
+                    key={t.key}
+                    onClick={() => setTab(t.key)}
                     style={{
-                      fontFamily: "'Space Grotesk', sans-serif",
-                      fontWeight: 700,
-                      fontSize: 18,
-                      letterSpacing: "-0.02em",
-                      color: "var(--on-bg)",
-                      lineHeight: 1.2,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      padding: "12px 14px",
+                      borderRadius: 10,
+                      border: "none",
+                      background: active ? "#050a26" : "transparent",
+                      cursor: "pointer",
+                      textAlign: "left",
+                      width: "100%",
+                      transition: "all 120ms",
                     }}
                   >
-                    {TABS[tabIdx].label}
-                  </h2>
-                  <p
-                    style={{
-                      fontSize: 12.5,
-                      color: "var(--on-mut)",
-                      fontFamily: "Manrope, sans-serif",
-                      marginTop: 2,
-                    }}
-                  >
-                    {TABS[tabIdx].desc}
-                  </p>
-                </div>
-              </div>
-
-              {/* tab content */}
-              {tab === "basic" && <BasicTab form={form} onChange={set} />}
-              {tab === "address" && <AddressTab form={form} onChange={set} />}
-              {tab === "social" && <SocialTab form={form} onChange={set} />}
-              {tab === "documents" && (
-                <DocumentsTab
-                  orgId={org!.id}
-                  docs={docs}
-                  setDocs={setDocs}
-                  onDelete={handleDeleteDoc}
-                />
-              )}
+                    <div
+                      style={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: 9,
+                        background: active ? "rgba(255,255,255,0.1)" : "var(--low)",
+                        display: "grid",
+                        placeItems: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <MS
+                        n={t.icon}
+                        size={17}
+                        style={{ color: active ? "var(--tertiary)" : "var(--on-mut)" }}
+                      />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p
+                        style={{
+                          fontSize: 13,
+                          fontWeight: active ? 700 : 500,
+                          color: active ? "white" : "var(--on-bg)",
+                          fontFamily: "Manrope, sans-serif",
+                          lineHeight: 1.2,
+                          marginBottom: 2,
+                        }}
+                      >
+                        {t.label}
+                      </p>
+                      <p
+                        style={{
+                          fontSize: 10.5,
+                          color: active ? "rgba(255,255,255,0.5)" : "var(--on-mut)",
+                          fontFamily: "Manrope, sans-serif",
+                          lineHeight: 1.25,
+                        }}
+                      >
+                        {t.desc}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
 
-            {/* save button - visible for all tabs except documents (which auto-saves) */}
-            {tab !== "documents" && (
-              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16, gap: 10 }}>
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
+            {/* content area */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div
+                style={{
+                  background: "var(--surface)",
+                  border: "1px solid var(--mid)",
+                  borderRadius: 16,
+                  padding: 28,
+                }}
+              >
+                {/* tab title */}
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24 }}>
+                  <div
+                    style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: 10,
+                      background: "var(--low)",
+                      display: "grid",
+                      placeItems: "center",
+                    }}
+                  >
+                    <MS n={TABS[tabIdx].icon} size={20} style={{ color: "var(--on-mut)" }} />
+                  </div>
+                  <div>
+                    <h2
+                      style={{
+                        fontFamily: "'Space Grotesk', sans-serif",
+                        fontWeight: 700,
+                        fontSize: 18,
+                        letterSpacing: "-0.02em",
+                        color: "var(--on-bg)",
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      {TABS[tabIdx].label}
+                    </h2>
+                    <p
+                      style={{
+                        fontSize: 12.5,
+                        color: "var(--on-mut)",
+                        fontFamily: "Manrope, sans-serif",
+                        marginTop: 2,
+                      }}
+                    >
+                      {TABS[tabIdx].desc}
+                    </p>
+                  </div>
+                </div>
+
+                {/* tab content */}
+                {tab === "basic" && <BasicTab form={form} onChange={set} />}
+                {tab === "address" && <AddressTab form={form} onChange={set} />}
+                {tab === "social" && <SocialTab form={form} onChange={set} />}
+                {tab === "documents" && (
+                  <DocumentsTab
+                    orgId={org!.id}
+                    docs={docs}
+                    setDocs={setDocs}
+                    onDelete={handleDeleteDoc}
+                  />
+                )}
+              </div>
+
+              {/* save button - sticky at bottom, visible for all tabs except documents */}
+              {tab !== "documents" && (
+                <div
                   style={{
-                    padding: "10px 28px",
-                    borderRadius: 10,
-                    border: "none",
-                    background: "var(--primary)",
-                    color: "#fff",
-                    fontSize: 13,
-                    fontWeight: 700,
-                    fontFamily: "Manrope, sans-serif",
-                    cursor: saving ? "not-allowed" : "pointer",
-                    opacity: saving ? 0.6 : 1,
                     display: "flex",
-                    alignItems: "center",
-                    gap: 6,
+                    justifyContent: "flex-end",
+                    gap: 10,
+                    position: "sticky",
+                    bottom: 0,
+                    background: "var(--surface)",
+                    padding: "16px 0",
+                    borderTop: "1px solid var(--mid)",
+                    marginTop: 20,
                   }}
                 >
-                  <MS n={saving ? "hourglass_top" : "check"} size={15} />
-                  {saving ? "Saving..." : "Save Changes"}
-                </button>
-              </div>
-            )}
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    style={{
+                      padding: "10px 28px",
+                      borderRadius: 10,
+                      border: "none",
+                      background: "var(--primary)",
+                      color: "#fff",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      fontFamily: "Manrope, sans-serif",
+                      cursor: saving ? "not-allowed" : "pointer",
+                      opacity: saving ? 0.6 : 1,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    <MS n={saving ? "hourglass_top" : "check"} size={15} />
+                    {saving ? "Saving..." : "Save Changes"}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+
+          {/* danger zone - below the flex row */}
+          <div
+            style={{
+              marginTop: 24,
+              padding: "20px 24px",
+              borderRadius: 14,
+              border: "1px solid #fecaca",
+              background: "#fef2f2",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <MS n="warning" size={20} style={{ color: "#dc2626", flexShrink: 0 }} />
+              <div style={{ flex: 1 }}>
+                <p
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 700,
+                    color: "#991b1b",
+                    fontFamily: "Manrope, sans-serif",
+                  }}
+                >
+                  Delete organization
+                </p>
+                <p
+                  style={{
+                    fontSize: 12,
+                    color: "#b91c1c",
+                    fontFamily: "Manrope, sans-serif",
+                    marginTop: 3,
+                  }}
+                >
+                  Permanently remove this organization and all its data. This cannot be undone.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowDeleteModal(true)}
+                style={{
+                  padding: "8px 18px",
+                  borderRadius: 8,
+                  border: "1px solid #dc2626",
+                  background: "transparent",
+                  color: "#dc2626",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  fontFamily: "Manrope, sans-serif",
+                  cursor: "pointer",
+                  flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5,
+                }}
+              >
+                <MS n="delete_forever" size={14} />
+                Delete organization
+              </button>
+            </div>
+          </div>
+
+          {/* delete confirmation modal */}
+          {showDeleteModal && org && (
+            <DeleteOrgModal
+              orgName={org.name}
+              onCancel={() => setShowDeleteModal(false)}
+              onConfirm={async () => {
+                try {
+                  await orgApi.remove(org.id);
+                } catch {
+                  // 404 means already deleted - that's fine
+                }
+                useOrgStore.getState().clearOrg();
+                localStorage.removeItem("sansaar-org");
+                toast.success("Organization deleted");
+                navigate("/");
+              }}
+            />
+          )}
+        </>
       )}
     </AppLayout>
   );
@@ -515,7 +607,7 @@ function BasicTab({
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         <div>
-          <label style={labelStyle}>Organisation Name</label>
+          <label style={labelStyle}>Organization Name</label>
           <input
             type="text"
             value={form.name}
@@ -591,7 +683,7 @@ function AddressTab({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div>
-        <label style={labelStyle}>Organisation Type</label>
+        <label style={labelStyle}>Organization Type</label>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
           {ORG_TYPES.map((t) => {
             const active = form.org_type === t.value;
@@ -686,7 +778,7 @@ function SocialTab({
           lineHeight: 1.55,
         }}
       >
-        These links appear on your public organisation profile.
+        These links appear on your public organization profile.
       </p>
       {socials.map((s) => (
         <div key={s.key}>
@@ -728,12 +820,14 @@ type DocsTabProps = {
   onDelete: (id: string) => void;
 };
 
-/** View existing docs, upload new ones, delete old ones. */
+/** View existing docs, upload new ones, delete old ones, resubmit for verification. */
 function DocumentsTab({ orgId, docs, setDocs, onDelete }: DocsTabProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const [selectedType, setSelectedType] = useState<OrgDocType>("registration_cert");
   const [uploading, setUploading] = useState(false);
+  const org = useOrgStore((s) => s.org);
+  const canResubmit = org?.status === "pending_review" || org?.status === "suspended";
 
   /** Upload files to the backend immediately. */
   async function addFiles(files: FileList | null) {
@@ -741,12 +835,7 @@ function DocumentsTab({ orgId, docs, setDocs, onDelete }: DocsTabProps) {
     setUploading(true);
     for (const file of Array.from(files)) {
       try {
-        const doc = await orgApi.uploadDocument(orgId, {
-          doc_type: selectedType,
-          file_url: URL.createObjectURL(file),
-          file_name: file.name,
-          file_size: file.size,
-        });
+        const doc = await orgApi.uploadDocumentFile(orgId, file, selectedType);
         setDocs((prev) => [...prev, doc]);
       } catch {
         toast.error(`Failed to upload ${file.name}`);
@@ -918,6 +1007,276 @@ function DocumentsTab({ orgId, docs, setDocs, onDelete }: DocsTabProps) {
         <p style={{ fontSize: 12, color: "var(--on-mut)", fontFamily: "Manrope, sans-serif" }}>
           PDF, PNG, JPG up to 10MB
         </p>
+      </div>
+
+      {/* explicit upload button */}
+      <button
+        onClick={() => fileRef.current?.click()}
+        disabled={uploading}
+        style={{
+          padding: "10px 24px",
+          borderRadius: 10,
+          border: "1px solid var(--primary)",
+          background: "transparent",
+          color: "var(--primary)",
+          fontSize: 13,
+          fontWeight: 700,
+          fontFamily: "Manrope, sans-serif",
+          cursor: uploading ? "not-allowed" : "pointer",
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          alignSelf: "flex-start",
+        }}
+      >
+        <MS n={uploading ? "hourglass_top" : "upload_file"} size={15} />
+        {uploading ? "Uploading..." : "Choose files to upload"}
+      </button>
+
+      {/* resubmit for verification */}
+      {canResubmit && docs.length > 0 && (
+        <div
+          style={{
+            padding: "16px 20px",
+            borderRadius: 12,
+            border: "1px solid var(--mid)",
+            background: "var(--low)",
+            display: "flex",
+            alignItems: "center",
+            gap: 14,
+          }}
+        >
+          <div
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              background: "rgba(232,49,81,0.08)",
+              display: "grid",
+              placeItems: "center",
+              flexShrink: 0,
+            }}
+          >
+            <MS n="verified" size={20} style={{ color: "#e83151" }} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <p
+              style={{
+                fontSize: 13,
+                fontWeight: 700,
+                color: "var(--on-bg)",
+                fontFamily: "Manrope, sans-serif",
+              }}
+            >
+              {org?.status === "suspended" ? "Organization suspended" : "Pending verification"}
+            </p>
+            <p
+              style={{
+                fontSize: 12,
+                color: "var(--on-mut)",
+                fontFamily: "Manrope, sans-serif",
+                marginTop: 2,
+              }}
+            >
+              {org?.status === "suspended"
+                ? "Update your documents and resubmit for review to reinstate your organization."
+                : "Your documents are under review. You can update them and resubmit if needed."}
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              toast.success(
+                "Documents resubmitted for verification. Our team will review them shortly."
+              );
+            }}
+            style={{
+              padding: "8px 18px",
+              borderRadius: 8,
+              border: "none",
+              background: "#e83151",
+              color: "white",
+              fontSize: 12,
+              fontWeight: 700,
+              fontFamily: "Manrope, sans-serif",
+              cursor: "pointer",
+              flexShrink: 0,
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+            }}
+          >
+            <MS n="send" size={13} />
+            Resubmit for review
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Confirmation modal for deleting an organization. */
+function DeleteOrgModal({
+  orgName,
+  onCancel,
+  onConfirm,
+}: {
+  orgName: string;
+  onCancel: () => void;
+  onConfirm: () => Promise<void>;
+}) {
+  const [confirmText, setConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const requiredText = orgName.toUpperCase();
+  const matches = confirmText === requiredText;
+
+  async function handleDelete() {
+    setDeleting(true);
+    await onConfirm();
+  }
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 999,
+        display: "grid",
+        placeItems: "center",
+        background: "rgba(0,0,0,0.5)",
+        backdropFilter: "blur(4px)",
+      }}
+      onClick={onCancel}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "var(--surface)",
+          borderRadius: 18,
+          padding: "32px 28px",
+          width: 440,
+          maxWidth: "90vw",
+          boxShadow: "0 24px 80px rgba(0,0,0,0.2)",
+        }}
+      >
+        {/* icon */}
+        <div
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: 14,
+            background: "#fef2f2",
+            display: "grid",
+            placeItems: "center",
+            margin: "0 auto 18px",
+          }}
+        >
+          <MS n="warning" size={28} style={{ color: "#dc2626" }} />
+        </div>
+
+        <h2
+          style={{
+            fontFamily: "Space Grotesk, sans-serif",
+            fontWeight: 700,
+            fontSize: 20,
+            letterSpacing: "-0.025em",
+            textAlign: "center",
+            marginBottom: 8,
+          }}
+        >
+          Delete organization?
+        </h2>
+        <p
+          style={{
+            fontSize: 13,
+            color: "var(--on-var)",
+            fontFamily: "Manrope, sans-serif",
+            textAlign: "center",
+            lineHeight: 1.6,
+            marginBottom: 20,
+          }}
+        >
+          This will permanently remove <strong>{orgName}</strong>, all members, documents, and
+          events. This action cannot be undone.
+        </p>
+
+        {/* confirmation input */}
+        <div style={{ marginBottom: 20 }}>
+          <label
+            style={{
+              display: "block",
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: "var(--on-mut)",
+              fontFamily: "JetBrains Mono, monospace",
+              marginBottom: 6,
+            }}
+          >
+            Type <span style={{ color: "#dc2626" }}>{requiredText}</span> to confirm
+          </label>
+          <input
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            placeholder={requiredText}
+            autoFocus
+            style={{
+              width: "100%",
+              padding: "10px 14px",
+              borderRadius: 10,
+              border: matches ? "2px solid #dc2626" : "1px solid var(--mid)",
+              background: "var(--low)",
+              fontSize: 14,
+              fontFamily: "Manrope, sans-serif",
+              outline: "none",
+              boxSizing: "border-box",
+            }}
+          />
+        </div>
+
+        {/* buttons */}
+        <div style={{ display: "flex", gap: 10 }}>
+          <button
+            onClick={onCancel}
+            style={{
+              flex: 1,
+              padding: "10px 0",
+              borderRadius: 10,
+              border: "1px solid var(--mid)",
+              background: "transparent",
+              fontSize: 13,
+              fontWeight: 600,
+              fontFamily: "Manrope, sans-serif",
+              cursor: "pointer",
+              color: "var(--on-bg)",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleDelete}
+            disabled={!matches || deleting}
+            style={{
+              flex: 1,
+              padding: "10px 0",
+              borderRadius: 10,
+              border: "none",
+              background: matches ? "#dc2626" : "#e5e7eb",
+              color: matches ? "white" : "#9ca3af",
+              fontSize: 13,
+              fontWeight: 700,
+              fontFamily: "Manrope, sans-serif",
+              cursor: matches && !deleting ? "pointer" : "not-allowed",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+            }}
+          >
+            <MS n={deleting ? "hourglass_top" : "delete_forever"} size={15} />
+            {deleting ? "Deleting..." : "Delete forever"}
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -35,11 +35,11 @@ export default function CheckoutPage() {
     onSuccess: (res) => {
       // * eSewa uses a form POST instead of a simple redirect
       if (gateway === "esewa" && res.esewa_form_data) {
-        submitEsewaForm(res.esewa_form_url ?? res.payment_url, res.esewa_form_data);
+        submitEsewaForm(res.esewa_form_url ?? res.payment_url ?? "", res.esewa_form_data);
         return;
       }
 
-      // * all other gateways return a payment_url — just redirect
+      // * all other gateways return a payment_url, just redirect
       if (res.payment_url) {
         window.location.href = res.payment_url;
       }
@@ -48,7 +48,7 @@ export default function CheckoutPage() {
 
   if (!eventId || !registrationId) {
     return (
-      <AppLayout title="Checkout">
+      <AppLayout variant="user" title="Checkout">
         <div className="max-w-lg mx-auto px-4 py-20 text-center">
           <p className="text-sm text-red-600 font-['Manrope']">
             Invalid checkout link. Please go back and try again.
@@ -62,7 +62,7 @@ export default function CheckoutPage() {
   const total = (parseFloat(subtotal) + parseFloat(platformFee)).toFixed(2);
 
   return (
-    <AppLayout title="Checkout">
+    <AppLayout variant="user" title="Checkout">
       <div className="max-w-lg mx-auto px-4 py-10">
         <h1 className="text-2xl font-bold text-[#19191e] font-['Manrope'] mb-8">Checkout</h1>
 

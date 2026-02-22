@@ -13,7 +13,7 @@ const GATEWAY_LABELS: Record<Gateway, string> = {
   paypal: "PayPal",
 };
 
-/** Organisation billing page — view current plan, upgrade/downgrade, payment history. */
+/** Organization billing page — view current plan, upgrade/downgrade, payment history. */
 export default function OrgBillingPage() {
   const user = useAuthStore((s) => s.user);
   // ! for now we use the first org the user belongs to — multi-org support can come later
@@ -64,7 +64,7 @@ export default function OrgBillingPage() {
       <AppLayout title="Billing">
         <div className="max-w-3xl mx-auto px-4 py-20 text-center">
           <p className="text-sm text-[#6b6c75] font-['Manrope']">
-            You need to belong to an organisation to manage billing.
+            You need to belong to an organization to manage billing.
           </p>
         </div>
       </AppLayout>
@@ -80,7 +80,7 @@ export default function OrgBillingPage() {
           Billing & Subscription
         </h1>
         <p className="text-sm text-[#6b6c75] font-['Manrope'] mb-8">
-          Manage your organisation's plan and payment history.
+          Manage your organization.s plan and payment history.
         </p>
 
         {/* current plan banner */}

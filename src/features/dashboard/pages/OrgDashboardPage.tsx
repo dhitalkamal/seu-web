@@ -15,7 +15,7 @@ export default function OrgDashboardPage() {
   // loading guard - render placeholder until org store is ready
   if (!loaded) {
     return (
-      <AppLayout variant="user">
+      <AppLayout variant="org">
         <div
           style={{
             padding: "80px 0",
@@ -173,7 +173,7 @@ export default function OrgDashboardPage() {
         <div className="panel">
           <div className="panel-head">
             <span className="panel-title">Active events</span>
-            <button className="btn-sm" onClick={() => navigate("/events/mine")}>
+            <button className="btn-sm" onClick={() => navigate("/org/events")}>
               View all
             </button>
           </div>

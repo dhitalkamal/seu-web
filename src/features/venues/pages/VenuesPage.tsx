@@ -13,6 +13,8 @@ export default function VenuesPage() {
   const [city, setCity] = useState("");
   const [country, setCountry] = useState("Nepal");
   const [capacity, setCapacity] = useState("");
+  const [description, setDescription] = useState("");
+  const [website, setWebsite] = useState("");
 
   const { data: venues = [], isLoading } = useQuery({
     queryKey: ["venues"],
@@ -21,7 +23,7 @@ export default function VenuesPage() {
 
   const createMutation = useMutation({
     mutationFn: () =>
-      venuesApi.create({ name, address, city, country, capacity: Number(capacity) }),
+      venuesApi.create({ name, address, city, country, capacity: Number(capacity), description: description || undefined, website: website || undefined }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["venues"] });
       toast("Venue created");
@@ -30,6 +32,8 @@ export default function VenuesPage() {
       setAddress("");
       setCity("");
       setCapacity("");
+      setDescription("");
+      setWebsite("");
     },
     onError: () => toast("Failed to create venue"),
   });

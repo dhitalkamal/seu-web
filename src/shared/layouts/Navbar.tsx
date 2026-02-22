@@ -4,7 +4,7 @@ import { useAuth } from "@/features/auth/hooks/useAuth";
 
 const NAV_LINKS = [
   { to: "/events", label: "Events" },
-  { to: "/events/mine", label: "My events", auth: true },
+  { to: "/org/events", label: "My events", auth: true },
   { to: "/tickets", label: "Tickets", auth: true },
 ];
 

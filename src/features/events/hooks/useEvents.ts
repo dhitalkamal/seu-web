@@ -22,6 +22,15 @@ export function useMyEvents() {
   });
 }
 
+/** Event categories used by creation/edit forms. */
+export function useEventCategories() {
+  return useQuery({
+    queryKey: ["events", "categories"],
+    queryFn: () => eventsApi.listCategories(),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 /** Single event detail. */
 export function useEvent(id: string) {
   return useQuery({

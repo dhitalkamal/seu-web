@@ -1,14 +1,20 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import AppLayout from "@/shared/layouts/AppLayout";
 import { MS } from "@/shared/components/v8";
 import { cn } from "@/shared/lib/cn";
-import { useEventMutations } from "@/features/events/hooks/useEvents";
+import { useEventCategories, useEventMutations } from "@/features/events/hooks/useEvents";
 import { getApiError } from "@/features/auth/hooks/useAuth";
 import intelligenceApi from "@/features/intelligence/api/intelligence.api";
-import type { CreateEventRequest, EventVisibility } from "@/features/events/types/event.types";
+import eventsApi from "@/features/events/api/events.api";
+import type {
+  Category,
+  CreateEventRequest,
+  EventVisibility,
+} from "@/features/events/types/event.types";
 
-// * ─── Step Definitions ──────────────────────────────────────────────────────
+// * --- Step Definitions ------------------------------------------------------
 
 type Step = 0 | 1 | 2 | 3;
 
@@ -19,7 +25,7 @@ const STEPS = [
   { icon: "checklist", label: "Review" },
 ] as const;
 
-// * ─── Form State ────────────────────────────────────────────────────────────
+// * --- Form State ------------------------------------------------------------
 
 type FormState = {
   title: string;
@@ -57,7 +63,7 @@ const INITIAL: FormState = {
   allowed_domains: [],
 };
 
-// * ─── Shared Styles ─────────────────────────────────────────────────────────
+// * --- Shared Styles ---------------------------------------------------------
 
 const labelCls =
   "block text-[10px] font-bold tracking-[0.1em] uppercase text-[var(--on-mut)] mb-1.5 font-['JetBrains_Mono']";
@@ -68,12 +74,24 @@ const inputCls =
 const selectCls =
   "w-full rounded-[10px] border border-[var(--mid)] bg-[var(--low)] px-3.5 py-2.5 text-sm text-[var(--on-bg)] outline-none font-['Manrope'] focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]/20 transition-colors";
 
-// * ─── Main Component ────────────────────────────────────────────────────────
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** Multi-step event creation wizard — 4 steps covering every backend field. */
+/** Returns true when the value is a strict UUID string. */
+function isUuid(value: string): boolean {
+  return UUID_RE.test(value);
+}
+
+// * --- Main Component --------------------------------------------------------
+
+/** Multi-step event creation wizard  - 4 steps covering every backend field. */
 export default function CreateEventPage() {
   const navigate = useNavigate();
   const { createMutation } = useEventMutations();
+  const {
+    data: categoriesResponse,
+    isLoading: categoriesLoading,
+    isError: categoriesLoadFailed,
+  } = useEventCategories();
   const [step, setStep] = useState<Step>(0);
   const [form, setForm] = useState<FormState>(INITIAL);
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({});
@@ -83,6 +101,11 @@ export default function CreateEventPage() {
   const [descriptionFlagged, setDescriptionFlagged] = useState(false);
   // Human-readable list of violated categories returned by the moderation API
   const [flaggedCategories, setFlaggedCategories] = useState<string[]>([]);
+  const categories = categoriesResponse?.data ?? [];
+  const selectedCategoryLabel =
+    categories.find((category) => category.id === form.category_id)?.name ||
+    form.category_id ||
+    null;
 
   /** Type-safe field setter. */
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -94,7 +117,7 @@ export default function CreateEventPage() {
     });
   }
 
-  // * ─── Per-step validation ───────────────────────────────────────────────
+  // * --- Per-step validation -----------------------------------------------
 
   function validateStep(s: Step): boolean {
     const e: Record<string, string> = {};
@@ -127,12 +150,12 @@ export default function CreateEventPage() {
     setStep(Math.max(step - 1, 0) as Step);
   }
 
-  // * ─── Submit ────────────────────────────────────────────────────────────
+  // * --- Submit ------------------------------------------------------------
 
   /**
    * Run NLP moderation on the event description before submitting.
    * Unlike the community post flow, a flagged description only shows a
-   * warning — the organizer can still proceed if they choose to.
+   * warning  - the organizer can still proceed if they choose to.
    */
   async function handleSubmit() {
     // Only run the moderation check when the description is non-empty.
@@ -143,7 +166,7 @@ export default function CreateEventPage() {
           // Store the flag so the warning banner renders below the step card.
           setDescriptionFlagged(true);
           setFlaggedCategories(result.categories);
-          // We deliberately do NOT return here — the organizer sees the banner
+          // We deliberately do NOT return here  - the organizer sees the banner
           // and the submit still fires so they aren't hard-blocked.
         } else {
           // Clear any previous flag in case they edited and re-submitted.
@@ -151,11 +174,16 @@ export default function CreateEventPage() {
           setFlaggedCategories([]);
         }
       } catch {
-        // Moderation service unavailable — proceed silently rather than
+        // Moderation service unavailable  - proceed silently rather than
         // preventing event creation.
-        console.warn("Moderation check failed — proceeding with submission.");
+        console.warn("Moderation check failed  - proceeding with submission.");
       }
     }
+
+    const selectedCategoryId =
+      isUuid(form.category_id) && categories.some((category) => category.id === form.category_id)
+        ? form.category_id
+        : null;
 
     const payload: CreateEventRequest = {
       title: form.title,
@@ -170,16 +198,16 @@ export default function CreateEventPage() {
       cover_image: form.cover_image || null,
       is_online: form.is_online,
       online_url: form.online_url || null,
-      category_id: form.category_id || null,
+      category_id: selectedCategoryId,
       tag_ids: form.tag_ids.length ? form.tag_ids : undefined,
       allowed_domains: form.allowed_domains.length ? form.allowed_domains : undefined,
     };
     createMutation.mutate(payload, {
-      onSuccess: (res) => navigate(`/events/${res.data.id}`),
+      onSuccess: (res) => navigate(`/org/events/${res.data.id}`),
     });
   }
 
-  // * ─── Domain chip helpers ───────────────────────────────────────────────
+  // * --- Domain chip helpers -----------------------------------------------
 
   function addDomain() {
     const d = domainInput.trim().toLowerCase();
@@ -267,7 +295,7 @@ export default function CreateEventPage() {
           })}
         </div>
 
-        {/* error banner — API submission failure */}
+        {/* error banner  - API submission failure */}
         {createMutation.isError && (
           <div
             style={{
@@ -285,7 +313,7 @@ export default function CreateEventPage() {
           </div>
         )}
 
-        {/* moderation warning banner — shown when the description triggers a policy flag.
+        {/* moderation warning banner  - shown when the description triggers a policy flag.
             We warn but never block so the organizer retains full control. */}
         {descriptionFlagged && (
           <div
@@ -325,7 +353,7 @@ export default function CreateEventPage() {
                 <strong>
                   {flaggedCategories.length ? flaggedCategories.join(", ") : "policy concerns"}
                 </strong>
-                . Your event has still been submitted — consider reviewing the description before
+                . Your event has still been submitted - consider reviewing the description before
                 publishing.
               </p>
             </div>
@@ -341,7 +369,16 @@ export default function CreateEventPage() {
             padding: "32px 32px 24px",
           }}
         >
-          {step === 0 && <StepBasics form={form} set={set} errors={errors} />}
+          {step === 0 && (
+            <StepBasics
+              form={form}
+              set={set}
+              errors={errors}
+              categories={categories}
+              categoriesLoading={categoriesLoading}
+              categoriesLoadFailed={categoriesLoadFailed}
+            />
+          )}
           {step === 1 && <StepSchedule form={form} set={set} errors={errors} />}
           {step === 2 && (
             <StepTickets
@@ -354,7 +391,7 @@ export default function CreateEventPage() {
               removeDomain={removeDomain}
             />
           )}
-          {step === 3 && <StepReview form={form} />}
+          {step === 3 && <StepReview form={form} categoryLabel={selectedCategoryLabel} />}
 
           {/* navigation bar */}
           <div
@@ -444,7 +481,7 @@ export default function CreateEventPage() {
   );
 }
 
-// * ─── Step 1: Basics ────────────────────────────────────────────────────────
+// * --- Step 1: Basics --------------------------------------------------------
 
 type StepProps = {
   form: FormState;
@@ -452,8 +489,37 @@ type StepProps = {
   errors: Partial<Record<string, string>>;
 };
 
-/** Step 1 — title, description, category, tags, cover image. */
-function StepBasics({ form, set, errors }: StepProps) {
+type StepBasicsProps = StepProps & {
+  categories: Category[];
+  categoriesLoading: boolean;
+  categoriesLoadFailed: boolean;
+};
+
+/** Step 1  - title, description, category, tags, cover image. */
+function StepBasics({
+  form,
+  set,
+  errors,
+  categories,
+  categoriesLoading,
+  categoriesLoadFailed,
+}: StepBasicsProps) {
+  const qc = useQueryClient();
+  const [showCreate, setShowCreate] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+
+  const slug = newCatName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+
+  const createCatMutation = useMutation({
+    mutationFn: () => eventsApi.createCategory(newCatName.trim(), slug),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ["events", "categories"] });
+      set("category_id", res.data.id);
+      setShowCreate(false);
+      setNewCatName("");
+    },
+  });
+
   return (
     <>
       <StepHeader
@@ -487,17 +553,147 @@ function StepBasics({ form, set, errors }: StepProps) {
               className={selectCls}
               value={form.category_id}
               onChange={(e) => set("category_id", e.target.value)}
+              disabled={categoriesLoading}
             >
-              <option value="">None</option>
-              <option value="summit">Summit</option>
-              <option value="workshop">Workshop</option>
-              <option value="gala">Gala</option>
-              <option value="lecture">Lecture</option>
-              <option value="symposium">Symposium</option>
-              <option value="hackathon">Hackathon</option>
-              <option value="meetup">Meetup</option>
-              <option value="conference">Conference</option>
+              <option value="">{categoriesLoading ? "Loading categories..." : "None"}</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {`${" - ".repeat(category.depth)}${category.name}`}
+                </option>
+              ))}
             </select>
+            {categoriesLoadFailed && (
+              <p
+                style={{
+                  fontSize: 11,
+                  color: "var(--secondary)",
+                  marginTop: 4,
+                  fontFamily: "Manrope, sans-serif",
+                }}
+              >
+                Categories could not be loaded. Event will be created without a category.
+              </p>
+            )}
+
+            {/* inline category creation */}
+            {!showCreate ? (
+              <button
+                type="button"
+                onClick={() => setShowCreate(true)}
+                style={{
+                  marginTop: 6,
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: 0,
+                  fontSize: 11.5,
+                  fontWeight: 600,
+                  color: "var(--primary)",
+                  fontFamily: "Manrope, sans-serif",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 3,
+                }}
+              >
+                <MS n="add" size={13} />
+                Create new category
+              </button>
+            ) : (
+              <div
+                style={{
+                  marginTop: 8,
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  border: "1px solid var(--mid)",
+                  background: "var(--low)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
+                }}
+              >
+                <input
+                  autoFocus
+                  className={inputCls}
+                  value={newCatName}
+                  onChange={(e) => setNewCatName(e.target.value)}
+                  placeholder="Category name"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && newCatName.trim()) {
+                      e.preventDefault();
+                      createCatMutation.mutate();
+                    }
+                    if (e.key === "Escape") {
+                      setShowCreate(false);
+                      setNewCatName("");
+                    }
+                  }}
+                />
+                {slug && (
+                  <p
+                    style={{
+                      fontSize: 10.5,
+                      color: "var(--on-mut)",
+                      fontFamily: "'JetBrains Mono', monospace",
+                    }}
+                  >
+                    slug: {slug}
+                  </p>
+                )}
+                {createCatMutation.isError && (
+                  <p
+                    style={{
+                      fontSize: 11,
+                      color: "var(--secondary)",
+                      fontFamily: "Manrope, sans-serif",
+                    }}
+                  >
+                    {getApiError(createCatMutation.error)}
+                  </p>
+                )}
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button
+                    type="button"
+                    onClick={() => createCatMutation.mutate()}
+                    disabled={!newCatName.trim() || createCatMutation.isPending}
+                    style={{
+                      flex: 1,
+                      padding: "7px 0",
+                      borderRadius: 8,
+                      border: "none",
+                      background: "#050a26",
+                      color: "white",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      fontFamily: "Manrope, sans-serif",
+                      cursor: !newCatName.trim() || createCatMutation.isPending ? "not-allowed" : "pointer",
+                      opacity: !newCatName.trim() || createCatMutation.isPending ? 0.5 : 1,
+                    }}
+                  >
+                    {createCatMutation.isPending ? "Creating..." : "Create"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCreate(false);
+                      setNewCatName("");
+                    }}
+                    style={{
+                      padding: "7px 14px",
+                      borderRadius: 8,
+                      border: "1px solid var(--mid)",
+                      background: "transparent",
+                      color: "var(--on-var)",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      fontFamily: "Manrope, sans-serif",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
           </Field>
 
           <Field label="Cover Image URL">
@@ -535,9 +731,9 @@ function StepBasics({ form, set, errors }: StepProps) {
   );
 }
 
-// * ─── Step 2: Schedule & Location ───────────────────────────────────────────
+// * --- Step 2: Schedule & Location -------------------------------------------
 
-/** Step 2 — dates, location, online toggle, meeting URL. */
+/** Step 2  - dates, location, online toggle, meeting URL. */
 function StepSchedule({ form, set, errors }: StepProps) {
   return (
     <>
@@ -662,7 +858,7 @@ function StepSchedule({ form, set, errors }: StepProps) {
   );
 }
 
-// * ─── Step 3: Tickets & Access ──────────────────────────────────────────────
+// * --- Step 3: Tickets & Access ----------------------------------------------
 
 type StepTicketsProps = StepProps & {
   domainInput: string;
@@ -671,7 +867,7 @@ type StepTicketsProps = StepProps & {
   removeDomain: (d: string) => void;
 };
 
-/** Step 3 — capacity, visibility, pricing, domain restrictions. */
+/** Step 3  - capacity, visibility, pricing, domain restrictions. */
 function StepTickets({
   form,
   set,
@@ -706,9 +902,9 @@ function StepTickets({
               value={form.visibility}
               onChange={(e) => set("visibility", e.target.value as EventVisibility)}
             >
-              <option value="public">Public — visible to everyone</option>
-              <option value="private">Private — invite only</option>
-              <option value="unlisted">Unlisted — link only</option>
+              <option value="public">Public - visible to everyone</option>
+              <option value="private">Private - invite only</option>
+              <option value="unlisted">Unlisted - link only</option>
             </select>
           </Field>
         </div>
@@ -761,7 +957,7 @@ function StepTickets({
           </Field>
         )}
 
-        {/* allowed domains — the platform USP */}
+        {/* allowed domains  - the platform USP */}
         <div
           style={{
             padding: "16px 18px",
@@ -877,10 +1073,10 @@ function StepTickets({
   );
 }
 
-// * ─── Step 4: Review ────────────────────────────────────────────────────────
+// * --- Step 4: Review --------------------------------------------------------
 
-/** Step 4 — read-only summary of all fields before submission. */
-function StepReview({ form }: { form: FormState }) {
+/** Step 4  - read-only summary of all fields before submission. */
+function StepReview({ form, categoryLabel }: { form: FormState; categoryLabel: string | null }) {
   const priceDisplay = form.is_free ? "Free" : `NPR ${parseFloat(form.price).toLocaleString()}`;
 
   return (
@@ -902,20 +1098,20 @@ function StepReview({ form }: { form: FormState }) {
                 : form.description
             }
           />
-          {form.category_id && <ReviewRow label="Category" value={form.category_id} />}
+          {categoryLabel && <ReviewRow label="Category" value={categoryLabel} />}
           {form.cover_image && <ReviewRow label="Cover Image" value="Provided" />}
         </ReviewSection>
 
         <ReviewSection title="Schedule & Location">
           <ReviewRow
             label="Start"
-            value={form.start_date ? new Date(form.start_date).toLocaleString() : "—"}
+            value={form.start_date ? new Date(form.start_date).toLocaleString() : " -"}
           />
           <ReviewRow
             label="End"
-            value={form.end_date ? new Date(form.end_date).toLocaleString() : "—"}
+            value={form.end_date ? new Date(form.end_date).toLocaleString() : " -"}
           />
-          <ReviewRow label="Location" value={form.location || "—"} />
+          <ReviewRow label="Location" value={form.location || " -"} />
           <ReviewRow label="Online" value={form.is_online ? "Yes" : "No"} />
           {form.is_online && form.online_url && (
             <ReviewRow label="Meeting URL" value={form.online_url} />
@@ -968,7 +1164,7 @@ function StepReview({ form }: { form: FormState }) {
   );
 }
 
-// * ─── Shared UI Helpers ─────────────────────────────────────────────────────
+// * --- Shared UI Helpers -----------------------------------------------------
 
 /** Section header shown at the top of each step. */
 function StepHeader({ icon, title, desc }: { icon: string; title: string; desc: string }) {
