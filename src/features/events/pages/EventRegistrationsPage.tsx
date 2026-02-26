@@ -1,13 +1,31 @@
 import { Link, useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import AppLayout from "@/shared/layouts/AppLayout";
 import { useEvent } from "@/features/events/hooks/useEvents";
+import checkinApi from "@/features/checkin/api/checkin.api";
 
-/** Organiser view of registrations for a specific event — SEU v8 design. */
+/** Organiser view of registrations for a specific event - SEU v8 design. */
 export default function EventRegistrationsPage() {
   const { id } = useParams<{ id: string }>();
-  const { data: event } = useEvent(id ?? "");
+  const { data: event, isLoading: eventLoading } = useEvent(id ?? "");
+
+  // fetch check-in stats for this event from the participation service
+  const { data: stats, isLoading: statsLoading } = useQuery({
+    queryKey: ["checkin", "stats", id],
+    queryFn: () => checkinApi.getEventStats(id!),
+    enabled: !!id,
+  });
 
   const filled = event ? Math.round((event.registered_count / event.capacity) * 100) : 0;
+
+  // use checkin stats when available, fall back to event.registered_count
+  const totalRegistered = stats?.total ?? event?.registered_count ?? 0;
+  const checkedIn = stats?.checked_in ?? 0;
+  const checkinRate =
+    totalRegistered > 0 ? Math.round((checkedIn / totalRegistered) * 100) : 0;
+
+  const spotsLeft = event ? event.capacity - totalRegistered : 0;
+  const isLoading = eventLoading || statsLoading;
 
   return (
     <AppLayout
@@ -19,35 +37,59 @@ export default function EventRegistrationsPage() {
           className="no-underline text-sm font-semibold"
           style={{ color: "var(--on-var)", fontFamily: "Manrope, sans-serif" }}
         >
-          ← Back to event
+          Back to event
         </Link>
       }
     >
-      {/* capacity KPIs */}
+      {/* capacity KPIs - 5 tiles when stats available, 3 otherwise */}
       {event && (
-        <div className="grid mb-6" style={{ gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
+        <div
+          className="grid mb-6"
+          style={{
+            gridTemplateColumns: stats ? "repeat(5, 1fr)" : "repeat(3, 1fr)",
+            gap: 14,
+          }}
+        >
           {[
             {
               label: "Registered",
-              value: event.registered_count.toLocaleString(),
+              value: isLoading ? "..." : totalRegistered.toLocaleString(),
               icon: "how_to_reg",
               tintBg: "#dce1ff",
               tintColor: "var(--primary)",
             },
             {
               label: "Spots left",
-              value: (event.capacity - event.registered_count).toLocaleString(),
+              value: isLoading ? "..." : spotsLeft.toLocaleString(),
               icon: "event_seat",
               tintBg: "#d8efe2",
               tintColor: "var(--success)",
             },
             {
               label: "Fill rate",
-              value: `${filled}%`,
+              value: isLoading ? "..." : `${filled}%`,
               icon: "donut_large",
               tintBg: "#ffddae",
               tintColor: "#604100",
             },
+            ...(stats
+              ? [
+                  {
+                    label: "Checked in",
+                    value: checkedIn.toLocaleString(),
+                    icon: "verified",
+                    tintBg: "#d8efe2",
+                    tintColor: "var(--success)",
+                  },
+                  {
+                    label: "Check-in rate",
+                    value: `${checkinRate}%`,
+                    icon: "qr_code_scanner",
+                    tintBg: "#dce1ff",
+                    tintColor: "var(--primary)",
+                  },
+                ]
+              : []),
           ].map(({ label, value, icon, tintBg, tintColor }) => (
             <div
               key={label}
@@ -60,7 +102,7 @@ export default function EventRegistrationsPage() {
             >
               <div className="flex items-center gap-3 mb-3">
                 <div
-                  className="grid place-items-center flex-shrink-0"
+                  className="grid place-items-center shrink-0"
                   style={{ width: 34, height: 34, borderRadius: 9, background: tintBg }}
                 >
                   <span className="ms" style={{ fontSize: 18, color: tintColor }}>
@@ -127,7 +169,7 @@ export default function EventRegistrationsPage() {
                 color: "var(--on-mut)",
               }}
             >
-              {event.registered_count} / {event.capacity}
+              {totalRegistered} / {event.capacity}
             </p>
           </div>
           <div
@@ -144,10 +186,55 @@ export default function EventRegistrationsPage() {
               }}
             />
           </div>
+          {/* check-in bar when stats are loaded */}
+          {stats && (
+            <>
+              <div className="flex justify-between mt-3 mb-1">
+                <p
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "var(--on-bg)",
+                    fontFamily: "Manrope, sans-serif",
+                  }}
+                >
+                  Check-in progress
+                </p>
+                <p
+                  style={{
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: 11,
+                    color: "var(--on-mut)",
+                  }}
+                >
+                  {checkedIn} / {totalRegistered}
+                </p>
+              </div>
+              <div
+                style={{
+                  height: 8,
+                  background: "var(--low)",
+                  borderRadius: 999,
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    height: "100%",
+                    width: `${checkinRate}%`,
+                    background: "linear-gradient(90deg, #166534, #16a34a)",
+                    borderRadius: 999,
+                    transition: "width 400ms",
+                  }}
+                />
+              </div>
+            </>
+          )}
         </div>
       )}
 
-      {/* attendee table placeholder */}
+      {/* attendee table - no admin endpoint exists to list per-event registrations */}
+      {/* show check-in stats and a guide to use the check-in console */}
       <div
         style={{
           background: "var(--surface)",
@@ -183,7 +270,9 @@ export default function EventRegistrationsPage() {
               color: "var(--on-mut)",
             }}
           >
-            Registrations are managed via the participation service.
+            {stats
+              ? `${totalRegistered} registered - ${checkedIn} checked in (${checkinRate}% rate)`
+              : "Registrations are managed via the participation service."}
           </p>
           <p
             style={{
@@ -195,6 +284,23 @@ export default function EventRegistrationsPage() {
           >
             View check-ins and manage attendance from the check-in terminal.
           </p>
+          <Link
+            to="/org/checkin"
+            style={{
+              display: "inline-block",
+              marginTop: 14,
+              padding: "8px 18px",
+              borderRadius: 8,
+              background: "var(--primary)",
+              color: "#fff",
+              fontFamily: "Manrope, sans-serif",
+              fontWeight: 600,
+              fontSize: 13,
+              textDecoration: "none",
+            }}
+          >
+            Open check-in console
+          </Link>
         </div>
       </div>
     </AppLayout>
