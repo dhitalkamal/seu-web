@@ -73,7 +73,7 @@ export default function CommunityPage() {
   /**
    * Run NLP moderation on the draft post content, then only call
    * postMutation if the content is clean.  A flagged result shows a
-   * warning toast and aborts — the user can edit and try again.
+   * warning toast and aborts - the user can edit and try again.
    */
   async function handlePostSubmit() {
     if (!postContent || postMutation.isPending) return;
@@ -86,9 +86,7 @@ export default function CommunityPage() {
         return;
       }
     } catch {
-      // If the moderation API is unavailable, log silently and allow the post
-      // through rather than blocking the user entirely.
-      console.warn("Moderation check failed — skipping.");
+      // moderation API unavailable - allow the post through silently
     }
     postMutation.mutate();
   }
@@ -308,7 +306,7 @@ export default function CommunityPage() {
   );
 }
 
-// * ─── Sentiment badge ───────────────────────────────────────────────────────
+// * --- Sentiment badge -------------------------------------------------------
 
 /**
  * Map a raw sentiment string returned by the API to a human-readable label
@@ -331,7 +329,7 @@ function SentimentBadge({ postId, content }: { postId: string; content: string }
   const { data } = useQuery({
     queryKey: ["post-sentiment", postId],
     queryFn: () => intelligenceApi.analyzeSentiment(content),
-    // Stale time of 10 minutes — sentiment doesn't change after posting
+    // Stale time of 10 minutes - sentiment doesn't change after posting
     staleTime: 10 * 60 * 1000,
   });
 
@@ -367,11 +365,11 @@ function SentimentBadge({ postId, content }: { postId: string; content: string }
   );
 }
 
-// * ─── Post card ─────────────────────────────────────────────────────────────
+// * --- Post card -------------------------------------------------------------
 
 type PostCardProps = {
   post: CommunityPost;
-  /** ID of the currently logged-in user — used to decide whether to show the delete button. */
+  /** ID of the currently logged-in user - used to decide whether to show the delete button. */
   currentUserId: string | null;
   /** Called with the post id when the user confirms deletion. */
   onDelete: (postId: string) => void;
@@ -381,7 +379,7 @@ type PostCardProps = {
 
 /**
  * Renders a single community post with its content, timestamp, sentiment badge,
- * and — for the post's own author — a small trash-icon delete button.
+ * and - for the post's own author - a small trash-icon delete button.
  */
 function PostCard({ post, currentUserId, onDelete, isDeleting }: PostCardProps) {
   // Only the author should see the delete affordance
@@ -412,7 +410,7 @@ function PostCard({ post, currentUserId, onDelete, isDeleting }: PostCardProps) 
         {/* right-side controls */}
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <SentimentBadge postId={post.id} content={post.content} />
-          {/* delete button — only rendered for the post's author */}
+          {/* delete button - only rendered for the post's author */}
           {isOwner && (
             <button
               title="Delete post"

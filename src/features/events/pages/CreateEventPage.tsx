@@ -174,9 +174,7 @@ export default function CreateEventPage() {
           setFlaggedCategories([]);
         }
       } catch {
-        // Moderation service unavailable  - proceed silently rather than
-        // preventing event creation.
-        console.warn("Moderation check failed  - proceeding with submission.");
+        // moderation service unavailable - proceed silently
       }
     }
 

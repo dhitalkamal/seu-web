@@ -6,7 +6,11 @@ import { useAuthStore } from "@/shared/store/auth.store";
 import subscriptionApi, { PLAN_CATALOGUE } from "@/features/orgs/api/subscription.api";
 import paymentApi from "@/features/payment/api/payment.api";
 import { submitEsewaForm } from "@/features/payment/api/payment.api";
-import type { PromoCode, CreatePromoCodePayload } from "@/features/payment/api/payment.api";
+import type {
+  PromoCode,
+  CreatePromoCodePayload,
+  RefundRecord,
+} from "@/features/payment/api/payment.api";
 import type { Gateway } from "@/features/payment/types";
 import type { PlanName } from "@/features/orgs/api/subscription.api";
 
@@ -226,17 +230,34 @@ function OverviewTab() {
 
 // * refunds tab
 
-/** Refunds queue: approve/reject actions and policy card. */
+// filter options for the refund status tabs
+const REFUND_FILTERS = ["All", "Pending", "Approved", "Rejected"] as const;
+type RefundFilter = (typeof REFUND_FILTERS)[number];
+
+/** Refunds queue: live list from payment service with status filter tabs. */
 function RefundsTab() {
-  const { toast } = useToast();
-  void toast; // used via click handlers added later
+  const [filter, setFilter] = useState<RefundFilter>("All");
+
+  // map display filter to API status param
+  const apiStatus = filter === "All" ? undefined : filter.toLowerCase();
+
+  const { data: refunds = [], isLoading } = useQuery({
+    queryKey: ["refunds", apiStatus],
+    queryFn: () => paymentApi.listRefunds(apiStatus),
+  });
+
+  const pending = refunds.filter((r: RefundRecord) => r.status === "pending").length;
+  const approved = refunds.filter(
+    (r: RefundRecord) => r.status === "approved" || r.status === "completed"
+  ).length;
+  const rejected = refunds.filter((r: RefundRecord) => r.status === "rejected").length;
 
   return (
     <>
       <div className="kpi-grid">
-        <KPI icon="pending" color="crl" label="Pending review" value="0" />
-        <KPI icon="check_circle" color="lav" label="Approved (30d)" value="0" />
-        <KPI icon="block" color="pch" label="Rejected (30d)" value="0" />
+        <KPI icon="pending" color="crl" label="Pending review" value={String(pending)} />
+        <KPI icon="check_circle" color="lav" label="Approved" value={String(approved)} />
+        <KPI icon="block" color="pch" label="Rejected" value={String(rejected)} />
         <KPI icon="percent" color="mnt" label="Refund rate" value="N/A" />
       </div>
 
@@ -245,11 +266,15 @@ function RefundsTab() {
           <div className="panel-head">
             <span className="panel-title">All requests</span>
             <div style={{ display: "flex", gap: 6 }}>
-              {["All", "Pending", "Approved", "Rejected"].map((t, i) => (
+              {REFUND_FILTERS.map((t) => (
                 <button
-                  key={i}
+                  key={t}
                   className="btn-sm"
-                  style={{ background: i === 0 ? "var(--low)" : "white" }}
+                  onClick={() => setFilter(t)}
+                  style={{
+                    background: filter === t ? "var(--low)" : "white",
+                    fontWeight: filter === t ? 700 : 500,
+                  }}
                 >
                   {t}
                 </button>
@@ -261,28 +286,97 @@ function RefundsTab() {
               <thead>
                 <tr>
                   <th>ID</th>
-                  <th>Event / Attendee</th>
+                  <th>Order ID</th>
                   <th>Amount</th>
                   <th>Reason</th>
                   <th>Gateway</th>
                   <th>Status</th>
-                  <th />
+                  <th>Created</th>
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td
-                    colSpan={7}
-                    style={{
-                      textAlign: "center",
-                      color: "var(--on-mut)",
-                      fontSize: 13,
-                      padding: "48px 0",
-                    }}
-                  >
-                    No data yet
-                  </td>
-                </tr>
+                {isLoading && (
+                  <tr>
+                    <td
+                      colSpan={7}
+                      style={{
+                        textAlign: "center",
+                        color: "var(--on-mut)",
+                        fontSize: 13,
+                        padding: "48px 0",
+                      }}
+                    >
+                      Loading...
+                    </td>
+                  </tr>
+                )}
+                {!isLoading && refunds.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={7}
+                      style={{
+                        textAlign: "center",
+                        color: "var(--on-mut)",
+                        fontSize: 13,
+                        padding: "48px 0",
+                      }}
+                    >
+                      No refund requests
+                    </td>
+                  </tr>
+                )}
+                {refunds.map((r: RefundRecord) => (
+                  <tr key={r.id}>
+                    <td style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 10.5 }}>
+                      {r.id.slice(0, 8)}...
+                    </td>
+                    <td style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 10.5 }}>
+                      {r.order_id.slice(0, 8)}...
+                    </td>
+                    <td>{r.amount != null ? `NPR ${r.amount.toLocaleString()}` : "N/A"}</td>
+                    <td
+                      style={{
+                        maxWidth: 160,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {r.reason}
+                    </td>
+                    <td>{r.gateway ?? "N/A"}</td>
+                    <td>
+                      <span
+                        style={{
+                          padding: "2px 8px",
+                          borderRadius: 999,
+                          fontSize: 10.5,
+                          fontWeight: 700,
+                          background:
+                            r.status === "approved" || r.status === "completed"
+                              ? "#dcfce7"
+                              : r.status === "rejected"
+                                ? "#fee2e2"
+                                : "#dbeafe",
+                          color:
+                            r.status === "approved" || r.status === "completed"
+                              ? "#166534"
+                              : r.status === "rejected"
+                                ? "#991b1b"
+                                : "#1e40af",
+                        }}
+                      >
+                        {r.status}
+                      </span>
+                    </td>
+                    <td style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 10.5 }}>
+                      {new Date(r.created_at).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

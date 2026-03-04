@@ -1,10 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import AppLayout from "@/shared/layouts/AppLayout";
 import { PH, MS, useToast } from "@/shared/components/v8";
 import { useMyRegistrations } from "@/features/registration/hooks/useRegistrations";
 import type { Registration } from "@/features/registration/types";
 import checkinApi from "@/features/checkin/api/checkin.api";
+import eventsApi from "@/features/events/api/events.api";
+import paymentApi from "@/features/payment/api/payment.api";
+import type { Event } from "@/features/events/types/event.types";
+import type { PaymentOrder } from "@/features/payment/types";
 import { QRCodeSVG } from "qrcode.react";
 
 /**
@@ -18,6 +23,30 @@ function fmtDate(dateStr: string): string {
     day: "numeric",
     year: "numeric",
   });
+}
+
+/**
+ * Builds a Google Calendar "add event" URL for a given event.
+ * @param ev - the event to link to.
+ * @returns full Google Calendar URL.
+ */
+function googleCalendarUrl(ev: Event): string {
+  const start = new Date(ev.start_date)
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d{3}/, "");
+  const end = new Date(ev.end_date)
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d{3}/, "");
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: ev.title,
+    dates: `${start}/${end}`,
+    details: ev.description ?? "",
+    location: ev.location ?? "",
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
 /**
@@ -116,13 +145,54 @@ function TicketQR({ registrationId, onClose }: { registrationId: string; onClose
 /** My tickets page - shows upcoming registrations with countdown hero, 30-day timeline, and QR tokens. */
 export default function TicketsPage() {
   const { toast, toastEl } = useToast();
+  const navigate = useNavigate();
   const { data: registrations, isLoading } = useMyRegistrations();
   const [qrFor, setQrFor] = useState<string | null>(null);
+
+  // * event detail cache keyed by event_id
+  const [eventCache, setEventCache] = useState<Record<string, Event>>({});
+
+  // * order cache keyed by registration_id
+  const [orderCache, setOrderCache] = useState<Record<string, PaymentOrder>>({});
 
   // * Only show active (non-cancelled, non-no-show) registrations
   const active: Registration[] = (registrations ?? []).filter(
     (r) => r.status !== "cancelled" && r.status !== "no_show"
   );
+
+  // * fetch event details for each unique event_id (issues 23+25)
+  useEffect(() => {
+    const uniqueIds = [...new Set(active.map((r) => r.event_id))];
+    for (const id of uniqueIds) {
+      if (eventCache[id]) continue;
+      eventsApi.getEvent(id).then((res) => {
+        const ev = "data" in res ? res.data : (res as unknown as Event);
+        if (ev) {
+          setEventCache((prev) => ({ ...prev, [id]: ev }));
+        }
+      }).catch(() => {
+        // leave cache empty for this id; UI falls back to truncated UUID
+      });
+    }
+  // only re-run when the set of registration IDs changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active.map((r) => r.event_id).join(",")]);
+
+  // * fetch my orders once to enable receipt lookup (issue 24)
+  useEffect(() => {
+    if (active.length === 0) return;
+    paymentApi.listMyOrders().then((orders) => {
+      const map: Record<string, PaymentOrder> = {};
+      for (const o of orders) {
+        if (o.registration_id) map[o.registration_id] = o;
+      }
+      setOrderCache(map);
+    }).catch(() => {
+      // orders unavailable - receipt button will fall back to toast
+    });
+  // run once when registrations load
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active.length]);
 
   const today = new Date();
 
@@ -133,6 +203,34 @@ export default function TicketsPage() {
   const stripEnd = new Date(today);
   stripEnd.setDate(stripEnd.getDate() + 29);
   const stripLabel = `${today.toLocaleDateString("en-GB", { month: "short", day: "numeric" })} to ${stripEnd.toLocaleDateString("en-GB", { month: "short", day: "numeric" })}`;
+
+  /**
+   * Open a Google Calendar link for the next event if event details are loaded.
+   * Falls back to toast if event data is not yet cached.
+   */
+  function handleAddToCalendar() {
+    if (!next) return;
+    const ev = eventCache[next.event_id];
+    if (!ev) {
+      toast("Loading event details...");
+      return;
+    }
+    window.open(googleCalendarUrl(ev), "_blank", "noopener");
+  }
+
+  /**
+   * Navigate to the payment success page for the first available order,
+   * or toast if no orders have been placed.
+   */
+  function handleReceipts() {
+    // find any active registration that has an order
+    const regWithOrder = active.find((r) => orderCache[r.id]);
+    if (regWithOrder) {
+      navigate(`/payment/success?orderId=${orderCache[regWithOrder.id].id}`);
+    } else {
+      toast("No receipt available");
+    }
+  }
 
   return (
     <AppLayout variant="user">
@@ -145,11 +243,13 @@ export default function TicketsPage() {
         sub="Your upcoming registrations."
         actions={
           <>
-            <button className="btn-sm" onClick={() => toast("Calendar exported")}>
+            {/* add to calendar - generates Google Calendar URL (issue 24) */}
+            <button className="btn-sm" onClick={handleAddToCalendar}>
               <MS n="calendar_add_on" size={13} />
               Add to calendar
             </button>
-            <button className="btn-sm" onClick={() => toast("Downloaded")}>
+            {/* receipts - navigate to order or toast (issue 24) */}
+            <button className="btn-sm" onClick={handleReceipts}>
               <MS n="download" size={13} />
               Receipts
             </button>
@@ -354,95 +454,123 @@ export default function TicketsPage() {
       )}
 
       {/* ticket cards */}
-      {active.map((reg) => (
-        <div
-          key={reg.id}
-          className="panel"
-          style={{
-            padding: 0,
-            marginBottom: 12,
-            display: "grid",
-            gridTemplateColumns: "1fr",
-            overflow: "hidden",
-          }}
-        >
-          <div style={{ padding: 18 }}>
-            <div
-              style={{
-                fontFamily: "JetBrains Mono, monospace",
-                fontSize: 9.5,
-                letterSpacing: "0.1em",
-                textTransform: "uppercase",
-                color: "var(--secondary)",
-                fontWeight: 700,
-                marginBottom: 4,
-              }}
-            >
-              Event {reg.event_id.slice(0, 8)}
-            </div>
-            <div
-              style={{
-                fontFamily: "Space Grotesk",
-                fontWeight: 600,
-                fontSize: 16,
-                letterSpacing: "-0.025em",
-                marginBottom: 5,
-              }}
-            >
-              {reg.registration_code}
-            </div>
-            <div
-              style={{
-                display: "flex",
-                gap: 12,
-                fontSize: 12,
-                color: "var(--on-var)",
-                marginBottom: 10,
-              }}
-            >
-              <span>{fmtDate(reg.created_at)}</span>
-              <span>·</span>
-              <span>Qty {reg.quantity}</span>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                paddingTop: 10,
-                borderTop: "1px solid var(--outline)",
-              }}
-            >
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <span
-                  style={{
-                    fontFamily: "JetBrains Mono, monospace",
-                    fontSize: 10.5,
-                    color: "var(--on-mut)",
-                  }}
-                >
-                  {reg.registration_code}
-                </span>
+      {active.map((reg) => {
+        const ev = eventCache[reg.event_id];
+        const order = orderCache[reg.id];
+        return (
+          <div
+            key={reg.id}
+            className="panel"
+            style={{
+              padding: 0,
+              marginBottom: 12,
+              display: "grid",
+              gridTemplateColumns: "1fr",
+              overflow: "hidden",
+            }}
+          >
+            <div style={{ padding: 18 }}>
+              <div
+                style={{
+                  fontFamily: "JetBrains Mono, monospace",
+                  fontSize: 9.5,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  color: "var(--secondary)",
+                  fontWeight: 700,
+                  marginBottom: 4,
+                }}
+              >
+                {/* show event title if fetched, else short UUID (issues 23+25) */}
+                {ev ? ev.title : `Event ${reg.event_id.slice(0, 8)}`}
               </div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <button
-                  className="btn-sm"
-                  onClick={() => setQrFor(reg.id)}
-                  style={{ fontSize: 11 }}
-                >
-                  <MS n="qr_code_2" size={12} />
-                  Show QR
-                </button>
-                <span
-                  className={`pill ${reg.status === "confirmed" ? "active" : reg.status === "pending" ? "draft" : "muted"}`}
-                >
-                  {reg.status}
-                </span>
+              <div
+                style={{
+                  fontFamily: "Space Grotesk",
+                  fontWeight: 600,
+                  fontSize: 16,
+                  letterSpacing: "-0.025em",
+                  marginBottom: 5,
+                }}
+              >
+                {reg.registration_code}
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 12,
+                  fontSize: 12,
+                  color: "var(--on-var)",
+                  marginBottom: 10,
+                }}
+              >
+                <span>{fmtDate(reg.created_at)}</span>
+                <span>·</span>
+                <span>Qty {reg.quantity}</span>
+                {ev && (
+                  <>
+                    <span>·</span>
+                    <span>{ev.location}</span>
+                  </>
+                )}
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  paddingTop: 10,
+                  borderTop: "1px solid var(--outline)",
+                }}
+              >
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  {/* add to calendar for this specific ticket (issue 24) */}
+                  {ev && (
+                    <button
+                      className="btn-sm"
+                      style={{ fontSize: 11 }}
+                      onClick={() => window.open(googleCalendarUrl(ev), "_blank", "noopener")}
+                    >
+                      <MS n="calendar_add_on" size={12} />
+                      Calendar
+                    </button>
+                  )}
+                  {/* receipt for this specific ticket (issue 24) */}
+                  <button
+                    className="btn-sm"
+                    style={{ fontSize: 11 }}
+                    onClick={() => {
+                      if (order) {
+                        navigate(`/payment/success?orderId=${order.id}`);
+                      } else {
+                        toast("No receipt available");
+                      }
+                    }}
+                  >
+                    <MS n="receipt" size={12} />
+                    Receipt
+                  </button>
+                </div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <button
+                    className="btn-sm"
+                    onClick={() => setQrFor(reg.id)}
+                    style={{ fontSize: 11 }}
+                  >
+                    <MS n="qr_code_2" size={12} />
+                    Show QR
+                  </button>
+                  <span
+                    className={`pill ${reg.status === "confirmed" ? "active" : reg.status === "pending" ? "draft" : "muted"}`}
+                  >
+                    {reg.status}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </AppLayout>
   );
 }

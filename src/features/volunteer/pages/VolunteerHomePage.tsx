@@ -4,36 +4,66 @@ import AppLayout from "@/shared/layouts/AppLayout";
 import { MS } from "@/shared/components/v8";
 import checkinApi from "@/features/checkin/api/checkin.api";
 
-// upcoming shifts are still empty until a separate shifts query is added
-const UPCOMING_SHIFTS: {
-  event: string;
-  role: string;
-  date: string;
-  time: string;
-  venue: string;
-}[] = [];
+// * types
 
-// activity feed is still empty until an activity endpoint exists
-const ACTIVITY: { icon: string; text: string; time: string }[] = [];
+type Shift = {
+  id: string;
+  event_name?: string;
+  role?: string;
+  start_time?: string;
+  end_time?: string;
+  venue?: string;
+};
+
+/**
+ * Compute hours from two ISO datetime strings.
+ *
+ * @param start - shift start ISO string
+ * @param end - shift end ISO string
+ * @returns hours as decimal, 0 if inputs are invalid
+ */
+function computeHours(start?: string, end?: string): number {
+  if (!start || !end) return 0;
+  const ms = new Date(end).getTime() - new Date(start).getTime();
+  if (Number.isNaN(ms) || ms < 0) return 0;
+  return Math.round((ms / 3_600_000) * 10) / 10;
+}
+
+// * component
 
 /** Volunteer overview dashboard: KPIs, next shifts, activity feed, quick links. */
 export default function VolunteerHomePage() {
   const navigate = useNavigate();
 
-  // passport gives us the events_attended count
+  // passport gives us events_attended count
   const { data: passport } = useQuery({
     queryKey: ["passport"],
     queryFn: checkinApi.getPassport,
   });
 
+  // volunteer shifts for upcoming list and total hours computation
+  const { data: rawShifts = [] } = useQuery({
+    queryKey: ["volunteer-shifts"],
+    queryFn: checkinApi.getVolunteerShifts,
+  });
+
+  const shifts = rawShifts as Shift[];
+
   const eventsServed = passport?.events_attended ?? 0;
 
-  // KPI cards: events served is live; the rest await their own endpoints
-  const KPIS = [
+  // total hours summed across all shifts with both start and end times
+  const totalHours = shifts.reduce((sum, s) => sum + computeHours(s.start_time, s.end_time), 0);
+
+  // upcoming shifts are those with a start_time in the future
+  const now = Date.now();
+  const upcomingShifts = shifts
+    .filter((s) => s.start_time && new Date(s.start_time).getTime() > now)
+    .sort((a, b) => new Date(a.start_time!).getTime() - new Date(b.start_time!).getTime());
+
+  const kpis = [
     {
       label: "Total Hours",
-      value: "N/A",
-      delta: "",
+      value: totalHours > 0 ? `${totalHours}h` : "0h",
       icon: "timer",
       bg: "#dce1ff",
       color: "var(--primary)",
@@ -41,16 +71,20 @@ export default function VolunteerHomePage() {
     {
       label: "Events Served",
       value: String(eventsServed),
-      delta: "",
       icon: "event_available",
       bg: "#d8efe2",
       color: "#166534",
     },
-    { label: "Avg Rating", value: "N/A", delta: "", icon: "star", bg: "#ffddae", color: "#604100" },
+    {
+      label: "Avg Rating",
+      value: "N/A",
+      icon: "star",
+      bg: "#ffddae",
+      color: "#604100",
+    },
     {
       label: "Certificates",
       value: "N/A",
-      delta: "",
       icon: "workspace_premium",
       bg: "#ffdada",
       color: "var(--secondary)",
@@ -64,69 +98,120 @@ export default function VolunteerHomePage() {
       subtitle="Track your shifts, hours, and impact."
       crumbs={["Volunteer", "Overview"]}
     >
-      {/* upcoming shifts panel */}
-      <div className="panel" style={{ marginBottom: 18 }}>
-        <div className="panel-head">
-          <span className="panel-title">Upcoming shifts</span>
-        </div>
-        <div className="panel-body" style={{ textAlign: "center", padding: "32px 20px" }}>
-          <span
-            className="ms"
-            style={{
-              fontSize: 40,
-              color: "var(--on-mut)",
-              display: "block",
-              marginBottom: 12,
-              opacity: 0.3,
-            }}
+      {/* upcoming shifts panel - shown when shifts exist */}
+      {upcomingShifts.length > 0 && (
+        <div className="panel" style={{ marginBottom: 18 }}>
+          <div className="panel-head">
+            <span className="panel-title">Next shift</span>
+          </div>
+          <div
+            className="panel-body"
+            style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px 20px" }}
           >
-            schedule
-          </span>
-          <p
-            style={{
-              fontFamily: "Space Grotesk, sans-serif",
-              fontWeight: 600,
-              fontSize: 17,
-              letterSpacing: "-0.02em",
-              marginBottom: 6,
-            }}
-          >
-            No upcoming shifts
-          </p>
-          <p
-            style={{
-              fontSize: 13,
-              color: "var(--on-mut)",
-              fontFamily: "Manrope, sans-serif",
-              marginBottom: 18,
-            }}
-          >
-            Browse open volunteer roles and apply to start making an impact.
-          </p>
-          <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-            <button
-              className="btn-sm"
-              onClick={() => navigate("/volunteer-apps")}
-              style={{ padding: "10px 20px" }}
+            <div
+              className="grid place-items-center shrink-0"
+              style={{ width: 40, height: 40, borderRadius: 10, background: "#dbeafe" }}
             >
-              <MS n="search" size={14} />
-              Browse Roles
-            </button>
-            <button
-              className="btn-sm"
-              onClick={() => navigate("/volunteer/shifts")}
-              style={{ padding: "10px 20px" }}
-            >
-              <MS n="schedule" size={14} />
-              My Shifts
-            </button>
+              <span className="ms" style={{ fontSize: 20, color: "#1e40af" }}>
+                event
+              </span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p
+                style={{
+                  fontSize: 14,
+                  fontWeight: 700,
+                  fontFamily: "Manrope, sans-serif",
+                  color: "var(--on-bg)",
+                }}
+              >
+                {upcomingShifts[0].role ?? "Volunteer shift"}
+              </p>
+              <p
+                style={{
+                  fontSize: 12,
+                  color: "var(--on-mut)",
+                  fontFamily: "Manrope, sans-serif",
+                }}
+              >
+                {upcomingShifts[0].event_name ?? "Event"} /{" "}
+                {upcomingShifts[0].start_time
+                  ? new Date(upcomingShifts[0].start_time).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                    })
+                  : "TBD"}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* empty upcoming shifts prompt */}
+      {upcomingShifts.length === 0 && (
+        <div className="panel" style={{ marginBottom: 18 }}>
+          <div className="panel-head">
+            <span className="panel-title">Upcoming shifts</span>
+          </div>
+          <div className="panel-body" style={{ textAlign: "center", padding: "32px 20px" }}>
+            <span
+              className="ms"
+              style={{
+                fontSize: 40,
+                color: "var(--on-mut)",
+                display: "block",
+                marginBottom: 12,
+                opacity: 0.3,
+              }}
+            >
+              schedule
+            </span>
+            <p
+              style={{
+                fontFamily: "Space Grotesk, sans-serif",
+                fontWeight: 600,
+                fontSize: 17,
+                letterSpacing: "-0.02em",
+                marginBottom: 6,
+              }}
+            >
+              No upcoming shifts
+            </p>
+            <p
+              style={{
+                fontSize: 13,
+                color: "var(--on-mut)",
+                fontFamily: "Manrope, sans-serif",
+                marginBottom: 18,
+              }}
+            >
+              Browse open volunteer roles and apply to start making an impact.
+            </p>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+              <button
+                className="btn-sm"
+                onClick={() => navigate("/volunteer-apps")}
+                style={{ padding: "10px 20px" }}
+              >
+                <MS n="search" size={14} />
+                Browse Roles
+              </button>
+              <button
+                className="btn-sm"
+                onClick={() => navigate("/volunteer/shifts")}
+                style={{ padding: "10px 20px" }}
+              >
+                <MS n="schedule" size={14} />
+                My Shifts
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* KPI cards */}
       <div className="grid mb-6" style={{ gridTemplateColumns: "repeat(4, 1fr)", gap: 14 }}>
-        {KPIS.map((k) => (
+        {kpis.map((k) => (
           <div
             key={k.label}
             style={{
@@ -145,18 +230,6 @@ export default function VolunteerHomePage() {
                   {k.icon}
                 </span>
               </div>
-              {k.delta && (
-                <span
-                  style={{
-                    fontSize: 11,
-                    color: "#16a34a",
-                    fontWeight: 700,
-                    fontFamily: "'JetBrains Mono', monospace",
-                  }}
-                >
-                  {k.delta}
-                </span>
-              )}
             </div>
             <p
               style={{
@@ -187,9 +260,9 @@ export default function VolunteerHomePage() {
         ))}
       </div>
 
-      {/* two-column: upcoming shifts + activity feed */}
+      {/* two-column: upcoming shifts + quick links */}
       <div className="grid" style={{ gridTemplateColumns: "1fr 340px", gap: 18 }}>
-        {/* upcoming shifts */}
+        {/* upcoming shifts list */}
         <div
           style={{
             background: "var(--surface)",
@@ -226,7 +299,7 @@ export default function VolunteerHomePage() {
             </Link>
           </div>
 
-          {UPCOMING_SHIFTS.length === 0 ? (
+          {upcomingShifts.length === 0 ? (
             <div style={{ padding: "36px 20px", textAlign: "center" }}>
               <span
                 className="ms"
@@ -258,9 +331,9 @@ export default function VolunteerHomePage() {
             </div>
           ) : (
             <div className="flex flex-col">
-              {UPCOMING_SHIFTS.slice(0, 5).map((s, i) => (
+              {upcomingShifts.slice(0, 5).map((s, i) => (
                 <div
-                  key={i}
+                  key={s.id}
                   className="flex items-center gap-4"
                   style={{
                     padding: "14px 20px",
@@ -268,7 +341,7 @@ export default function VolunteerHomePage() {
                   }}
                 >
                   <div
-                    className="grid place-items-center flex-shrink-0"
+                    className="grid place-items-center shrink-0"
                     style={{ width: 40, height: 40, borderRadius: 10, background: "#dbeafe" }}
                   >
                     <span className="ms" style={{ fontSize: 20, color: "#1e40af" }}>
@@ -284,7 +357,7 @@ export default function VolunteerHomePage() {
                         color: "var(--on-bg)",
                       }}
                     >
-                      {s.role}
+                      {s.role ?? "Volunteer shift"}
                     </p>
                     <p
                       style={{
@@ -293,25 +366,36 @@ export default function VolunteerHomePage() {
                         fontFamily: "Manrope, sans-serif",
                       }}
                     >
-                      {s.event} / {s.date}
+                      {s.event_name ?? "Event"} /{" "}
+                      {s.start_time
+                        ? new Date(s.start_time).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                          })
+                        : "TBD"}
                     </p>
                   </div>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      color: "var(--on-mut)",
-                      fontFamily: "'JetBrains Mono', monospace",
-                    }}
-                  >
-                    {s.time}
-                  </span>
+                  {s.start_time && (
+                    <span
+                      style={{
+                        fontSize: 11,
+                        color: "var(--on-mut)",
+                        fontFamily: "'JetBrains Mono', monospace",
+                      }}
+                    >
+                      {new Date(s.start_time).toLocaleTimeString("en-US", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        {/* activity feed */}
+        {/* quick links sidebar */}
         <div
           style={{
             background: "var(--surface)",
@@ -334,69 +418,23 @@ export default function VolunteerHomePage() {
             </p>
           </div>
 
-          {ACTIVITY.length === 0 ? (
-            <div style={{ padding: "36px 20px", textAlign: "center" }}>
-              <span
-                className="ms"
-                style={{
-                  fontSize: 32,
-                  color: "var(--on-mut)",
-                  opacity: 0.4,
-                  display: "block",
-                  marginBottom: 8,
-                }}
-              >
-                history
-              </span>
-              <p
-                style={{ fontSize: 13, color: "var(--on-mut)", fontFamily: "Manrope, sans-serif" }}
-              >
-                No activity yet
-              </p>
-            </div>
-          ) : (
-            <div className="flex flex-col">
-              {ACTIVITY.map((a, i) => (
-                <div
-                  key={i}
-                  className="flex items-start gap-3"
-                  style={{
-                    padding: "12px 20px",
-                    borderTop: i > 0 ? "1px solid var(--outline)" : "none",
-                  }}
-                >
-                  <span
-                    className="ms"
-                    style={{ fontSize: 16, color: "var(--on-mut)", marginTop: 2, flexShrink: 0 }}
-                  >
-                    {a.icon}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p
-                      style={{
-                        fontSize: 12.5,
-                        color: "var(--on-bg)",
-                        fontFamily: "Manrope, sans-serif",
-                        lineHeight: 1.4,
-                      }}
-                    >
-                      {a.text}
-                    </p>
-                    <p
-                      style={{
-                        fontSize: 10.5,
-                        color: "var(--on-mut)",
-                        fontFamily: "'JetBrains Mono', monospace",
-                        marginTop: 2,
-                      }}
-                    >
-                      {a.time}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <div style={{ padding: "36px 20px", textAlign: "center" }}>
+            <span
+              className="ms"
+              style={{
+                fontSize: 32,
+                color: "var(--on-mut)",
+                opacity: 0.4,
+                display: "block",
+                marginBottom: 8,
+              }}
+            >
+              history
+            </span>
+            <p style={{ fontSize: 13, color: "var(--on-mut)", fontFamily: "Manrope, sans-serif" }}>
+              No activity yet
+            </p>
+          </div>
 
           {/* quick links */}
           <div style={{ padding: "12px 20px", borderTop: "1px solid var(--outline)" }}>

@@ -20,7 +20,7 @@ export default function EventHealthPage() {
   const { id: eventId } = useParams<{ id: string }>();
 
   // fetch health score for this event from the intelligence service
-  const { data: health, isLoading } = useQuery<EventHealthScore>({
+  const { data: health, isLoading, refetch } = useQuery<EventHealthScore>({
     queryKey: ["event-health", eventId],
     queryFn: () => intelligenceApi.getEventHealth(eventId!),
     enabled: !!eventId,
@@ -37,7 +37,7 @@ export default function EventHealthPage() {
         sub="Weighted score combining fill rate, conversion, velocity, and revenue progress. Updated hourly."
         actions={
           <>
-            <button className="btn-sm">
+            <button className="btn-sm" onClick={() => refetch()}>
               <MS n="refresh" size={13} />
               Recalculate
             </button>

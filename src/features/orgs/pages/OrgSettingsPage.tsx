@@ -1085,9 +1085,8 @@ function DocumentsTab({ orgId, docs, setDocs, onDelete }: DocsTabProps) {
           </div>
           <button
             onClick={() => {
-              toast.success(
-                "Documents resubmitted for verification. Our team will review them shortly."
-              );
+              // resubmitForReview API not yet available - notify user
+              toast.success("Resubmission coming soon");
             }}
             style={{
               padding: "8px 18px",

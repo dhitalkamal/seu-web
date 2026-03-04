@@ -6,6 +6,12 @@ import AppLayout from "@/shared/layouts/AppLayout";
 import paymentApi, { submitEsewaForm } from "../api/payment.api";
 import type { Gateway } from "../types";
 
+type PromoResult = {
+  valid: boolean;
+  discount_type: string;
+  discount_value: number;
+};
+
 const GATEWAY_LABELS: Record<Gateway, string> = {
   khalti: "Khalti",
   esewa: "eSewa",
@@ -21,6 +27,9 @@ export default function CheckoutPage() {
   const subtotal = params.get("subtotal") ?? "0.00";
   const [gateway, setGateway] = useState<Gateway>("khalti");
   const [promoCode, setPromoCode] = useState("");
+  const [promoResult, setPromoResult] = useState<PromoResult | null>(null);
+  const [promoError, setPromoError] = useState("");
+  const [promoLoading, setPromoLoading] = useState(false);
 
   const orderMutation = useMutation({
     mutationFn: () =>
@@ -46,6 +55,29 @@ export default function CheckoutPage() {
     },
   });
 
+  /**
+   * Validate the entered promo code against the payment API.
+   * Updates promoResult with discount details on success.
+   */
+  async function handleValidatePromo() {
+    if (!promoCode.trim()) return;
+    setPromoLoading(true);
+    setPromoError("");
+    setPromoResult(null);
+    try {
+      const result = await paymentApi.validatePromoCode(promoCode.trim());
+      if (result.valid) {
+        setPromoResult(result);
+      } else {
+        setPromoError("Invalid or expired promo code.");
+      }
+    } catch {
+      setPromoError("Could not validate promo code. Please try again.");
+    } finally {
+      setPromoLoading(false);
+    }
+  }
+
   if (!eventId || !registrationId) {
     return (
       <AppLayout variant="user" title="Checkout">
@@ -58,8 +90,20 @@ export default function CheckoutPage() {
     );
   }
 
-  const platformFee = (parseFloat(subtotal) * 0.05).toFixed(2);
-  const total = (parseFloat(subtotal) + parseFloat(platformFee)).toFixed(2);
+  // * compute discount from validated promo code
+  const subtotalNum = parseFloat(subtotal);
+  let discountAmount = 0;
+  if (promoResult?.valid) {
+    if (promoResult.discount_type === "percentage") {
+      discountAmount = (subtotalNum * promoResult.discount_value) / 100;
+    } else {
+      // flat amount discount
+      discountAmount = Math.min(promoResult.discount_value, subtotalNum);
+    }
+  }
+  const discountedSubtotal = Math.max(0, subtotalNum - discountAmount);
+  const platformFee = (discountedSubtotal * 0.05).toFixed(2);
+  const total = (discountedSubtotal + parseFloat(platformFee)).toFixed(2);
 
   return (
     <AppLayout variant="user" title="Checkout">
@@ -73,6 +117,18 @@ export default function CheckoutPage() {
               <span>Subtotal</span>
               <span>NPR {subtotal}</span>
             </div>
+            {discountAmount > 0 && (
+              <div className="flex justify-between text-sm font-['Manrope'] text-green-600">
+                <span>
+                  Discount (
+                  {promoResult?.discount_type === "percentage"
+                    ? `${promoResult.discount_value}%`
+                    : "flat"}
+                  )
+                </span>
+                <span>- NPR {discountAmount.toFixed(2)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-sm font-['Manrope'] text-[#6b6c75]">
               <span>Platform fee (5%)</span>
               <span>NPR {platformFee}</span>
@@ -89,13 +145,37 @@ export default function CheckoutPage() {
             <label className="text-xs font-semibold text-[#19191e] font-['Manrope'] block mb-2">
               Promo code (optional)
             </label>
-            <input
-              type="text"
-              value={promoCode}
-              onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-              placeholder="SAVE10"
-              className="w-full border border-[#e0dfd8] rounded-xl px-4 py-2.5 text-sm font-['Manrope'] focus:outline-none focus:border-[#19191e]"
-            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={promoCode}
+                onChange={(e) => {
+                  setPromoCode(e.target.value.toUpperCase());
+                  // clear previous result when the user edits the code
+                  setPromoResult(null);
+                  setPromoError("");
+                }}
+                onKeyDown={(e) => e.key === "Enter" && handleValidatePromo()}
+                placeholder="SAVE10"
+                className="flex-1 border border-[#e0dfd8] rounded-xl px-4 py-2.5 text-sm font-['Manrope'] focus:outline-none focus:border-[#19191e]"
+              />
+              <button
+                type="button"
+                onClick={handleValidatePromo}
+                disabled={!promoCode.trim() || promoLoading}
+                className="border border-[#e0dfd8] rounded-xl px-4 py-2.5 text-sm font-semibold font-['Manrope'] text-[#19191e] hover:bg-[#f3f2ef] disabled:opacity-50"
+              >
+                {promoLoading ? "..." : "Apply"}
+              </button>
+            </div>
+            {promoError && (
+              <p className="mt-1 text-xs text-red-600 font-['Manrope']">{promoError}</p>
+            )}
+            {promoResult?.valid && (
+              <p className="mt-1 text-xs text-green-600 font-['Manrope'] font-semibold">
+                Promo applied: NPR {discountAmount.toFixed(2)} off
+              </p>
+            )}
           </div>
 
           {/* gateway selection */}

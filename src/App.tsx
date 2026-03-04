@@ -324,7 +324,7 @@ export default function App() {
           }
         />
         <Route
-          path="/org/event-health"
+          path="/org/events/:id/health"
           element={
             <P>
               <EventHealthPage />

@@ -2649,7 +2649,23 @@ function PreferencesTab() {
           <Btn
             label="Request Export"
             icon="download"
-            onClick={() => toast.success("Data export requested. You'll receive an email.")}
+            onClick={async () => {
+              try {
+                const data = await authApi.exportDataJSON();
+                const blob = new Blob([JSON.stringify(data, null, 2)], {
+                  type: "application/json",
+                });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "sansaar-data-export.json";
+                a.click();
+                URL.revokeObjectURL(url);
+                toast.success("Data exported successfully.");
+              } catch {
+                toast.error("Export failed. Please try again.");
+              }
+            }}
           />
         </div>
       </SectionCard>

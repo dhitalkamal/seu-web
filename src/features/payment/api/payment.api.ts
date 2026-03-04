@@ -27,6 +27,18 @@ export type CreatePromoCodePayload = {
   max_usage_count?: number;
 };
 
+export type RefundRecord = {
+  id: string;
+  order_id: string;
+  user_id?: string;
+  amount?: number;
+  reason: string;
+  status: "pending" | "approved" | "rejected" | "completed";
+  gateway?: string;
+  created_at: string;
+  updated_at?: string;
+};
+
 export type Dispute = {
   id: string;
   order_id: string;
@@ -90,6 +102,14 @@ const paymentApi = {
   /** Request a refund for an order. */
   requestRefund: (payload: { order_id: string; reason: string; amount?: number }) =>
     client.post<{ data: unknown }>(`${BASE}/refunds/`, payload).then((r) => r.data.data),
+
+  /** List all refunds, optionally filtered by status. */
+  listRefunds: (status?: string) =>
+    client
+      .get<{ data: RefundRecord[] }>(`${BASE}/refunds/`, {
+        params: status ? { status } : undefined,
+      })
+      .then((r) => r.data.data ?? []),
 
   /** Fetch all orders for the authenticated user, newest first. */
   listMyOrders: () =>

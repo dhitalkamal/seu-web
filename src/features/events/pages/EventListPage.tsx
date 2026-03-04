@@ -1,24 +1,35 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import AppLayout from "@/shared/layouts/AppLayout";
 import { PH, MS, useToast } from "@/shared/components/v8";
 import { usePublicEvents } from "@/features/events/hooks/useEvents";
 import type { Event } from "@/features/events/types/event.types";
+import taxonomyApi from "@/features/taxonomy/api/taxonomy.api";
+import type { EventCategory } from "@/features/taxonomy/api/taxonomy.api";
 
-// * Simple category labels (no fake counts — counts come from API if needed)
-const CATEGORIES: [string, string][] = [
-  ["all", "All"],
-  ["summit", "Summits"],
-  ["workshop", "Workshops"],
-  ["gala", "Galas"],
-  ["lecture", "Lectures"],
-  ["symposium", "Symposia"],
-];
+// * localStorage key for saved events (shared with mobile app)
+const SAVED_EVENTS_KEY = "sansaar-saved-events";
+
+/** Read saved event IDs from localStorage. */
+function loadSavedIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(SAVED_EVENTS_KEY);
+    return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+/** Persist saved event IDs to localStorage. */
+function persistSavedIds(ids: Set<string>): void {
+  localStorage.setItem(SAVED_EVENTS_KEY, JSON.stringify(Array.from(ids)));
+}
 
 /**
  * Calculates the capacity-fill percentage for a given event.
  * @param ev - the event to check
- * @returns fill percentage 0–100
+ * @returns fill percentage 0-100
  */
 function fillPercent(ev: Event): number {
   if (ev.capacity <= 0) return 0;
@@ -35,15 +46,90 @@ function shortDate(iso: string): string {
   return `${d.toLocaleDateString("en-US", { month: "short" }).toUpperCase()} ${d.getDate()}`;
 }
 
-/** Discover events — live data, featured hero, category filter, event grid. */
+/** Discover events - live data, featured hero, category filter, event grid. */
 export default function EventListPage() {
   const navigate = useNavigate();
   const { toast, toastEl } = useToast();
-  const [cat, setCat] = useState("all");
+  const [searchParams] = useSearchParams();
 
-  const { data, isLoading } = usePublicEvents(cat === "all" ? undefined : { category: cat });
-  const events = data?.results ?? [];
+  // * category filter uses real category IDs from the API
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
+
+  // * client-side filter panel state
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filterFree, setFilterFree] = useState<boolean | undefined>(undefined);
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterDateTo, setFilterDateTo] = useState("");
+  const filterRef = useRef<HTMLDivElement>(null);
+
+  // * saved events state (backed by localStorage)
+  const [savedIds, setSavedIds] = useState<Set<string>>(loadSavedIds);
+
+  // * search term populated from URL params (issue 30)
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get("search") ?? "");
+
+  // * sync search from URL on mount
+  useEffect(() => {
+    const s = searchParams.get("search");
+    if (s) setSearchTerm(s);
+  }, [searchParams]);
+
+  // * close filter panel when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setFilterOpen(false);
+      }
+    }
+    if (filterOpen) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [filterOpen]);
+
+  // * fetch real categories from the API (issue 35)
+  const { data: categories } = useQuery<EventCategory[]>({
+    queryKey: ["categories"],
+    queryFn: () => taxonomyApi.listCategories(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // * build filter object for the events query
+  const apiFilters = {
+    ...(selectedCategoryId !== "all" ? { category: selectedCategoryId } : {}),
+    ...(filterFree !== undefined ? { is_free: filterFree } : {}),
+    ...(searchTerm.trim() ? { search: searchTerm.trim() } : {}),
+  };
+
+  const { data, isLoading } = usePublicEvents(Object.keys(apiFilters).length ? apiFilters : undefined);
+  let events = data?.results ?? [];
+
+  // * client-side date range filter (API may not support it; apply after fetch)
+  if (filterDateFrom) {
+    const from = new Date(filterDateFrom).getTime();
+    events = events.filter((ev) => new Date(ev.start_date).getTime() >= from);
+  }
+  if (filterDateTo) {
+    const to = new Date(filterDateTo).getTime();
+    events = events.filter((ev) => new Date(ev.start_date).getTime() <= to);
+  }
+
   const featured = events.length > 0 ? events[0] : null;
+
+  /** Toggle save for an event, persist to localStorage. */
+  function toggleSave(eventId: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    setSavedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(eventId)) {
+        next.delete(eventId);
+        toast("Removed from saved events");
+      } else {
+        next.add(eventId);
+        toast("Event saved");
+      }
+      persistSavedIds(next);
+      return next;
+    });
+  }
 
   return (
     <AppLayout variant="user">
@@ -54,11 +140,176 @@ export default function EventListPage() {
         sub="Browse upcoming events across the platform."
         actions={
           <>
-            <button className="btn-sm">
-              <MS n="filter_alt" size={13} />
-              Filter
-            </button>
-            <button className="btn-sm">
+            {/* filter button with dropdown panel (issue 19) */}
+            <div style={{ position: "relative" }} ref={filterRef}>
+              <button
+                className={`btn-sm${filterOpen ? " primary" : ""}`}
+                onClick={() => setFilterOpen((o) => !o)}
+              >
+                <MS n="filter_alt" size={13} />
+                Filter
+                {(filterFree !== undefined || filterDateFrom || filterDateTo) && (
+                  <span
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background: "#e83151",
+                      display: "inline-block",
+                      marginLeft: 2,
+                    }}
+                  />
+                )}
+              </button>
+
+              {filterOpen && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "calc(100% + 8px)",
+                    right: 0,
+                    zIndex: 50,
+                    background: "var(--surface)",
+                    border: "1px solid var(--outline)",
+                    borderRadius: 12,
+                    padding: 16,
+                    width: 260,
+                    boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 14,
+                  }}
+                >
+                  {/* price filter */}
+                  <div>
+                    <p
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        letterSpacing: "0.1em",
+                        textTransform: "uppercase",
+                        color: "var(--on-mut)",
+                        fontFamily: "JetBrains Mono, monospace",
+                        marginBottom: 8,
+                      }}
+                    >
+                      Price
+                    </p>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      {(
+                        [
+                          { label: "All", value: undefined },
+                          { label: "Free", value: true },
+                          { label: "Paid", value: false },
+                        ] as { label: string; value: boolean | undefined }[]
+                      ).map(({ label, value }) => (
+                        <button
+                          key={label}
+                          onClick={() => setFilterFree(value)}
+                          style={{
+                            padding: "5px 12px",
+                            borderRadius: 7,
+                            border:
+                              filterFree === value ? "none" : "1px solid var(--mid)",
+                            background:
+                              filterFree === value ? "#050a26" : "transparent",
+                            color: filterFree === value ? "white" : "var(--on-var)",
+                            fontSize: 12,
+                            fontWeight: 600,
+                            fontFamily: "Manrope, sans-serif",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* date range */}
+                  <div>
+                    <p
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        letterSpacing: "0.1em",
+                        textTransform: "uppercase",
+                        color: "var(--on-mut)",
+                        fontFamily: "JetBrains Mono, monospace",
+                        marginBottom: 8,
+                      }}
+                    >
+                      Date range
+                    </p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <input
+                        type="date"
+                        value={filterDateFrom}
+                        onChange={(e) => setFilterDateFrom(e.target.value)}
+                        style={{
+                          width: "100%",
+                          padding: "6px 10px",
+                          borderRadius: 8,
+                          border: "1px solid var(--mid)",
+                          background: "var(--low)",
+                          fontSize: 12,
+                          color: "var(--on-bg)",
+                          fontFamily: "Manrope, sans-serif",
+                          outline: "none",
+                          boxSizing: "border-box",
+                        }}
+                      />
+                      <input
+                        type="date"
+                        value={filterDateTo}
+                        onChange={(e) => setFilterDateTo(e.target.value)}
+                        style={{
+                          width: "100%",
+                          padding: "6px 10px",
+                          borderRadius: 8,
+                          border: "1px solid var(--mid)",
+                          background: "var(--low)",
+                          fontSize: 12,
+                          color: "var(--on-bg)",
+                          fontFamily: "Manrope, sans-serif",
+                          outline: "none",
+                          boxSizing: "border-box",
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* clear button */}
+                  <button
+                    onClick={() => {
+                      setFilterFree(undefined);
+                      setFilterDateFrom("");
+                      setFilterDateTo("");
+                      setFilterOpen(false);
+                    }}
+                    style={{
+                      padding: "6px 0",
+                      borderRadius: 7,
+                      border: "1px solid var(--mid)",
+                      background: "transparent",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: "var(--on-var)",
+                      fontFamily: "Manrope, sans-serif",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Clear filters
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* calendar view - coming soon (issue 19) */}
+            <button
+              className="btn-sm"
+              onClick={() => toast("Calendar view coming soon")}
+            >
               <MS n="event" size={13} />
               Calendar view
             </button>
@@ -66,16 +317,57 @@ export default function EventListPage() {
         }
       />
 
-      {/* category chips */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
-        {CATEGORIES.map(([k, l]) => (
+      {/* search bar - populated from URL params (issue 30) */}
+      {searchTerm && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            marginBottom: 12,
+            padding: "8px 14px",
+            background: "var(--low)",
+            borderRadius: 10,
+            border: "1px solid var(--outline)",
+          }}
+        >
+          <MS n="search" size={14} style={{ color: "var(--on-mut)" }} />
+          <span style={{ fontSize: 13, fontFamily: "Manrope, sans-serif", flex: 1, color: "var(--on-bg)" }}>
+            Showing results for: <strong>{searchTerm}</strong>
+          </span>
           <button
-            key={k}
-            className={`aud-chip${cat === k ? " on" : ""}`}
-            onClick={() => setCat(k)}
+            onClick={() => setSearchTerm("")}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: 2,
+              display: "grid",
+              placeItems: "center",
+            }}
+          >
+            <MS n="close" size={14} style={{ color: "var(--on-mut)" }} />
+          </button>
+        </div>
+      )}
+
+      {/* category chips - real IDs from API (issue 35) */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+        <button
+          className={`aud-chip${selectedCategoryId === "all" ? " on" : ""}`}
+          onClick={() => setSelectedCategoryId("all")}
+          style={{ margin: 0 }}
+        >
+          All
+        </button>
+        {(categories ?? []).map((cat) => (
+          <button
+            key={cat.id}
+            className={`aud-chip${selectedCategoryId === cat.id ? " on" : ""}`}
+            onClick={() => setSelectedCategoryId(cat.id)}
             style={{ margin: 0 }}
           >
-            {l}
+            {cat.name}
           </button>
         ))}
       </div>
@@ -170,6 +462,7 @@ export default function EventListPage() {
                   ? "Register · Free"
                   : `Register · NPR ${parseFloat(featured.price).toLocaleString()}`}
               </button>
+              {/* save to localStorage (issue 20) */}
               <button
                 className="btn-sm"
                 style={{
@@ -177,13 +470,10 @@ export default function EventListPage() {
                   color: "white",
                   borderColor: "rgba(255,255,255,0.15)",
                 }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toast("Saved");
-                }}
+                onClick={(e) => toggleSave(featured.id, e)}
               >
-                <MS n="bookmark_add" size={13} />
-                Save
+                <MS n={savedIds.has(featured.id) ? "bookmark" : "bookmark_add"} size={13} />
+                {savedIds.has(featured.id) ? "Saved" : "Save"}
               </button>
             </div>
           </div>
@@ -303,15 +593,29 @@ export default function EventListPage() {
                   </div>
                   <div className="disc-foot">
                     <span className="disc-price">{priceLabel}</span>
-                    <button
-                      className="btn-sm primary"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/events/${ev.id}`);
-                      }}
-                    >
-                      View
-                    </button>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                      {/* per-card save (issue 20) */}
+                      <button
+                        className="btn-sm"
+                        onClick={(e) => toggleSave(ev.id, e)}
+                        style={{ fontSize: 11 }}
+                      >
+                        <MS
+                          n={savedIds.has(ev.id) ? "bookmark" : "bookmark_add"}
+                          size={12}
+                        />
+                        {savedIds.has(ev.id) ? "Saved" : "Save"}
+                      </button>
+                      <button
+                        className="btn-sm primary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/events/${ev.id}`);
+                        }}
+                      >
+                        View
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

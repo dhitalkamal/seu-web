@@ -107,13 +107,13 @@ export default function EventDetailPage() {
 
       // ! if the user got waitlisted, don't go to checkout
       if ("waitlisted" in result && result.waitlisted) {
-        navigate(`/registrations?waitlisted=${event.id}`);
+        navigate("/tickets");
         return;
       }
 
       // * free events -registration is enough, no payment needed
       if (event.is_free) {
-        navigate(`/registrations?confirmed=${event.id}`);
+        navigate("/tickets");
         return;
       }
 

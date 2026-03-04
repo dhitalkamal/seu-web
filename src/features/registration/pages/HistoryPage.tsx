@@ -1,7 +1,10 @@
+import { useState, useEffect } from "react";
 import AppLayout from "@/shared/layouts/AppLayout";
 import { PH, KPI, MS, useToast } from "@/shared/components/v8";
 import { useMyRegistrations } from "@/features/registration/hooks/useRegistrations";
 import type { Registration } from "@/features/registration/types";
+import eventsApi from "@/features/events/api/events.api";
+import type { Event } from "@/features/events/types/event.types";
 
 /**
  * Formats an ISO date string to "Mon DD, YYYY".
@@ -36,10 +39,30 @@ export default function HistoryPage() {
   const { toast, toastEl } = useToast();
   const { data: registrations, isLoading } = useMyRegistrations();
 
+  // * event detail cache keyed by event_id (issue 25)
+  const [eventCache, setEventCache] = useState<Record<string, Event>>({});
+
   // * Past = checked_in, cancelled, no_show (i.e. non-active)
   const past: Registration[] = (registrations ?? []).filter(
     (r) => r.status === "checked_in" || r.status === "cancelled" || r.status === "no_show"
   );
+
+  // * fetch event details for each unique event_id in past registrations
+  useEffect(() => {
+    const uniqueIds = [...new Set(past.map((r) => r.event_id))];
+    for (const id of uniqueIds) {
+      if (eventCache[id]) continue;
+      eventsApi.getEvent(id).then((res) => {
+        const ev = "data" in res ? res.data : (res as unknown as Event);
+        if (ev) setEventCache((prev) => ({ ...prev, [id]: ev }));
+      }).catch(() => {
+        // leave cache empty; UI falls back to truncated UUID
+      });
+    }
+  // only re-run when the set of past registration event IDs changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [past.map((r) => r.event_id).join(",")]);
+
 
   const byYear = buildYearlyCounts(past);
   const maxCount = Math.max(1, ...byYear.map((y) => y.v));
@@ -56,7 +79,7 @@ export default function HistoryPage() {
         title="Past events"
         sub="Every programme you've attended."
         actions={
-          <button className="btn-sm" onClick={() => toast("Year in review")}>
+          <button className="btn-sm" onClick={() => toast("Year in review coming soon")}>
             <MS n="auto_awesome" size={13} />
             Year in review
           </button>
@@ -68,16 +91,16 @@ export default function HistoryPage() {
           icon="event_available"
           color="lav"
           label="Attended"
-          value={totalAttended > 0 ? String(totalAttended) : "—"}
+          value={totalAttended > 0 ? String(totalAttended) : "-"}
         />
-        <KPI icon="payments" color="pch" label="Total spent" value="—" />
+        <KPI icon="payments" color="pch" label="Total spent" value="-" />
         <KPI
           icon="domain"
           color="mnt"
           label="Unique events"
-          value={uniqueEvents > 0 ? String(uniqueEvents) : "—"}
+          value={uniqueEvents > 0 ? String(uniqueEvents) : "-"}
         />
-        <KPI icon="star" color="crl" label="Avg rating given" value="—" />
+        <KPI icon="star" color="crl" label="Avg rating given" value="-" />
       </div>
 
       {isLoading && (
@@ -201,7 +224,8 @@ export default function HistoryPage() {
                     <td style={{ fontWeight: 700, fontFamily: "JetBrains Mono, monospace" }}>
                       {r.registration_code}
                     </td>
-                    <td>{r.event_id.slice(0, 8)}</td>
+                    {/* show event title if fetched, else short UUID (issue 25) */}
+                    <td>{eventCache[r.event_id] ? eventCache[r.event_id].title : r.event_id.slice(0, 8)}</td>
                     <td>
                       <span
                         className={`pill ${r.status === "checked_in" ? "active" : r.status === "cancelled" ? "muted" : "draft"}`}
