@@ -45,6 +45,10 @@ const orgApi = {
 
   // * Members
 
+  /** List all members of an organization. */
+  listMembers: (orgId: string) =>
+    client.get<{ data: OrgMember[] }>(`${BASE}/${orgId}/members/`).then(unwrap),
+
   /** Add a member to the organization. */
   addMember: (orgId: string, payload: AddMemberRequest) =>
     client.post<{ data: OrgMember }>(`${BASE}/${orgId}/members/`, payload).then(unwrap),

@@ -1,41 +1,51 @@
 import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import AppLayout from "@/shared/layouts/AppLayout";
 import { MS } from "@/shared/components/v8";
+import volunteerRolesApi from "@/features/volunteer-apps/api/volunteer-roles.api";
+import type { VolunteerRole } from "@/features/volunteer-apps/api/volunteer-roles.api";
 
-// * ─── Types ──────────────────────────────────────────────────────────────────
-
-type ApplicationStatus = "open" | "applied" | "accepted" | "rejected";
-
-/** Open volunteer role — listed for users to browse and apply. */
-type VolunteerRole = {
-  id: string;
-  event_name: string;
-  role_title: string;
-  description: string;
-  event_date: string;
-  venue: string;
-  slots_available: number;
-  slots_total: number;
-  status: ApplicationStatus;
-  skills: string[];
-};
+// * types
 
 type Tab = "browse" | "applied" | "accepted" | "rejected";
 
-// TODO: replace with real API hook
-/** Placeholder — no roles until API is connected. */
-const ROLES: VolunteerRole[] = [];
-
-// * ─── Component ──────────────────────────────────────────────────────────────
+// * component
 
 /** Browse open volunteer roles and manage applications. */
 export default function VolunteerApplicationsPage() {
   const [tab, setTab] = useState<Tab>("browse");
+  const [applying, setApplying] = useState<string | null>(null);
+  const qc = useQueryClient();
 
-  const filtered =
-    tab === "browse"
-      ? ROLES.filter((r) => r.status === "open")
-      : ROLES.filter((r) => r.status === tab);
+  // fetch all roles from the backend
+  const { data: roles = [], isLoading } = useQuery({
+    queryKey: ["volunteer-roles"],
+    queryFn: () => volunteerRolesApi.listRoles(),
+  });
+
+  // apply mutation - fires apply() then invalidates the roles query so status re-renders
+  const applyMutation = useMutation({
+    mutationFn: (roleId: string) => volunteerRolesApi.apply(roleId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["volunteer-roles"] });
+      setApplying(null);
+    },
+    onError: () => setApplying(null),
+  });
+
+  /**
+   * Derive slot status for a role based on filled/slots ratio.
+   *
+   * @param r - volunteer role
+   * @returns "open" when slots remain, "full" when all slots are taken
+   */
+  function roleStatus(r: VolunteerRole): "open" | "full" {
+    return r.filled < r.slots ? "open" : "full";
+  }
+
+  // filter by tab - "browse" shows all open roles, other tabs need a /my-applications endpoint
+  const filtered: VolunteerRole[] =
+    tab === "browse" ? roles.filter((r) => roleStatus(r) === "open") : [];
 
   const tabs: { key: Tab; label: string; icon: string }[] = [
     { key: "browse", label: "Browse Roles", icon: "search" },
@@ -81,8 +91,26 @@ export default function VolunteerApplicationsPage() {
         ))}
       </div>
 
+      {/* loading state */}
+      {isLoading && (
+        <div
+          style={{
+            background: "var(--surface)",
+            border: "1px solid var(--outline)",
+            borderRadius: 14,
+            padding: "56px 28px",
+            textAlign: "center",
+            color: "var(--on-mut)",
+            fontFamily: "Manrope, sans-serif",
+            fontSize: 13,
+          }}
+        >
+          Loading roles...
+        </div>
+      )}
+
       {/* empty state */}
-      {filtered.length === 0 && (
+      {!isLoading && filtered.length === 0 && (
         <div
           style={{
             background: "var(--surface)",
@@ -132,172 +160,109 @@ export default function VolunteerApplicationsPage() {
             }}
           >
             {tab === "browse"
-              ? "Check back later — organisers post new volunteer roles as events approach."
+              ? "Check back later - organisers post new volunteer roles as events approach."
               : `Your ${tab} applications will appear here once you start applying for roles.`}
           </p>
         </div>
       )}
 
       {/* role cards */}
-      {filtered.length > 0 && (
+      {!isLoading && filtered.length > 0 && (
         <div className="flex flex-col gap-4">
-          {filtered.map((role) => (
-            <div
-              key={role.id}
-              style={{
-                background: "var(--surface)",
-                border: "1px solid var(--outline)",
-                borderRadius: 14,
-                padding: 20,
-                display: "flex",
-                gap: 18,
-              }}
-            >
-              {/* icon */}
+          {filtered.map((role) => {
+            const isApplying = applying === role.id && applyMutation.isPending;
+
+            return (
               <div
-                className="grid place-items-center flex-shrink-0"
+                key={role.id}
                 style={{
-                  width: 52,
-                  height: 52,
-                  borderRadius: 13,
-                  background:
-                    role.status === "accepted"
-                      ? "#dcfce7"
-                      : role.status === "rejected"
-                        ? "#fee2e2"
-                        : "#dbeafe",
+                  background: "var(--surface)",
+                  border: "1px solid var(--outline)",
+                  borderRadius: 14,
+                  padding: 20,
+                  display: "flex",
+                  gap: 18,
                 }}
               >
-                <span
-                  className="ms"
-                  style={{
-                    fontSize: 26,
-                    color:
-                      role.status === "accepted"
-                        ? "#166534"
-                        : role.status === "rejected"
-                          ? "#991b1b"
-                          : "#1e40af",
-                  }}
+                {/* icon */}
+                <div
+                  className="grid place-items-center shrink-0"
+                  style={{ width: 52, height: 52, borderRadius: 13, background: "#dbeafe" }}
                 >
-                  {role.status === "accepted"
-                    ? "check_circle"
-                    : role.status === "rejected"
-                      ? "cancel"
-                      : "assignment_ind"}
-                </span>
-              </div>
-
-              {/* details */}
-              <div className="flex-1 min-w-0">
-                <p
-                  style={{
-                    fontFamily: "'Space Grotesk', sans-serif",
-                    fontWeight: 700,
-                    fontSize: 16,
-                    letterSpacing: "-0.02em",
-                    color: "var(--on-bg)",
-                    marginBottom: 4,
-                  }}
-                >
-                  {role.role_title}
-                </p>
-                <p
-                  style={{
-                    fontSize: 13,
-                    color: "var(--on-var)",
-                    fontFamily: "Manrope, sans-serif",
-                    marginBottom: 8,
-                  }}
-                >
-                  {role.event_name}
-                </p>
-                <p
-                  style={{
-                    fontSize: 12.5,
-                    color: "var(--on-var)",
-                    fontFamily: "Manrope, sans-serif",
-                    lineHeight: 1.5,
-                    marginBottom: 10,
-                  }}
-                >
-                  {role.description}
-                </p>
-
-                {/* metadata row */}
-                <div className="flex items-center gap-4 flex-wrap">
-                  <span
-                    className="flex items-center gap-1"
-                    style={{
-                      fontSize: 12,
-                      color: "var(--on-mut)",
-                      fontFamily: "Manrope, sans-serif",
-                    }}
-                  >
-                    <span className="ms" style={{ fontSize: 14 }}>
-                      calendar_today
-                    </span>
-                    {new Date(role.event_date).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                  </span>
-                  <span
-                    className="flex items-center gap-1"
-                    style={{
-                      fontSize: 12,
-                      color: "var(--on-mut)",
-                      fontFamily: "Manrope, sans-serif",
-                    }}
-                  >
-                    <span className="ms" style={{ fontSize: 14 }}>
-                      location_on
-                    </span>
-                    {role.venue}
-                  </span>
-                  <span
-                    className="flex items-center gap-1"
-                    style={{
-                      fontSize: 12,
-                      color: "var(--on-mut)",
-                      fontFamily: "Manrope, sans-serif",
-                    }}
-                  >
-                    <span className="ms" style={{ fontSize: 14 }}>
-                      group
-                    </span>
-                    {role.slots_available}/{role.slots_total} spots
+                  <span className="ms" style={{ fontSize: 26, color: "#1e40af" }}>
+                    assignment_ind
                   </span>
                 </div>
 
-                {/* skill tags */}
-                {role.skills.length > 0 && (
-                  <div className="flex gap-2 flex-wrap" style={{ marginTop: 10 }}>
-                    {role.skills.map((s) => (
-                      <span
-                        key={s}
-                        style={{
-                          padding: "3px 10px",
-                          borderRadius: 6,
-                          background: "var(--low)",
-                          fontSize: 11,
-                          fontWeight: 600,
-                          color: "var(--on-var)",
-                          fontFamily: "Manrope, sans-serif",
-                        }}
-                      >
-                        {s}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
+                {/* details */}
+                <div className="flex-1 min-w-0">
+                  <p
+                    style={{
+                      fontFamily: "'Space Grotesk', sans-serif",
+                      fontWeight: 700,
+                      fontSize: 16,
+                      letterSpacing: "-0.02em",
+                      color: "var(--on-bg)",
+                      marginBottom: 4,
+                    }}
+                  >
+                    {role.title}
+                  </p>
+                  <p
+                    style={{
+                      fontSize: 12.5,
+                      color: "var(--on-var)",
+                      fontFamily: "Manrope, sans-serif",
+                      lineHeight: 1.5,
+                      marginBottom: 10,
+                    }}
+                  >
+                    {role.description}
+                  </p>
 
-              {/* action */}
-              <div className="flex flex-col gap-2 flex-shrink-0 justify-center">
-                {role.status === "open" && (
+                  {/* metadata row */}
+                  <div className="flex items-center gap-4 flex-wrap">
+                    <span
+                      className="flex items-center gap-1"
+                      style={{
+                        fontSize: 12,
+                        color: "var(--on-mut)",
+                        fontFamily: "Manrope, sans-serif",
+                      }}
+                    >
+                      <span className="ms" style={{ fontSize: 14 }}>
+                        calendar_today
+                      </span>
+                      {new Date(role.created_at).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </span>
+                    <span
+                      className="flex items-center gap-1"
+                      style={{
+                        fontSize: 12,
+                        color: "var(--on-mut)",
+                        fontFamily: "Manrope, sans-serif",
+                      }}
+                    >
+                      <span className="ms" style={{ fontSize: 14 }}>
+                        group
+                      </span>
+                      {role.slots - role.filled}/{role.slots} spots left
+                    </span>
+                  </div>
+                </div>
+
+                {/* action */}
+                <div className="flex flex-col gap-2 shrink-0 justify-center">
                   <button
+                    disabled={isApplying}
+                    onClick={() => {
+                      setApplying(role.id);
+                      applyMutation.mutate(role.id);
+                    }}
                     style={{
                       padding: "9px 20px",
                       borderRadius: 9,
@@ -307,64 +272,20 @@ export default function VolunteerApplicationsPage() {
                       fontFamily: "Manrope, sans-serif",
                       fontSize: 13,
                       fontWeight: 700,
-                      cursor: "pointer",
+                      cursor: isApplying ? "not-allowed" : "pointer",
+                      opacity: isApplying ? 0.7 : 1,
                       display: "flex",
                       alignItems: "center",
                       gap: 6,
                     }}
                   >
                     <MS n="send" size={14} />
-                    Apply
+                    {isApplying ? "Applying..." : "Apply"}
                   </button>
-                )}
-                {role.status === "applied" && (
-                  <span
-                    style={{
-                      padding: "6px 14px",
-                      borderRadius: 8,
-                      background: "#dbeafe",
-                      color: "#1e40af",
-                      fontSize: 12,
-                      fontWeight: 700,
-                      fontFamily: "Manrope, sans-serif",
-                    }}
-                  >
-                    Pending
-                  </span>
-                )}
-                {role.status === "accepted" && (
-                  <span
-                    style={{
-                      padding: "6px 14px",
-                      borderRadius: 8,
-                      background: "#dcfce7",
-                      color: "#166534",
-                      fontSize: 12,
-                      fontWeight: 700,
-                      fontFamily: "Manrope, sans-serif",
-                    }}
-                  >
-                    Accepted
-                  </span>
-                )}
-                {role.status === "rejected" && (
-                  <span
-                    style={{
-                      padding: "6px 14px",
-                      borderRadius: 8,
-                      background: "#fee2e2",
-                      color: "#991b1b",
-                      fontSize: 12,
-                      fontWeight: 700,
-                      fontFamily: "Manrope, sans-serif",
-                    }}
-                  >
-                    Rejected
-                  </span>
-                )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </AppLayout>

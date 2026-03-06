@@ -1,43 +1,67 @@
-import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import AppLayout from "@/shared/layouts/AppLayout";
 import { MS } from "@/shared/components/v8";
+import checkinApi from "@/features/checkin/api/checkin.api";
 
-// * ─── Types ──────────────────────────────────────────────────────────────────
+// * types
 
-/** Single hours log entry — one shift = one entry. */
-type HoursEntry = {
+/** Shape expected from the shifts endpoint. */
+type Shift = {
   id: string;
-  event_name: string;
-  role: string;
-  date: string;
-  hours: number;
-  status: "approved" | "pending" | "rejected";
-  notes: string;
+  event_name?: string;
+  role?: string;
+  start_time?: string;
+  end_time?: string;
+  status?: string;
+  notes?: string;
 };
 
-// TODO: wire to volunteer hours API
-/** Placeholder — empty until API connected. */
-const ENTRIES: HoursEntry[] = [];
-
-/** Status badge styles. */
+/** Status badge colors. */
 const STATUS_STYLES: Record<string, { bg: string; color: string }> = {
   approved: { bg: "#dcfce7", color: "#166534" },
   pending: { bg: "#dbeafe", color: "#1e40af" },
   rejected: { bg: "#fee2e2", color: "#991b1b" },
 };
 
-// * ─── Component ──────────────────────────────────────────────────────────────
+/**
+ * Compute hours between two ISO datetime strings.
+ * Returns 0 when either value is missing or unparseable.
+ *
+ * @param start - ISO start datetime string
+ * @param end - ISO end datetime string
+ * @returns hours as decimal
+ */
+function computeHours(start?: string, end?: string): number {
+  if (!start || !end) return 0;
+  const ms = new Date(end).getTime() - new Date(start).getTime();
+  if (Number.isNaN(ms) || ms < 0) return 0;
+  return Math.round((ms / 3_600_000) * 10) / 10;
+}
 
-/** Hours log page — track volunteered time with approval status. */
+// * component
+
+/** Hours log page - track volunteered time with approval status. */
 export default function VolunteerHoursPage() {
-  const [entries] = useState<HoursEntry[]>(ENTRIES);
+  // fetch volunteer shifts from the check-in service
+  const { data: raw = [], isLoading } = useQuery({
+    queryKey: ["volunteer-shifts"],
+    queryFn: checkinApi.getVolunteerShifts,
+  });
 
-  const totalHours = entries
-    .filter((e) => e.status === "approved")
-    .reduce((sum, e) => sum + e.hours, 0);
-  const pendingHours = entries
-    .filter((e) => e.status === "pending")
-    .reduce((sum, e) => sum + e.hours, 0);
+  // cast unknown[] from API to local Shift type
+  const shifts = raw as Shift[];
+
+  const approvedShifts = shifts.filter((s) => s.status === "approved");
+  const pendingShifts = shifts.filter((s) => s.status === "pending");
+
+  const totalHours = approvedShifts.reduce(
+    (sum, s) => sum + computeHours(s.start_time, s.end_time),
+    0
+  );
+  const pendingHours = pendingShifts.reduce(
+    (sum, s) => sum + computeHours(s.start_time, s.end_time),
+    0
+  );
 
   return (
     <AppLayout
@@ -87,7 +111,7 @@ export default function VolunteerHoursPage() {
               lineHeight: 1,
             }}
           >
-            {totalHours > 0 ? totalHours : "—"}
+            {totalHours > 0 ? `${totalHours}h` : "0h"}
           </p>
         </div>
 
@@ -130,7 +154,7 @@ export default function VolunteerHoursPage() {
               lineHeight: 1,
             }}
           >
-            {pendingHours > 0 ? pendingHours : "—"}
+            {pendingHours > 0 ? `${pendingHours}h` : "0h"}
           </p>
         </div>
 
@@ -173,13 +197,31 @@ export default function VolunteerHoursPage() {
               lineHeight: 1,
             }}
           >
-            {entries.length > 0 ? entries.length : "—"}
+            {shifts.length}
           </p>
         </div>
       </div>
 
+      {/* loading */}
+      {isLoading && (
+        <div
+          style={{
+            background: "var(--surface)",
+            border: "1px solid var(--outline)",
+            borderRadius: 14,
+            padding: "56px 28px",
+            textAlign: "center",
+            color: "var(--on-mut)",
+            fontFamily: "Manrope, sans-serif",
+            fontSize: 13,
+          }}
+        >
+          Loading shifts...
+        </div>
+      )}
+
       {/* hours table or empty state */}
-      {entries.length === 0 ? (
+      {!isLoading && shifts.length === 0 && (
         <div
           style={{
             background: "var(--surface)",
@@ -225,7 +267,9 @@ export default function VolunteerHoursPage() {
             Your volunteered hours will appear here once organisers confirm your shift attendance.
           </p>
         </div>
-      ) : (
+      )}
+
+      {!isLoading && shifts.length > 0 && (
         <div
           style={{
             background: "var(--surface)",
@@ -243,7 +287,7 @@ export default function VolunteerHoursPage() {
                 letterSpacing: "-0.02em",
               }}
             >
-              All Hours
+              All Shifts
             </p>
           </div>
           <div style={{ overflowX: "auto" }}>
@@ -259,20 +303,23 @@ export default function VolunteerHoursPage() {
                 </tr>
               </thead>
               <tbody>
-                {entries.map((e) => {
-                  const st = STATUS_STYLES[e.status] ?? STATUS_STYLES.pending;
+                {shifts.map((s) => {
+                  const st = STATUS_STYLES[s.status ?? "pending"] ?? STATUS_STYLES.pending;
+                  const hrs = computeHours(s.start_time, s.end_time);
                   return (
-                    <tr key={e.id}>
-                      <td style={{ fontWeight: 600 }}>{e.event_name}</td>
-                      <td>{e.role}</td>
+                    <tr key={s.id}>
+                      <td style={{ fontWeight: 600 }}>{s.event_name ?? "Unknown event"}</td>
+                      <td>{s.role ?? "Volunteer"}</td>
                       <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12 }}>
-                        {new Date(e.date).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                        })}
+                        {s.start_time
+                          ? new Date(s.start_time).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                            })
+                          : "TBD"}
                       </td>
                       <td style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>
-                        {e.hours}h
+                        {hrs > 0 ? `${hrs}h` : "TBD"}
                       </td>
                       <td>
                         <span
@@ -287,7 +334,7 @@ export default function VolunteerHoursPage() {
                             textTransform: "capitalize",
                           }}
                         >
-                          {e.status}
+                          {s.status ?? "pending"}
                         </span>
                       </td>
                       <td
@@ -300,7 +347,7 @@ export default function VolunteerHoursPage() {
                           whiteSpace: "nowrap",
                         }}
                       >
-                        {e.notes || "—"}
+                        {s.notes || "No notes"}
                       </td>
                     </tr>
                   );

@@ -4,6 +4,24 @@ import client from "@/shared/api/client";
 
 const BASE = "/intelligence/api/v1";
 
+export type ReportFormat = "csv" | "pdf" | "excel" | "json";
+
+export type ReportJob = {
+  job_id: string;
+  status: "pending" | "running" | "completed" | "failed";
+  format: ReportFormat;
+  download_url?: string;
+  created_at: string;
+  completed_at?: string;
+  error?: string;
+};
+
+export type GenerateReportPayload = {
+  report_type: string;
+  format: ReportFormat;
+  filters?: Record<string, unknown>;
+};
+
 export type NlpSearchResult = {
   keywords: string[];
   language: string;
@@ -124,6 +142,23 @@ const intelligenceApi = {
     client
       .post<{ data: { score: number } }>(`${BASE}/nlp/similarity/score`, { text1, text2 })
       .then((r) => r.data.data),
+
+  /** Kick off an async report generation job. */
+  generateReport: (payload: GenerateReportPayload) =>
+    client.post<{ data: ReportJob }>(`${BASE}/reports/generate/`, payload).then((r) => r.data.data),
+
+  /**
+   * Poll a report generation job by ID until it completes or fails.
+   *
+   * @param jobId - job ID returned by generateReport
+   * @returns current job state including download_url when completed
+   */
+  pollReportJob: (jobId: string) =>
+    client.get<{ data: ReportJob }>(`${BASE}/reports/jobs/${jobId}/`).then((r) => r.data.data),
+
+  /** List all past report jobs for the current user. */
+  listReportJobs: () =>
+    client.get<{ data: ReportJob[] }>(`${BASE}/reports/jobs/`).then((r) => r.data.data ?? []),
 
   /** Send a chat message with history and optional event context to the NLP chat endpoint. */
   chat: (

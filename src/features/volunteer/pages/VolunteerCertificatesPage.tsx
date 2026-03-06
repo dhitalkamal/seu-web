@@ -1,36 +1,48 @@
-import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import AppLayout from "@/shared/layouts/AppLayout";
 import { MS } from "@/shared/components/v8";
+import client from "@/shared/api/client";
 
-// * ─── Types ──────────────────────────────────────────────────────────────────
+// * types
 
-/** Certificate issued to a volunteer after completing an event or training. */
+/** Certificate as returned by the management-service certificates endpoint. */
 type Certificate = {
   id: string;
   title: string;
-  event_name: string;
+  event_name?: string;
   issued_at: string;
-  hours: number;
-  type: "event" | "training" | "achievement";
-  download_url: string;
+  hours?: number;
+  type?: "event" | "training" | "achievement";
+  download_url?: string;
 };
 
-// TODO: wire to certificates API
-/** Placeholder — empty until API connected. */
-const CERTS: Certificate[] = [];
+type ApiOk<T> = { data: T };
 
-/** Badge colors by certificate type. */
+/** Badge colors and icons by certificate type. */
 const TYPE_STYLES: Record<string, { bg: string; color: string; icon: string }> = {
   event: { bg: "#dce1ff", color: "var(--primary)", icon: "event" },
   training: { bg: "#d8efe2", color: "#166534", icon: "school" },
   achievement: { bg: "#ffddae", color: "#604100", icon: "emoji_events" },
 };
 
-// * ─── Component ──────────────────────────────────────────────────────────────
+/**
+ * Fetch the current user's volunteer certificates.
+ *
+ * @returns list of Certificate records
+ */
+async function fetchCertificates(): Promise<Certificate[]> {
+  const res = await client.get<ApiOk<Certificate[]>>("/org/api/v1/volunteers/certificates/");
+  return res.data.data ?? [];
+}
 
-/** Certificates page — view and download earned volunteer certificates. */
+// * component
+
+/** Certificates page - view and download earned volunteer certificates. */
 export default function VolunteerCertificatesPage() {
-  const [certs] = useState<Certificate[]>(CERTS);
+  const { data: certs = [], isLoading } = useQuery({
+    queryKey: ["volunteer-certificates"],
+    queryFn: fetchCertificates,
+  });
 
   return (
     <AppLayout
@@ -39,8 +51,26 @@ export default function VolunteerCertificatesPage() {
       subtitle="Your earned volunteer certificates and achievements."
       crumbs={["Volunteer", "Certificates"]}
     >
+      {/* loading */}
+      {isLoading && (
+        <div
+          style={{
+            background: "var(--surface)",
+            border: "1px solid var(--outline)",
+            borderRadius: 14,
+            padding: "56px 28px",
+            textAlign: "center",
+            color: "var(--on-mut)",
+            fontFamily: "Manrope, sans-serif",
+            fontSize: 13,
+          }}
+        >
+          Loading certificates...
+        </div>
+      )}
+
       {/* empty state */}
-      {certs.length === 0 && (
+      {!isLoading && certs.length === 0 && (
         <div
           style={{
             background: "var(--surface)",
@@ -83,20 +113,20 @@ export default function VolunteerCertificatesPage() {
               margin: "0 auto",
             }}
           >
-            Complete volunteer shifts and training modules to earn certificates. They'll appear here
-            for you to download and share.
+            Complete volunteer shifts and training modules to earn certificates. They will appear
+            here for you to download and share.
           </p>
         </div>
       )}
 
       {/* certificate grid */}
-      {certs.length > 0 && (
+      {!isLoading && certs.length > 0 && (
         <div
           className="grid"
           style={{ gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 16 }}
         >
           {certs.map((cert) => {
-            const ts = TYPE_STYLES[cert.type] ?? TYPE_STYLES.event;
+            const ts = TYPE_STYLES[cert.type ?? "event"] ?? TYPE_STYLES.event;
             return (
               <div
                 key={cert.id}
@@ -107,7 +137,7 @@ export default function VolunteerCertificatesPage() {
                   overflow: "hidden",
                 }}
               >
-                {/* certificate header banner */}
+                {/* header banner */}
                 <div
                   style={{
                     padding: "20px 20px 16px",
@@ -119,7 +149,7 @@ export default function VolunteerCertificatesPage() {
                   }}
                 >
                   <div
-                    className="grid place-items-center flex-shrink-0"
+                    className="grid place-items-center shrink-0"
                     style={{
                       width: 48,
                       height: 48,
@@ -151,7 +181,7 @@ export default function VolunteerCertificatesPage() {
                         fontFamily: "Manrope, sans-serif",
                       }}
                     >
-                      {cert.event_name}
+                      {cert.event_name ?? "General"}
                     </p>
                   </div>
                 </div>
@@ -174,17 +204,19 @@ export default function VolunteerCertificatesPage() {
                         year: "numeric",
                       })}
                     </span>
-                    <span
-                      className="flex items-center gap-1"
-                      style={{
-                        fontSize: 12,
-                        color: "var(--on-mut)",
-                        fontFamily: "Manrope, sans-serif",
-                      }}
-                    >
-                      <MS n="timer" size={13} />
-                      {cert.hours}h logged
-                    </span>
+                    {cert.hours != null && cert.hours > 0 && (
+                      <span
+                        className="flex items-center gap-1"
+                        style={{
+                          fontSize: 12,
+                          color: "var(--on-mut)",
+                          fontFamily: "Manrope, sans-serif",
+                        }}
+                      >
+                        <MS n="timer" size={13} />
+                        {cert.hours}h logged
+                      </span>
+                    )}
                   </div>
                   <span
                     style={{
@@ -200,31 +232,60 @@ export default function VolunteerCertificatesPage() {
                       marginBottom: 14,
                     }}
                   >
-                    {cert.type}
+                    {cert.type ?? "event"}
                   </span>
 
                   <div style={{ paddingTop: 12, borderTop: "1px solid var(--outline)" }}>
-                    <button
-                      style={{
-                        width: "100%",
-                        padding: "9px 0",
-                        borderRadius: 9,
-                        border: "1px solid var(--outline)",
-                        background: "var(--low)",
-                        color: "var(--on-var)",
-                        fontSize: 13,
-                        fontWeight: 600,
-                        fontFamily: "Manrope, sans-serif",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: 6,
-                      }}
-                    >
-                      <MS n="download" size={15} />
-                      Download Certificate
-                    </button>
+                    {cert.download_url ? (
+                      <a
+                        href={cert.download_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          width: "100%",
+                          padding: "9px 0",
+                          borderRadius: 9,
+                          border: "1px solid var(--outline)",
+                          background: "var(--low)",
+                          color: "var(--on-var)",
+                          fontSize: 13,
+                          fontWeight: 600,
+                          fontFamily: "Manrope, sans-serif",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 6,
+                          textDecoration: "none",
+                        }}
+                      >
+                        <MS n="download" size={15} />
+                        Download Certificate
+                      </a>
+                    ) : (
+                      <button
+                        disabled
+                        style={{
+                          width: "100%",
+                          padding: "9px 0",
+                          borderRadius: 9,
+                          border: "1px solid var(--outline)",
+                          background: "var(--low)",
+                          color: "var(--on-mut)",
+                          fontSize: 13,
+                          fontWeight: 600,
+                          fontFamily: "Manrope, sans-serif",
+                          cursor: "not-allowed",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 6,
+                        }}
+                      >
+                        <MS n="download" size={15} />
+                        Not available
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

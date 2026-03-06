@@ -1,24 +1,21 @@
 import AppLayout from "@/shared/layouts/AppLayout";
-import { PH, KPI, MS, useToast } from "@/shared/components/v8";
+import { PH, KPI, MS } from "@/shared/components/v8";
 
-/** Audit log - immutable action table. */
+/** Org-level audit log page. */
 export default function AuditLogPage() {
-  const { toast, toastEl } = useToast();
-
   return (
     <AppLayout variant="org">
-      {toastEl}
       <PH
         crumbs={["Governance", "Audit log"]}
         title="Audit log"
         sub="Every privileged action in this workspace. Immutable, append-only, retained 7 years."
         actions={
           <>
-            <button className="btn-sm" onClick={() => toast("Filter")}>
+            <button className="btn-sm">
               <MS n="filter_alt" size={13} />
               Filter
             </button>
-            <button className="btn-sm" onClick={() => toast("CSV export queued")}>
+            <button className="btn-sm">
               <MS n="download" size={13} />
               Export
             </button>
@@ -31,10 +28,22 @@ export default function AuditLogPage() {
       />
 
       <div className="kpi-grid">
-        <KPI icon="history" color="lav" label="Events (30d)" value="0" />
-        <KPI icon="person" color="pch" label="Distinct actors" value="0" />
-        <KPI icon="warning" color="crl" label="Privileged actions" value="0" />
+        <KPI icon="history" color="lav" label="Events (30d)" value="N/A" />
+        <KPI icon="person" color="pch" label="Distinct actors" value="N/A" />
+        <KPI icon="warning" color="crl" label="Privileged actions" value="N/A" />
         <KPI icon="lock" color="mnt" label="Retention" value="7y" />
+      </div>
+
+      <div className="notice" style={{ borderLeftColor: "var(--primary)" }}>
+        <MS n="info" style={{ color: "var(--primary)" }} />
+        <div>
+          <strong>Audit logging available in the superadmin dashboard</strong>
+          <span>
+            Full workspace audit logs, actor drill-downs, and CSV exports are available to
+            superadmins at the platform level. Organisation-scoped audit history will be available
+            in a future release.
+          </span>
+        </div>
       </div>
 
       <div className="panel">
@@ -49,7 +58,7 @@ export default function AuditLogPage() {
               textTransform: "uppercase",
             }}
           >
-            Newest first · UTC
+            Newest first / UTC
           </span>
         </div>
         <div className="panel-body flush">
@@ -75,7 +84,8 @@ export default function AuditLogPage() {
                     padding: "48px 0",
                   }}
                 >
-                  No data yet
+                  Organisation-scoped audit logs are not yet available. See the superadmin dashboard
+                  for the full audit trail.
                 </td>
               </tr>
             </tbody>
