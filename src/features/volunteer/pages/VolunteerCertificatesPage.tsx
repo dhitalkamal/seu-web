@@ -26,9 +26,9 @@ const TYPE_STYLES: Record<string, { bg: string; color: string; icon: string }> =
 };
 
 /**
- * Fetch the current user's volunteer certificates from the management service.
+ * Fetch the current user's volunteer certificates.
  *
- * @returns list of certificates
+ * @returns list of Certificate records
  */
 async function fetchCertificates(): Promise<Certificate[]> {
   const res = await client.get<ApiOk<Certificate[]>>("/org/api/v1/volunteers/certificates/");
@@ -137,7 +137,7 @@ export default function VolunteerCertificatesPage() {
                   overflow: "hidden",
                 }}
               >
-                {/* certificate header banner */}
+                {/* header banner */}
                 <div
                   style={{
                     padding: "20px 20px 16px",

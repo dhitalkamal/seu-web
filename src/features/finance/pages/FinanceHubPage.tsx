@@ -230,7 +230,6 @@ function OverviewTab() {
 
 // * refunds tab
 
-// filter options for the refund status tabs
 const REFUND_FILTERS = ["All", "Pending", "Approved", "Rejected"] as const;
 type RefundFilter = (typeof REFUND_FILTERS)[number];
 

@@ -12,7 +12,6 @@ type Shift = {
   role?: string;
   start_time?: string;
   end_time?: string;
-  venue?: string;
 };
 
 /**
@@ -31,7 +30,7 @@ function computeHours(start?: string, end?: string): number {
 
 // * component
 
-/** Volunteer overview dashboard: KPIs, next shifts, activity feed, quick links. */
+/** Volunteer overview dashboard: KPIs, next shifts, quick links. */
 export default function VolunteerHomePage() {
   const navigate = useNavigate();
 
@@ -75,13 +74,7 @@ export default function VolunteerHomePage() {
       bg: "#d8efe2",
       color: "#166534",
     },
-    {
-      label: "Avg Rating",
-      value: "N/A",
-      icon: "star",
-      bg: "#ffddae",
-      color: "#604100",
-    },
+    { label: "Avg Rating", value: "N/A", icon: "star", bg: "#ffddae", color: "#604100" },
     {
       label: "Certificates",
       value: "N/A",
@@ -98,7 +91,7 @@ export default function VolunteerHomePage() {
       subtitle="Track your shifts, hours, and impact."
       crumbs={["Volunteer", "Overview"]}
     >
-      {/* upcoming shifts panel - shown when shifts exist */}
+      {/* next shift highlight when shifts exist */}
       {upcomingShifts.length > 0 && (
         <div className="panel" style={{ marginBottom: 18 }}>
           <div className="panel-head">
@@ -128,11 +121,7 @@ export default function VolunteerHomePage() {
                 {upcomingShifts[0].role ?? "Volunteer shift"}
               </p>
               <p
-                style={{
-                  fontSize: 12,
-                  color: "var(--on-mut)",
-                  fontFamily: "Manrope, sans-serif",
-                }}
+                style={{ fontSize: 12, color: "var(--on-mut)", fontFamily: "Manrope, sans-serif" }}
               >
                 {upcomingShifts[0].event_name ?? "Event"} /{" "}
                 {upcomingShifts[0].start_time

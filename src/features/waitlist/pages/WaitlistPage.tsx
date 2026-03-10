@@ -3,11 +3,11 @@ import AppLayout from "@/shared/layouts/AppLayout";
 import { PH, KPI, MS } from "@/shared/components/v8";
 import registrationApi from "@/features/registration/api/registration.api";
 
-/** Waitlist management - FIFO queue table. */
+/** Waitlist management - FIFO queue with auto-promotion notice. */
 export default function WaitlistPage() {
-  // pull registration counts to populate KPIs
+  // pull registration list to surface a waitlisted count in the KPI
   // the participation service does not expose a dedicated waitlist list endpoint;
-  // waitlist auto-promotion is handled server-side when a registration is cancelled
+  // server-side auto-promotion handles slot assignment when cancellations occur
   const { data: registrations = [] } = useQuery({
     queryKey: ["my-registrations"],
     queryFn: registrationApi.listMine,

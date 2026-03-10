@@ -5,7 +5,7 @@ import checkinApi from "@/features/checkin/api/checkin.api";
 
 // * types
 
-/** Shape returned by the shifts endpoint. */
+/** Shape expected from the shifts endpoint. */
 type Shift = {
   id: string;
   event_name?: string;
@@ -29,7 +29,7 @@ const STATUS_STYLES: Record<string, { bg: string; color: string }> = {
  *
  * @param start - ISO start datetime string
  * @param end - ISO end datetime string
- * @returns hours as a decimal number
+ * @returns hours as decimal
  */
 function computeHours(start?: string, end?: string): number {
   if (!start || !end) return 0;
@@ -48,7 +48,7 @@ export default function VolunteerHoursPage() {
     queryFn: checkinApi.getVolunteerShifts,
   });
 
-  // cast the unknown[] from the API to our local Shift type
+  // cast unknown[] from API to local Shift type
   const shifts = raw as Shift[];
 
   const approvedShifts = shifts.filter((s) => s.status === "approved");

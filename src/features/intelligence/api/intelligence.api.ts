@@ -148,10 +148,10 @@ const intelligenceApi = {
     client.post<{ data: ReportJob }>(`${BASE}/reports/generate/`, payload).then((r) => r.data.data),
 
   /**
-   * Poll a report generation job by ID.
-   * Returns the job status and download_url when completed.
+   * Poll a report generation job by ID until it completes or fails.
    *
    * @param jobId - job ID returned by generateReport
+   * @returns current job state including download_url when completed
    */
   pollReportJob: (jobId: string) =>
     client.get<{ data: ReportJob }>(`${BASE}/reports/jobs/${jobId}/`).then((r) => r.data.data),

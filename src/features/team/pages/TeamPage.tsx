@@ -6,20 +6,13 @@ import orgApi from "@/features/orgs/api/org.api";
 import type { OrgMember, OrgMemberRole } from "@/features/orgs/types/org.types";
 import { useOrgStore } from "@/shared/store/org.store";
 
-// * types
-
-type InviteForm = {
-  user_id: string;
-  role: OrgMemberRole;
-};
-
 // * helpers
 
 /**
- * Format the member role label for display.
+ * Capitalise the first letter of a role string.
  *
- * @param role - raw role string
- * @returns capitalised label
+ * @param role - raw role value
+ * @returns formatted label
  */
 function roleLabel(role: OrgMemberRole): string {
   return role.charAt(0).toUpperCase() + role.slice(1);
@@ -35,7 +28,8 @@ export default function TeamPage() {
   const qc = useQueryClient();
 
   const [showInvite, setShowInvite] = useState(false);
-  const [form, setForm] = useState<InviteForm>({ user_id: "", role: "member" });
+  const [userId, setUserId] = useState("");
+  const [role, setRole] = useState<OrgMemberRole>("member");
 
   // fetch org members
   const { data: members = [], isLoading } = useQuery({
@@ -46,19 +40,20 @@ export default function TeamPage() {
 
   // add member mutation
   const inviteMutation = useMutation({
-    mutationFn: () => orgApi.addMember(orgId, { user_id: form.user_id.trim(), role: form.role }),
+    mutationFn: () => orgApi.addMember(orgId, { user_id: userId.trim(), role }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["org-members", orgId] });
       toast("Member added");
       setShowInvite(false);
-      setForm({ user_id: "", role: "member" });
+      setUserId("");
+      setRole("member");
     },
     onError: () => toast("Failed to add member"),
   });
 
   /** Submit the invite form after basic validation. */
   function handleInvite() {
-    if (!form.user_id.trim()) {
+    if (!userId.trim()) {
       toast("User ID is required");
       return;
     }
@@ -69,9 +64,9 @@ export default function TeamPage() {
     inviteMutation.mutate();
   }
 
-  const activeMembers = members.filter((m: OrgMember) => m.is_active);
+  const activeCount = members.filter((m: OrgMember) => m.is_active).length;
 
-  // role breakdown for the sidebar panel
+  // role breakdown for sidebar
   const roleCounts = members.reduce(
     (acc: Record<string, number>, m: OrgMember) => {
       acc[m.role] = (acc[m.role] ?? 0) + 1;
@@ -103,7 +98,7 @@ export default function TeamPage() {
 
       <div className="kpi-grid">
         <KPI icon="group" color="lav" label="Team size" value={String(members.length)} />
-        <KPI icon="verified_user" color="pch" label="Active" value={String(activeMembers.length)} />
+        <KPI icon="verified_user" color="pch" label="Active" value={String(activeCount)} />
         <KPI icon="mark_email_unread" color="crl" label="Pending invites" value="0" />
         <KPI icon="verified" color="mnt" label="2FA enrolled" value="N/A" />
       </div>
@@ -125,8 +120,8 @@ export default function TeamPage() {
                 <label className="field-lab">User ID</label>
                 <input
                   className="field-in"
-                  value={form.user_id}
-                  onChange={(e) => setForm((f) => ({ ...f, user_id: e.target.value }))}
+                  value={userId}
+                  onChange={(e) => setUserId(e.target.value)}
                   placeholder="UUID of the user to add"
                   style={{ fontFamily: "JetBrains Mono, monospace" }}
                 />
@@ -135,10 +130,8 @@ export default function TeamPage() {
                 <label className="field-lab">Role</label>
                 <select
                   className="field-in"
-                  value={form.role}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, role: e.target.value as OrgMemberRole }))
-                  }
+                  value={role}
+                  onChange={(e) => setRole(e.target.value as OrgMemberRole)}
                 >
                   <option value="member">Member</option>
                   <option value="manager">Manager</option>
@@ -278,12 +271,12 @@ export default function TeamPage() {
               </p>
             ) : (
               <div className="flex flex-col gap-3">
-                {(Object.entries(roleCounts) as [string, number][]).map(([role, count]) => (
-                  <div key={role} className="flex items-center justify-between">
+                {(Object.entries(roleCounts) as [string, number][]).map(([r, count]) => (
+                  <div key={r} className="flex items-center justify-between">
                     <span
                       style={{ fontSize: 13, fontFamily: "Manrope, sans-serif", fontWeight: 600 }}
                     >
-                      {roleLabel(role as OrgMemberRole)}
+                      {roleLabel(r as OrgMemberRole)}
                     </span>
                     <span
                       style={{

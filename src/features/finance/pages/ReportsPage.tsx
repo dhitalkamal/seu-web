@@ -44,7 +44,7 @@ export default function ReportsPage() {
   const [reportType, setReportType] = useState("registrations");
   const [format, setFormat] = useState<ReportFormat>("csv");
 
-  // track the most recently submitted job to poll for status
+  // track the most recently submitted job for polling
   const [pollingJobId, setPollingJobId] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -66,7 +66,7 @@ export default function ReportsPage() {
     onError: () => toast("Failed to start report generation"),
   });
 
-  // poll the running job every 3 seconds until it completes or fails
+  // poll the running job every 3 seconds until completed or failed
   useEffect(() => {
     if (!pollingJobId) return;
 
@@ -94,7 +94,7 @@ export default function ReportsPage() {
     };
   }, [pollingJobId, qc, toast]);
 
-  /** Validate and submit the generate-report form. */
+  /** Submit the generate-report form. */
   function handleGenerate() {
     generateMutation.mutate({ report_type: reportType, format });
   }
@@ -112,12 +112,10 @@ export default function ReportsPage() {
         title="Reports and exports"
         sub="Generate CSV, PDF, JSON, and Excel reports across the workspace."
         actions={
-          <>
-            <button className="btn-sm primary" onClick={() => setShowForm(true)}>
-              <MS n="add" size={13} />
-              Generate report
-            </button>
-          </>
+          <button className="btn-sm primary" onClick={() => setShowForm(true)}>
+            <MS n="add" size={13} />
+            Generate report
+          </button>
         }
       />
 
@@ -267,7 +265,7 @@ export default function ReportsPage() {
                     <td style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 10.5 }}>
                       {job.job_id.slice(0, 8)}...
                     </td>
-                    <td style={{ textTransform: "capitalize" }}>{job.format}</td>
+                    <td style={{ textTransform: "capitalize" }}>report</td>
                     <td
                       style={{
                         textTransform: "uppercase",

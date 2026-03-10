@@ -1,7 +1,7 @@
 import AppLayout from "@/shared/layouts/AppLayout";
 import { PH, KPI, MS } from "@/shared/components/v8";
 
-/** Sponsors and partners - coming soon placeholder with clear labeling. */
+/** Sponsors and partners - coming soon placeholder. */
 export default function SponsorsPage() {
   return (
     <AppLayout variant="org">
@@ -12,9 +12,9 @@ export default function SponsorsPage() {
         actions={
           <button
             className="btn-sm"
+            disabled
             title="Sponsor management is not yet available"
             style={{ opacity: 0.5, cursor: "not-allowed" }}
-            disabled
           >
             <MS n="handshake" size={13} />
             Add sponsor

@@ -33,17 +33,17 @@ export default function VolunteerApplicationsPage() {
     onError: () => setApplying(null),
   });
 
-  /** Derive an application-style status for a role based on filled/slots ratio.
-   *  The API doesn't return per-user application status directly, so we treat
-   *  full roles as "closed" and open slots as "open". */
+  /**
+   * Derive slot status for a role based on filled/slots ratio.
+   *
+   * @param r - volunteer role
+   * @returns "open" when slots remain, "full" when all slots are taken
+   */
   function roleStatus(r: VolunteerRole): "open" | "full" {
     return r.filled < r.slots ? "open" : "full";
   }
 
-  // filter by tab - "browse" shows all open, others are pending/accepted/rejected
-  // the real filtering by user status requires a /my-applications endpoint
-  // which doesn't exist yet; for now show all roles in "browse" and an empty
-  // state with a helpful message in the other tabs
+  // filter by tab - "browse" shows all open roles, other tabs need a /my-applications endpoint
   const filtered: VolunteerRole[] =
     tab === "browse" ? roles.filter((r) => roleStatus(r) === "open") : [];
 
@@ -170,7 +170,6 @@ export default function VolunteerApplicationsPage() {
       {!isLoading && filtered.length > 0 && (
         <div className="flex flex-col gap-4">
           {filtered.map((role) => {
-            const status = roleStatus(role);
             const isApplying = applying === role.id && applyMutation.isPending;
 
             return (
@@ -187,13 +186,8 @@ export default function VolunteerApplicationsPage() {
               >
                 {/* icon */}
                 <div
-                  className="grid place-items-center flex-shrink-0"
-                  style={{
-                    width: 52,
-                    height: 52,
-                    borderRadius: 13,
-                    background: "#dbeafe",
-                  }}
+                  className="grid place-items-center shrink-0"
+                  style={{ width: 52, height: 52, borderRadius: 13, background: "#dbeafe" }}
                 >
                   <span className="ms" style={{ fontSize: 26, color: "#1e40af" }}>
                     assignment_ind
@@ -262,34 +256,32 @@ export default function VolunteerApplicationsPage() {
                 </div>
 
                 {/* action */}
-                <div className="flex flex-col gap-2 flex-shrink-0 justify-center">
-                  {status === "open" && (
-                    <button
-                      disabled={isApplying}
-                      onClick={() => {
-                        setApplying(role.id);
-                        applyMutation.mutate(role.id);
-                      }}
-                      style={{
-                        padding: "9px 20px",
-                        borderRadius: 9,
-                        border: "none",
-                        background: "linear-gradient(135deg, #4338ca, #6366f1)",
-                        color: "white",
-                        fontFamily: "Manrope, sans-serif",
-                        fontSize: 13,
-                        fontWeight: 700,
-                        cursor: isApplying ? "not-allowed" : "pointer",
-                        opacity: isApplying ? 0.7 : 1,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 6,
-                      }}
-                    >
-                      <MS n="send" size={14} />
-                      {isApplying ? "Applying..." : "Apply"}
-                    </button>
-                  )}
+                <div className="flex flex-col gap-2 shrink-0 justify-center">
+                  <button
+                    disabled={isApplying}
+                    onClick={() => {
+                      setApplying(role.id);
+                      applyMutation.mutate(role.id);
+                    }}
+                    style={{
+                      padding: "9px 20px",
+                      borderRadius: 9,
+                      border: "none",
+                      background: "linear-gradient(135deg, #4338ca, #6366f1)",
+                      color: "white",
+                      fontFamily: "Manrope, sans-serif",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      cursor: isApplying ? "not-allowed" : "pointer",
+                      opacity: isApplying ? 0.7 : 1,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
+                    <MS n="send" size={14} />
+                    {isApplying ? "Applying..." : "Apply"}
+                  </button>
                 </div>
               </div>
             );

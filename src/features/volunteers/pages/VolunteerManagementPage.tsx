@@ -23,16 +23,16 @@ export default function VolunteerManagementPage() {
   const orgId = org?.id ?? "";
   const qc = useQueryClient();
 
-  // create-role form visibility
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<CreateRoleForm>({ title: "", description: "", slots: "1" });
 
-  // fetch all roles for this org's events
+  // fetch all volunteer roles
   const { data: roles = [], isLoading } = useQuery({
     queryKey: ["org-volunteer-roles"],
     queryFn: () => volunteerRolesApi.listRoles(),
   });
 
+  // create role mutation
   const createMutation = useMutation({
     mutationFn: (payload: {
       event_id: string;
@@ -51,7 +51,7 @@ export default function VolunteerManagementPage() {
 
   /**
    * Validate and submit the create-role form.
-   * Requires an org to be loaded so we have an event_id context.
+   * Uses orgId as event_id placeholder when no specific event is selected.
    */
   function handleCreate() {
     if (!form.title.trim() || !form.description.trim()) {
@@ -62,8 +62,6 @@ export default function VolunteerManagementPage() {
       toast("No organisation loaded");
       return;
     }
-    // event_id is required by the API; use orgId as a placeholder when no
-    // specific event is selected - organisers can refine per-event in a later flow
     createMutation.mutate({
       event_id: orgId,
       title: form.title.trim(),
@@ -125,12 +123,7 @@ export default function VolunteerManagementPage() {
           </div>
           <div className="panel-body">
             <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: 14,
-                marginBottom: 14,
-              }}
+              style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}
             >
               <div className="field">
                 <label className="field-lab">Title</label>

@@ -14,8 +14,8 @@ export default function LandingTemplatesPage() {
             <button
               className="btn-sm"
               disabled
-              style={{ opacity: 0.5, cursor: "not-allowed" }}
               title="Coming soon"
+              style={{ opacity: 0.5, cursor: "not-allowed" }}
             >
               <MS n="code" size={13} />
               Custom CSS
@@ -23,8 +23,8 @@ export default function LandingTemplatesPage() {
             <button
               className="btn-sm primary"
               disabled
-              style={{ opacity: 0.5, cursor: "not-allowed" }}
               title="Coming soon"
+              style={{ opacity: 0.5, cursor: "not-allowed" }}
             >
               <MS n="check" size={13} />
               Set as default
