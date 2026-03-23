@@ -1,6 +1,7 @@
 import AppLayout from "@/shared/layouts/AppLayout";
 import { PH, KPI, MS, useToast } from "@/shared/components/v8";
 
+// coming soon - not yet routed; do not add to App.tsx until the backend speaker API is ready
 /** Speakers & presenters - reusable speaker profiles assigned across events and sessions. */
 export default function SpeakersPage() {
   const { toast, toastEl } = useToast();

@@ -11,6 +11,7 @@ const CHANNELS: [Channel, string, string][] = [
   ["sms", "SMS", "sms"],
 ];
 
+// coming soon - not yet routed; do not add to App.tsx until the comms backend API is ready
 /** Communications composer - send announcements, reminders, or updates to a segment. */
 export default function CommsComposerPage() {
   const { toast, toastEl } = useToast();
