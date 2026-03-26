@@ -1,32 +1,42 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import AppLayout from "@/shared/layouts/AppLayout";
 import { PH, MS, useToast } from "@/shared/components/v8";
+import eventsApi from "@/features/events/api/events.api";
+import type { Event } from "@/features/events/types/event.types";
 
-// * ─── Types ──────────────────────────────────────────────────────────────────
-
-/** Saved event shape — will come from API once the backend endpoint exists. */
-type SavedEvent = {
-  id: string;
-  title: string;
-  date: string;
-  location: string;
-  category: string;
-  image_url: string;
-  is_free: boolean;
-  price: number;
-  capacity: number;
-  registered_count: number;
-};
-
-// TODO: replace with real API hook once the saved-events endpoint is wired
-/** Placeholder — no saved events by default. */
-const SAVED: SavedEvent[] = [];
+// localStorage key shared with the bookmark button on event cards (Batch 1)
+const LS_KEY = "sansaar-saved-events";
 
 /**
- * Formats an ISO date into a short human-readable label.
- * @param iso - ISO date string
- * @returns "Oct 12, 2026" format
+ * Reads the list of saved event IDs from localStorage.
+ * @returns array of event ID strings, or empty array if none.
+ */
+function readSavedIds(): string[] {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Removes a single event ID from the localStorage saved list.
+ * @param id - the event ID to remove.
+ */
+function removeFromSaved(id: string): void {
+  const current = readSavedIds();
+  const next = current.filter((x) => x !== id);
+  localStorage.setItem(LS_KEY, JSON.stringify(next));
+}
+
+/**
+ * Formats an ISO date string into a short human-readable label like "Oct 12, 2026".
+ * @param iso - ISO date string.
+ * @returns formatted date string.
  */
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", {
@@ -36,13 +46,47 @@ function fmtDate(iso: string): string {
   });
 }
 
-// * ─── Page ───────────────────────────────────────────────────────────────────
+/**
+ * Fetches all saved events from the API in parallel, using the IDs stored in localStorage.
+ * Returns only the events that resolved successfully (failed fetches are silently skipped).
+ * @returns array of Event objects.
+ */
+async function fetchSavedEvents(): Promise<Event[]> {
+  const ids = readSavedIds();
+  if (ids.length === 0) return [];
 
-/** Saved / wishlisted events page — shows bookmarked events the user plans to attend. */
+  const results = await Promise.allSettled(
+    ids.map((id) => eventsApi.getEvent(id).then((r) => r.data))
+  );
+
+  return results
+    .filter((r): r is PromiseFulfilledResult<Event> => r.status === "fulfilled")
+    .map((r) => r.value);
+}
+
+// * --- Page -------------------------------------------------------------------
+
+/** Saved / wishlisted events page - shows bookmarked events the user plans to attend. */
 export default function SavedEventsPage() {
   const navigate = useNavigate();
   const { toast, toastEl } = useToast();
-  const [saved] = useState<SavedEvent[]>(SAVED);
+  const qc = useQueryClient();
+
+  const { data: saved = [], isLoading } = useQuery<Event[]>({
+    queryKey: ["saved-events"],
+    queryFn: fetchSavedEvents,
+  });
+
+  /**
+   * Removes an event from localStorage and invalidates the query so the list refreshes.
+   * @param id - event ID to unsave.
+   * @param title - event title for the toast message.
+   */
+  function handleUnsave(id: string, title: string) {
+    removeFromSaved(id);
+    qc.invalidateQueries({ queryKey: ["saved-events"] });
+    toast(`Removed "${title}" from saved`);
+  }
 
   return (
     <AppLayout variant="user">
@@ -53,8 +97,17 @@ export default function SavedEventsPage() {
         sub="Events you've bookmarked for later."
       />
 
+      {/* loading state */}
+      {isLoading && (
+        <div className="panel" style={{ padding: "56px 28px", textAlign: "center" }}>
+          <p style={{ fontSize: 13.5, color: "var(--on-var)", fontFamily: "Manrope, sans-serif" }}>
+            Loading saved events…
+          </p>
+        </div>
+      )}
+
       {/* empty state */}
-      {saved.length === 0 && (
+      {!isLoading && saved.length === 0 && (
         <div className="panel" style={{ padding: "56px 28px", textAlign: "center" }}>
           <span
             className="ms"
@@ -116,7 +169,7 @@ export default function SavedEventsPage() {
       )}
 
       {/* saved event grid */}
-      {saved.length > 0 && (
+      {!isLoading && saved.length > 0 && (
         <div
           className="grid"
           style={{ gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}
@@ -132,8 +185,8 @@ export default function SavedEventsPage() {
               <div
                 style={{
                   height: 140,
-                  background: ev.image_url
-                    ? `url(${ev.image_url}) center/cover`
+                  background: ev.cover_image
+                    ? `url(${ev.cover_image}) center/cover`
                     : "linear-gradient(135deg, #050a26, #121d3f)",
                   position: "relative",
                 }}
@@ -142,7 +195,7 @@ export default function SavedEventsPage() {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    toast("Removed from saved");
+                    handleUnsave(ev.id, ev.title);
                   }}
                   style={{
                     position: "absolute",
@@ -209,7 +262,7 @@ export default function SavedEventsPage() {
                     <span className="ms" style={{ fontSize: 14, color: "var(--on-mut)" }}>
                       calendar_today
                     </span>
-                    {fmtDate(ev.date)}
+                    {fmtDate(ev.start_date)}
                   </span>
                   <span
                     className="flex items-center gap-2"

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import AppLayout from "@/shared/layouts/AppLayout";
 import { MS } from "@/shared/components/v8";
@@ -59,7 +59,14 @@ const labelStyle: React.CSSProperties = {
 
 /** Combined profile + settings page  - sidebar with avatar card + vertical tabs. */
 export default function ProfilePage() {
-  const [tab, setTab] = useState<Tab>("profile");
+  const [searchParams] = useSearchParams();
+
+  // support ?tab=<key> so other pages can deep-link into a specific tab
+  const initialTab = (searchParams.get("tab") as Tab | null) ?? "profile";
+  const [tab, setTab] = useState<Tab>(
+    TABS.some((t) => t.key === initialTab) ? initialTab : "profile"
+  );
+
   const user = useAuthStore((s) => s.user);
 
   const fullName = user ? `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim() : "User";
