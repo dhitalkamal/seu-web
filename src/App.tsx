@@ -59,6 +59,7 @@ import VolunteerShiftsPage from "@/features/volunteer/pages/VolunteerShiftsPage"
 import VolunteerApplicationsPage from "@/features/volunteer/pages/VolunteerApplicationsPage";
 import VolunteerHoursPage from "@/features/volunteer/pages/VolunteerHoursPage";
 import VolunteerCertificatesPage from "@/features/volunteer/pages/VolunteerCertificatesPage";
+import VolunteerTrainingPage from "@/features/volunteer/pages/VolunteerTrainingPage";
 
 import PassportPage from "@/features/participation/pages/PassportPage";
 
@@ -486,6 +487,14 @@ export default function App() {
           element={
             <P>
               <VolunteerCertificatesPage />
+            </P>
+          }
+        />
+        <Route
+          path="/volunteer/training"
+          element={
+            <P>
+              <VolunteerTrainingPage />
             </P>
           }
         />
