@@ -109,6 +109,54 @@ function deleteMedia(eventId: string, mediaId: string) {
   return client.delete(`${EVENTS_BASE}/${eventId}/media/${mediaId}/`);
 }
 
+/** A single event review submitted by an attendee. */
+export type EventReview = {
+  id: string;
+  event_id: string;
+  user_id: string;
+  rating: number;
+  highlights: string[];
+  note: string;
+  created_at: string;
+};
+
+/** Aggregated review summary returned by the backend. */
+export type ReviewSummary = {
+  average_rating: number;
+  total_reviews: number;
+  rating_distribution: Record<string, number>;
+};
+
+/**
+ * Submit a review for a completed event.
+ * @param eventId - UUID of the event.
+ * @param data - rating (1-5), highlight tags, and optional note.
+ */
+async function submitReview(
+  eventId: string,
+  data: { rating: number; highlights: string[]; note: string }
+): Promise<ApiResponse<EventReview>> {
+  const res = await client.post<ApiResponse<EventReview>>(
+    `${EVENTS_BASE}/${eventId}/reviews/`,
+    data
+  );
+  return res.data;
+}
+
+/** Fetch all reviews for a given event. */
+async function listReviews(eventId: string): Promise<EventReview[]> {
+  const res = await client.get<ApiResponse<EventReview[]>>(`${EVENTS_BASE}/${eventId}/reviews/`);
+  return (res.data?.data ?? res.data) as EventReview[];
+}
+
+/** Fetch aggregated review summary for an event. */
+async function getReviewSummary(eventId: string): Promise<ReviewSummary | null> {
+  const res = await client.get<ApiResponse<ReviewSummary>>(
+    `${EVENTS_BASE}/${eventId}/reviews/summary/`
+  );
+  return (res.data?.data ?? res.data) as ReviewSummary | null;
+}
+
 const eventsApi = {
   listPublicEvents,
   listMyEvents,
@@ -124,6 +172,9 @@ const eventsApi = {
   listMedia,
   addMedia,
   deleteMedia,
+  submitReview,
+  listReviews,
+  getReviewSummary,
 };
 
 export default eventsApi;

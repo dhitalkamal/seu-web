@@ -8,6 +8,7 @@ import type { Registration } from "@/features/registration/types";
 import checkinApi from "@/features/checkin/api/checkin.api";
 import eventsApi from "@/features/events/api/events.api";
 import paymentApi from "@/features/payment/api/payment.api";
+import registrationApi from "@/features/registration/api/registration.api";
 import type { Event } from "@/features/events/types/event.types";
 import type { PaymentOrder } from "@/features/payment/types";
 import { QRCodeSVG } from "qrcode.react";
@@ -165,33 +166,39 @@ export default function TicketsPage() {
     const uniqueIds = [...new Set(active.map((r) => r.event_id))];
     for (const id of uniqueIds) {
       if (eventCache[id]) continue;
-      eventsApi.getEvent(id).then((res) => {
-        const ev = "data" in res ? res.data : (res as unknown as Event);
-        if (ev) {
-          setEventCache((prev) => ({ ...prev, [id]: ev }));
-        }
-      }).catch(() => {
-        // leave cache empty for this id; UI falls back to truncated UUID
-      });
+      eventsApi
+        .getEvent(id)
+        .then((res) => {
+          const ev = "data" in res ? res.data : (res as unknown as Event);
+          if (ev) {
+            setEventCache((prev) => ({ ...prev, [id]: ev }));
+          }
+        })
+        .catch(() => {
+          // leave cache empty for this id; UI falls back to truncated UUID
+        });
     }
-  // only re-run when the set of registration IDs changes
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // only re-run when the set of registration IDs changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active.map((r) => r.event_id).join(",")]);
 
   // * fetch my orders once to enable receipt lookup (issue 24)
   useEffect(() => {
     if (active.length === 0) return;
-    paymentApi.listMyOrders().then((orders) => {
-      const map: Record<string, PaymentOrder> = {};
-      for (const o of orders) {
-        if (o.registration_id) map[o.registration_id] = o;
-      }
-      setOrderCache(map);
-    }).catch(() => {
-      // orders unavailable - receipt button will fall back to toast
-    });
-  // run once when registrations load
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    paymentApi
+      .listMyOrders()
+      .then((orders) => {
+        const map: Record<string, PaymentOrder> = {};
+        for (const o of orders) {
+          if (o.registration_id) map[o.registration_id] = o;
+        }
+        setOrderCache(map);
+      })
+      .catch(() => {
+        // orders unavailable - receipt button will fall back to toast
+      });
+    // run once when registrations load
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active.length]);
 
   const today = new Date();
@@ -229,6 +236,26 @@ export default function TicketsPage() {
       navigate(`/payment/success?orderId=${orderCache[regWithOrder.id].id}`);
     } else {
       toast("No receipt available");
+    }
+  }
+
+  /**
+   * Download a PDF ticket for a given registration and trigger browser save.
+   * @param reg - the registration whose ticket to download.
+   */
+  async function handleDownloadPdf(reg: Registration) {
+    try {
+      const blob = await registrationApi.downloadTicketPdf(reg.id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `ticket-${reg.registration_code}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast("Could not download ticket PDF");
     }
   }
 
@@ -559,6 +586,14 @@ export default function TicketsPage() {
                   >
                     <MS n="qr_code_2" size={12} />
                     Show QR
+                  </button>
+                  <button
+                    className="btn-sm"
+                    onClick={() => handleDownloadPdf(reg)}
+                    style={{ fontSize: 11 }}
+                  >
+                    <MS n="picture_as_pdf" size={12} />
+                    Download PDF
                   </button>
                   <span
                     className={`pill ${reg.status === "confirmed" ? "active" : reg.status === "pending" ? "draft" : "muted"}`}
