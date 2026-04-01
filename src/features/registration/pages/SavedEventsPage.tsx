@@ -1,37 +1,11 @@
 import { useNavigate } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import AppLayout from "@/shared/layouts/AppLayout";
 import { PH, MS, useToast } from "@/shared/components/v8";
 import eventsApi from "@/features/events/api/events.api";
+import registrationApi from "@/features/registration/api/registration.api";
 import type { Event } from "@/features/events/types/event.types";
-
-// localStorage key shared with the bookmark button on event cards (Batch 1)
-const LS_KEY = "sansaar-saved-events";
-
-/**
- * Reads the list of saved event IDs from localStorage.
- * @returns array of event ID strings, or empty array if none.
- */
-function readSavedIds(): string[] {
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-/**
- * Removes a single event ID from the localStorage saved list.
- * @param id - the event ID to remove.
- */
-function removeFromSaved(id: string): void {
-  const current = readSavedIds();
-  const next = current.filter((x) => x !== id);
-  localStorage.setItem(LS_KEY, JSON.stringify(next));
-}
+import type { SavedEvent } from "@/features/registration/api/registration.api";
 
 /**
  * Formats an ISO date string into a short human-readable label like "Oct 12, 2026".
@@ -46,21 +20,31 @@ function fmtDate(iso: string): string {
   });
 }
 
+/** A saved event record paired with the resolved event detail. */
+type SavedWithEvent = {
+  savedRecord: SavedEvent;
+  event: Event;
+};
+
 /**
- * Fetches all saved events from the API in parallel, using the IDs stored in localStorage.
- * Returns only the events that resolved successfully (failed fetches are silently skipped).
- * @returns array of Event objects.
+ * Fetches all saved events from the backend and resolves each event's full detail.
+ * Records whose event fetch fails are silently dropped.
+ * @returns array of SavedWithEvent objects.
  */
-async function fetchSavedEvents(): Promise<Event[]> {
-  const ids = readSavedIds();
-  if (ids.length === 0) return [];
+async function fetchSavedWithDetails(): Promise<SavedWithEvent[]> {
+  const saved = await registrationApi.listSavedEvents();
+  if (saved.length === 0) return [];
 
   const results = await Promise.allSettled(
-    ids.map((id) => eventsApi.getEvent(id).then((r) => r.data))
+    saved.map(async (record) => {
+      const res = await eventsApi.getEvent(record.event_id);
+      const ev = "data" in res ? res.data : (res as unknown as Event);
+      return { savedRecord: record, event: ev };
+    })
   );
 
   return results
-    .filter((r): r is PromiseFulfilledResult<Event> => r.status === "fulfilled")
+    .filter((r): r is PromiseFulfilledResult<SavedWithEvent> => r.status === "fulfilled")
     .map((r) => r.value);
 }
 
@@ -72,20 +56,30 @@ export default function SavedEventsPage() {
   const { toast, toastEl } = useToast();
   const qc = useQueryClient();
 
-  const { data: saved = [], isLoading } = useQuery<Event[]>({
+  const { data: saved = [], isLoading } = useQuery<SavedWithEvent[]>({
     queryKey: ["saved-events"],
-    queryFn: fetchSavedEvents,
+    queryFn: fetchSavedWithDetails,
+  });
+
+  const unsaveMutation = useMutation({
+    mutationFn: (savedEventId: string) => registrationApi.unsaveEvent(savedEventId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["saved-events"] });
+    },
+    onError: () => {
+      toast("Could not remove event from saved");
+    },
   });
 
   /**
-   * Removes an event from localStorage and invalidates the query so the list refreshes.
-   * @param id - event ID to unsave.
+   * Calls the unsave API and shows a toast on success.
+   * @param savedEventId - the backend saved-event record ID.
    * @param title - event title for the toast message.
    */
-  function handleUnsave(id: string, title: string) {
-    removeFromSaved(id);
-    qc.invalidateQueries({ queryKey: ["saved-events"] });
-    toast(`Removed "${title}" from saved`);
+  function handleUnsave(savedEventId: string, title: string) {
+    unsaveMutation.mutate(savedEventId, {
+      onSuccess: () => toast(`Removed "${title}" from saved`),
+    });
   }
 
   return (
@@ -174,9 +168,9 @@ export default function SavedEventsPage() {
           className="grid"
           style={{ gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}
         >
-          {saved.map((ev) => (
+          {saved.map(({ savedRecord, event: ev }) => (
             <div
-              key={ev.id}
+              key={savedRecord.id}
               className="panel"
               style={{ padding: 0, overflow: "hidden", cursor: "pointer" }}
               onClick={() => navigate(`/events/${ev.id}`)}
@@ -195,8 +189,9 @@ export default function SavedEventsPage() {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleUnsave(ev.id, ev.title);
+                    handleUnsave(savedRecord.id, ev.title);
                   }}
+                  disabled={unsaveMutation.isPending}
                   style={{
                     position: "absolute",
                     top: 10,
@@ -206,7 +201,7 @@ export default function SavedEventsPage() {
                     borderRadius: 8,
                     background: "rgba(0,0,0,0.5)",
                     border: "none",
-                    cursor: "pointer",
+                    cursor: unsaveMutation.isPending ? "not-allowed" : "pointer",
                     display: "grid",
                     placeItems: "center",
                   }}

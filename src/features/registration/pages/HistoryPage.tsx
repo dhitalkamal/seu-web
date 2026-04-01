@@ -5,6 +5,7 @@ import { useMyRegistrations } from "@/features/registration/hooks/useRegistratio
 import type { Registration } from "@/features/registration/types";
 import eventsApi from "@/features/events/api/events.api";
 import type { Event } from "@/features/events/types/event.types";
+import { useMutation } from "@tanstack/react-query";
 
 /**
  * Formats an ISO date string to "Mon DD, YYYY".
@@ -34,10 +35,164 @@ function buildYearlyCounts(regs: Registration[]): { y: string; v: number }[] {
   return years.map((y) => ({ y, v: counts[y] }));
 }
 
+// * label options for the review highlights picker
+const HIGHLIGHT_OPTS = [
+  "Great speakers",
+  "Good networking",
+  "Well organised",
+  "Venue was great",
+  "Learned a lot",
+];
+
+/**
+ * Inline review modal - lets attendees rate a checked-in event.
+ * @param eventId - UUID of the event to review.
+ * @param onClose - callback to dismiss the modal.
+ */
+function ReviewModal({ eventId, onClose }: { eventId: string; onClose: () => void }) {
+  const { toast } = useToast();
+  const [rating, setRating] = useState(0);
+  const [highlights, setHighlights] = useState<string[]>([]);
+  const [note, setNote] = useState("");
+
+  const submitMutation = useMutation({
+    mutationFn: () => eventsApi.submitReview(eventId, { rating, highlights, note }),
+    onSuccess: () => {
+      toast("Review submitted");
+      onClose();
+    },
+    onError: () => toast("Could not submit review"),
+  });
+
+  /** Toggle a highlight tag on or off. */
+  function toggleHighlight(label: string) {
+    setHighlights((prev) =>
+      prev.includes(label) ? prev.filter((h) => h !== label) : [...prev, label]
+    );
+  }
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.5)",
+        zIndex: 100,
+        display: "grid",
+        placeItems: "center",
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: "var(--surface)",
+          borderRadius: 20,
+          padding: 28,
+          maxWidth: 400,
+          width: "90%",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div
+          style={{
+            fontFamily: "Space Grotesk, sans-serif",
+            fontWeight: 700,
+            fontSize: 18,
+            marginBottom: 18,
+          }}
+        >
+          Rate this event
+        </div>
+
+        {/* star selector */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button
+              key={n}
+              onClick={() => setRating(n)}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                padding: 0,
+                fontSize: 28,
+                color: n <= rating ? "#f59e0b" : "var(--mid)",
+              }}
+            >
+              ★
+            </button>
+          ))}
+        </div>
+
+        {/* highlight chips */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
+          {HIGHLIGHT_OPTS.map((opt) => (
+            <button
+              key={opt}
+              onClick={() => toggleHighlight(opt)}
+              style={{
+                padding: "5px 12px",
+                borderRadius: 8,
+                border: highlights.includes(opt) ? "none" : "1px solid var(--mid)",
+                background: highlights.includes(opt) ? "#050a26" : "transparent",
+                color: highlights.includes(opt) ? "white" : "var(--on-var)",
+                fontSize: 12,
+                fontWeight: 600,
+                fontFamily: "Manrope, sans-serif",
+                cursor: "pointer",
+              }}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+
+        {/* note */}
+        <textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="Any comments? (optional)"
+          rows={3}
+          style={{
+            width: "100%",
+            borderRadius: 10,
+            border: "1px solid var(--mid)",
+            background: "var(--low)",
+            padding: "10px 14px",
+            fontSize: 13,
+            fontFamily: "Manrope, sans-serif",
+            color: "var(--on-bg)",
+            outline: "none",
+            resize: "vertical",
+            marginBottom: 16,
+            boxSizing: "border-box",
+          }}
+        />
+
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            className="btn-sm primary"
+            style={{ flex: 1, justifyContent: "center" }}
+            disabled={rating === 0 || submitMutation.isPending}
+            onClick={() => submitMutation.mutate()}
+          >
+            <MS n="star" size={13} />
+            {submitMutation.isPending ? "Submitting..." : "Submit review"}
+          </button>
+          <button className="btn-sm" onClick={onClose}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** Past events page - shows completed/cancelled registrations with bar chart and history table. */
 export default function HistoryPage() {
   const { toast, toastEl } = useToast();
   const { data: registrations, isLoading } = useMyRegistrations();
+  const [reviewFor, setReviewFor] = useState<string | null>(null);
 
   // * event detail cache keyed by event_id (issue 25)
   const [eventCache, setEventCache] = useState<Record<string, Event>>({});
@@ -52,17 +207,19 @@ export default function HistoryPage() {
     const uniqueIds = [...new Set(past.map((r) => r.event_id))];
     for (const id of uniqueIds) {
       if (eventCache[id]) continue;
-      eventsApi.getEvent(id).then((res) => {
-        const ev = "data" in res ? res.data : (res as unknown as Event);
-        if (ev) setEventCache((prev) => ({ ...prev, [id]: ev }));
-      }).catch(() => {
-        // leave cache empty; UI falls back to truncated UUID
-      });
+      eventsApi
+        .getEvent(id)
+        .then((res) => {
+          const ev = "data" in res ? res.data : (res as unknown as Event);
+          if (ev) setEventCache((prev) => ({ ...prev, [id]: ev }));
+        })
+        .catch(() => {
+          // leave cache empty; UI falls back to truncated UUID
+        });
     }
-  // only re-run when the set of past registration event IDs changes
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // only re-run when the set of past registration event IDs changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [past.map((r) => r.event_id).join(",")]);
-
 
   const byYear = buildYearlyCounts(past);
   const maxCount = Math.max(1, ...byYear.map((y) => y.v));
@@ -74,6 +231,8 @@ export default function HistoryPage() {
   return (
     <AppLayout variant="user">
       {toastEl}
+      {/* review modal */}
+      {reviewFor && <ReviewModal eventId={reviewFor} onClose={() => setReviewFor(null)} />}
       <PH
         crumbs={["Past Events"]}
         title="Past events"
@@ -216,16 +375,21 @@ export default function HistoryPage() {
                   <th>Status</th>
                   <th>Quantity</th>
                   <th>Date</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
                 {past.map((r) => (
-                  <tr key={r.id} onClick={() => toast(r.registration_code + " details")}>
+                  <tr key={r.id}>
                     <td style={{ fontWeight: 700, fontFamily: "JetBrains Mono, monospace" }}>
                       {r.registration_code}
                     </td>
                     {/* show event title if fetched, else short UUID (issue 25) */}
-                    <td>{eventCache[r.event_id] ? eventCache[r.event_id].title : r.event_id.slice(0, 8)}</td>
+                    <td>
+                      {eventCache[r.event_id]
+                        ? eventCache[r.event_id].title
+                        : r.event_id.slice(0, 8)}
+                    </td>
                     <td>
                       <span
                         className={`pill ${r.status === "checked_in" ? "active" : r.status === "cancelled" ? "muted" : "draft"}`}
@@ -236,6 +400,18 @@ export default function HistoryPage() {
                     <td style={{ fontFamily: "JetBrains Mono, monospace" }}>{r.quantity}</td>
                     <td style={{ fontFamily: "JetBrains Mono, monospace" }}>
                       {fmtDate(r.created_at)}
+                    </td>
+                    <td>
+                      {r.status === "checked_in" && (
+                        <button
+                          className="btn-sm"
+                          style={{ fontSize: 11 }}
+                          onClick={() => setReviewFor(r.event_id)}
+                        >
+                          <MS n="star_rate" size={12} />
+                          Rate
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

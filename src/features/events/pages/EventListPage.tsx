@@ -1,30 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import AppLayout from "@/shared/layouts/AppLayout";
 import { PH, MS, useToast } from "@/shared/components/v8";
 import { usePublicEvents } from "@/features/events/hooks/useEvents";
 import type { Event } from "@/features/events/types/event.types";
 import taxonomyApi from "@/features/taxonomy/api/taxonomy.api";
 import type { EventCategory } from "@/features/taxonomy/api/taxonomy.api";
-
-// * localStorage key for saved events (shared with mobile app)
-const SAVED_EVENTS_KEY = "sansaar-saved-events";
-
-/** Read saved event IDs from localStorage. */
-function loadSavedIds(): Set<string> {
-  try {
-    const raw = localStorage.getItem(SAVED_EVENTS_KEY);
-    return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
-  } catch {
-    return new Set();
-  }
-}
-
-/** Persist saved event IDs to localStorage. */
-function persistSavedIds(ids: Set<string>): void {
-  localStorage.setItem(SAVED_EVENTS_KEY, JSON.stringify(Array.from(ids)));
-}
+import registrationApi from "@/features/registration/api/registration.api";
+import type { SavedEvent } from "@/features/registration/api/registration.api";
 
 /**
  * Calculates the capacity-fill percentage for a given event.
@@ -50,6 +34,7 @@ function shortDate(iso: string): string {
 export default function EventListPage() {
   const navigate = useNavigate();
   const { toast, toastEl } = useToast();
+  const qc = useQueryClient();
   const [searchParams] = useSearchParams();
 
   // * category filter uses real category IDs from the API
@@ -62,11 +47,28 @@ export default function EventListPage() {
   const [filterDateTo, setFilterDateTo] = useState("");
   const filterRef = useRef<HTMLDivElement>(null);
 
-  // * saved events state (backed by localStorage)
-  const [savedIds, setSavedIds] = useState<Set<string>>(loadSavedIds);
-
   // * search term populated from URL params (issue 30)
   const [searchTerm, setSearchTerm] = useState(() => searchParams.get("search") ?? "");
+
+  // * saved events state - backed by real API, keyed by event_id -> saved record
+  const { data: savedRecords = [] } = useQuery<SavedEvent[]>({
+    queryKey: ["saved-events"],
+    queryFn: () => registrationApi.listSavedEvents(),
+    staleTime: 30 * 1000,
+  });
+  const savedByEventId = new Map<string, SavedEvent>(savedRecords.map((r) => [r.event_id, r]));
+
+  const saveMutation = useMutation({
+    mutationFn: (eventId: string) => registrationApi.saveEvent(eventId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["saved-events"] }),
+    onError: () => toast("Could not save event"),
+  });
+
+  const unsaveMutation = useMutation({
+    mutationFn: (savedEventId: string) => registrationApi.unsaveEvent(savedEventId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["saved-events"] }),
+    onError: () => toast("Could not unsave event"),
+  });
 
   // * sync search from URL on mount
   useEffect(() => {
@@ -99,7 +101,9 @@ export default function EventListPage() {
     ...(searchTerm.trim() ? { search: searchTerm.trim() } : {}),
   };
 
-  const { data, isLoading } = usePublicEvents(Object.keys(apiFilters).length ? apiFilters : undefined);
+  const { data, isLoading } = usePublicEvents(
+    Object.keys(apiFilters).length ? apiFilters : undefined
+  );
   let events = data?.results ?? [];
 
   // * client-side date range filter (API may not support it; apply after fetch)
@@ -114,21 +118,23 @@ export default function EventListPage() {
 
   const featured = events.length > 0 ? events[0] : null;
 
-  /** Toggle save for an event, persist to localStorage. */
+  /**
+   * Toggle save for an event via the backend API.
+   * @param eventId - the event to save or unsave.
+   * @param e - mouse event, stopped from propagation.
+   */
   function toggleSave(eventId: string, e: React.MouseEvent) {
     e.stopPropagation();
-    setSavedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(eventId)) {
-        next.delete(eventId);
-        toast("Removed from saved events");
-      } else {
-        next.add(eventId);
-        toast("Event saved");
-      }
-      persistSavedIds(next);
-      return next;
-    });
+    const existing = savedByEventId.get(eventId);
+    if (existing) {
+      unsaveMutation.mutate(existing.id, {
+        onSuccess: () => toast("Removed from saved events"),
+      });
+    } else {
+      saveMutation.mutate(eventId, {
+        onSuccess: () => toast("Event saved"),
+      });
+    }
   }
 
   return (
@@ -209,10 +215,8 @@ export default function EventListPage() {
                           style={{
                             padding: "5px 12px",
                             borderRadius: 7,
-                            border:
-                              filterFree === value ? "none" : "1px solid var(--mid)",
-                            background:
-                              filterFree === value ? "#050a26" : "transparent",
+                            border: filterFree === value ? "none" : "1px solid var(--mid)",
+                            background: filterFree === value ? "#050a26" : "transparent",
                             color: filterFree === value ? "white" : "var(--on-var)",
                             fontSize: 12,
                             fontWeight: 600,
@@ -306,10 +310,7 @@ export default function EventListPage() {
             </div>
 
             {/* calendar view - coming soon (issue 19) */}
-            <button
-              className="btn-sm"
-              onClick={() => toast("Calendar view coming soon")}
-            >
+            <button className="btn-sm" onClick={() => toast("Calendar view coming soon")}>
               <MS n="event" size={13} />
               Calendar view
             </button>
@@ -332,7 +333,14 @@ export default function EventListPage() {
           }}
         >
           <MS n="search" size={14} style={{ color: "var(--on-mut)" }} />
-          <span style={{ fontSize: 13, fontFamily: "Manrope, sans-serif", flex: 1, color: "var(--on-bg)" }}>
+          <span
+            style={{
+              fontSize: 13,
+              fontFamily: "Manrope, sans-serif",
+              flex: 1,
+              color: "var(--on-bg)",
+            }}
+          >
             Showing results for: <strong>{searchTerm}</strong>
           </span>
           <button
@@ -472,8 +480,8 @@ export default function EventListPage() {
                 }}
                 onClick={(e) => toggleSave(featured.id, e)}
               >
-                <MS n={savedIds.has(featured.id) ? "bookmark" : "bookmark_add"} size={13} />
-                {savedIds.has(featured.id) ? "Saved" : "Save"}
+                <MS n={savedByEventId.has(featured.id) ? "bookmark" : "bookmark_add"} size={13} />
+                {savedByEventId.has(featured.id) ? "Saved" : "Save"}
               </button>
             </div>
           </div>
@@ -600,11 +608,8 @@ export default function EventListPage() {
                         onClick={(e) => toggleSave(ev.id, e)}
                         style={{ fontSize: 11 }}
                       >
-                        <MS
-                          n={savedIds.has(ev.id) ? "bookmark" : "bookmark_add"}
-                          size={12}
-                        />
-                        {savedIds.has(ev.id) ? "Saved" : "Save"}
+                        <MS n={savedByEventId.has(ev.id) ? "bookmark" : "bookmark_add"} size={12} />
+                        {savedByEventId.has(ev.id) ? "Saved" : "Save"}
                       </button>
                       <button
                         className="btn-sm primary"

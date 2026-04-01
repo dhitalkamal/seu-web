@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import AppLayout from "@/shared/layouts/AppLayout";
@@ -101,21 +101,71 @@ export default function CreateEventPage() {
   const [descriptionFlagged, setDescriptionFlagged] = useState(false);
   // Human-readable list of violated categories returned by the moderation API
   const [flaggedCategories, setFlaggedCategories] = useState<string[]>([]);
+
+  // * auto-save tracking
+  // latest form state stored in ref so the interval can read it without causing re-renders
+  const formRef = useRef<FormState>(INITIAL);
+  const [autoSaved, setAutoSaved] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
   const categories = categoriesResponse?.data ?? [];
   const selectedCategoryLabel =
     categories.find((category) => category.id === form.category_id)?.name ||
     form.category_id ||
     null;
 
-  /** Type-safe field setter. */
+  /** Type-safe field setter - marks the form dirty and updates the ref for auto-save. */
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
-    setForm((p) => ({ ...p, [key]: value }));
+    setForm((p) => {
+      const next = { ...p, [key]: value };
+      formRef.current = next;
+      return next;
+    });
+    setIsDirty(true);
+    setAutoSaved(false);
     setErrors((p) => {
       const n = { ...p };
       delete n[key];
       return n;
     });
   }
+
+  // * auto-save interval - fires every 30 seconds when form has unsaved changes
+  useEffect(() => {
+    const id = setInterval(async () => {
+      if (!isDirty) return;
+      const current = formRef.current;
+      // only auto-save if there is at least a title to avoid persisting empty records
+      if (!current.title.trim()) return;
+      try {
+        await eventsApi.createEvent({
+          title: current.title,
+          description: current.description,
+          location: current.location,
+          start_date: current.start_date
+            ? new Date(current.start_date).toISOString()
+            : new Date().toISOString(),
+          end_date: current.end_date
+            ? new Date(current.end_date).toISOString()
+            : new Date().toISOString(),
+          capacity: current.capacity,
+          visibility: current.visibility,
+          is_free: current.is_free,
+          price: current.is_free ? "0.00" : current.price,
+          cover_image: current.cover_image || null,
+          is_online: current.is_online,
+          online_url: current.online_url || null,
+          category_id: null,
+        });
+        setIsDirty(false);
+        setAutoSaved(true);
+        // hide the "Auto-saved" indicator after 4 seconds
+        setTimeout(() => setAutoSaved(false), 4000);
+      } catch {
+        // auto-save failure is non-critical - user can still submit manually
+      }
+    }, 30_000);
+    return () => clearInterval(id);
+  }, [isDirty]);
 
   // * --- Per-step validation -----------------------------------------------
 
@@ -402,6 +452,24 @@ export default function CreateEventPage() {
               borderTop: "1px solid var(--outline)",
             }}
           >
+            {/* auto-saved indicator */}
+            {autoSaved && (
+              <span
+                style={{
+                  position: "absolute",
+                  right: 140,
+                  fontSize: 11.5,
+                  color: "#16a34a",
+                  fontFamily: "Manrope, sans-serif",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+              >
+                <MS n="cloud_done" size={14} style={{ color: "#16a34a" }} />
+                Auto-saved
+              </span>
+            )}
             {step > 0 ? (
               <button
                 onClick={goBack}
@@ -506,7 +574,10 @@ function StepBasics({
   const [showCreate, setShowCreate] = useState(false);
   const [newCatName, setNewCatName] = useState("");
 
-  const slug = newCatName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+  const slug = newCatName
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "");
 
   const createCatMutation = useMutation({
     mutationFn: () => eventsApi.createCategory(newCatName.trim(), slug),
@@ -663,7 +734,10 @@ function StepBasics({
                       fontSize: 12,
                       fontWeight: 700,
                       fontFamily: "Manrope, sans-serif",
-                      cursor: !newCatName.trim() || createCatMutation.isPending ? "not-allowed" : "pointer",
+                      cursor:
+                        !newCatName.trim() || createCatMutation.isPending
+                          ? "not-allowed"
+                          : "pointer",
                       opacity: !newCatName.trim() || createCatMutation.isPending ? 0.5 : 1,
                     }}
                   >

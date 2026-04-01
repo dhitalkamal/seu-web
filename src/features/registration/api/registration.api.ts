@@ -5,6 +5,13 @@ import type { RegisterResponse, Registration } from "../types";
 
 const BASE = "/participation/api/v1";
 
+/** A saved event record returned by the backend. */
+export type SavedEvent = {
+  id: string;
+  event_id: string;
+  created_at: string;
+};
+
 const registrationApi = {
   /** Fetch all registrations for the authenticated user. */
   listMine: () =>
@@ -34,6 +41,37 @@ const registrationApi = {
 
   /** Delete a registration record. */
   deleteRegistration: (id: string) => client.delete(`${BASE}/registrations/${id}/`),
+
+  /** List all saved events for the authenticated user. */
+  listSavedEvents: async (): Promise<SavedEvent[]> => {
+    const r = await client.get<{ data: SavedEvent[] }>(`${BASE}/saved-events/`);
+    return r.data?.data ?? (r.data as unknown as SavedEvent[]) ?? [];
+  },
+
+  /** Save an event by event ID. */
+  saveEvent: async (eventId: string): Promise<SavedEvent> => {
+    const r = await client.post<{ data: SavedEvent }>(`${BASE}/saved-events/`, {
+      event_id: eventId,
+    });
+    return r.data?.data ?? (r.data as unknown as SavedEvent);
+  },
+
+  /** Unsave an event by saved-event record ID (the backend record, not the event ID). */
+  unsaveEvent: async (savedEventId: string): Promise<void> => {
+    await client.delete(`${BASE}/saved-events/${savedEventId}/`);
+  },
+
+  /**
+   * Download a registration ticket as a PDF blob.
+   * @param registrationId - UUID of the registration.
+   * @returns raw PDF blob suitable for triggering a browser download.
+   */
+  downloadTicketPdf: async (registrationId: string): Promise<Blob> => {
+    const r = await client.get<Blob>(`${BASE}/registrations/${registrationId}/ticket-pdf/`, {
+      responseType: "blob",
+    });
+    return r.data;
+  },
 };
 
 export default registrationApi;
