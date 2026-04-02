@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import AuthLayout from "@/shared/layouts/AuthLayout";
 import { SeuSubmitButton } from "@/shared/components/SeuField";
 import { useAuth, getApiError } from "@/features/auth/hooks/useAuth";
 
 type LocationState = { email?: string };
+
+// key used to persist the email across page refreshes
+const SESSION_KEY = "verify-email";
 
 const errorStyle = {
   background: "rgba(232,49,81,0.08)",
@@ -19,12 +22,21 @@ const successStyle = {
   fontFamily: "Manrope, sans-serif",
 };
 
-/** Email verification — enter the 8-character OTP sent after registration. */
+/** Email verification: enter the 8-character OTP sent after registration. */
 export default function VerifyEmailPage() {
   const navigate = useNavigate();
   const { state } = useLocation() as { state: LocationState };
-  const email = state?.email ?? "";
+  // prefer location.state (set by register flow), fall back to sessionStorage
+  // so a page refresh doesn't lose the email
+  const email = state?.email ?? sessionStorage.getItem(SESSION_KEY) ?? "";
   const { verifyEmailMutation, resendOTPMutation } = useAuth();
+
+  // persist email into sessionStorage on mount so refreshes keep it
+  useEffect(() => {
+    if (state?.email) {
+      sessionStorage.setItem(SESSION_KEY, state.email);
+    }
+  }, [state?.email]);
   const [otp, setOtp] = useState("");
   const [otpError, setOtpError] = useState<string | undefined>();
   const [resent, setResent] = useState(false);
@@ -68,8 +80,11 @@ export default function VerifyEmailPage() {
     verifyEmailMutation.mutate(
       { email, otp: otp.trim().toUpperCase() },
       {
-        onSuccess: () =>
-          navigate("/login", { state: { flash: "Email verified! You can now sign in." } }),
+        onSuccess: () => {
+          // clear the persisted email now that verification is complete
+          sessionStorage.removeItem(SESSION_KEY);
+          navigate("/login", { state: { flash: "Email verified! You can now sign in." } });
+        },
       }
     );
   }
