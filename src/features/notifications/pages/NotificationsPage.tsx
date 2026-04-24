@@ -23,8 +23,19 @@ function relativeTime(iso: string): string {
  * Single notification row in the list.
  * @param n - notification object.
  * @param onMarkRead - callback invoked with the notification ID when clicked.
+ * @param onAcknowledge - callback invoked when the acknowledge button is clicked.
  */
-function NotificationRow({ n, onMarkRead }: { n: Notification; onMarkRead: (id: string) => void }) {
+function NotificationRow({
+  n,
+  onMarkRead,
+  onAcknowledge,
+}: {
+  n: Notification;
+  onMarkRead: (id: string) => void;
+  onAcknowledge: (id: string) => void;
+}) {
+  const isEventUpdate = n.notification_type === "event_update";
+
   return (
     <div
       onClick={() => !n.is_read && onMarkRead(n.id)}
@@ -77,6 +88,29 @@ function NotificationRow({ n, onMarkRead }: { n: Notification; onMarkRead: (id: 
         >
           {n.message}
         </div>
+        {/* acknowledge button for event_update notifications */}
+        {isEventUpdate && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onAcknowledge(n.id);
+            }}
+            style={{
+              marginTop: 8,
+              padding: "4px 12px",
+              borderRadius: 6,
+              border: "1px solid var(--mid)",
+              background: "transparent",
+              color: "var(--on-var)",
+              fontSize: 11,
+              fontWeight: 600,
+              fontFamily: "Manrope, sans-serif",
+              cursor: "pointer",
+            }}
+          >
+            Acknowledge update
+          </button>
+        )}
       </div>
 
       <div
@@ -119,6 +153,15 @@ export default function NotificationsPage() {
       toast("All notifications marked as read");
     },
     onError: () => toast("Could not mark all as read"),
+  });
+
+  const acknowledgeMutation = useMutation({
+    mutationFn: (id: string) => notificationsApi.acknowledge(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["notifications"] });
+      toast("Update acknowledged");
+    },
+    onError: () => toast("Could not acknowledge update"),
   });
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
@@ -192,7 +235,12 @@ export default function NotificationsPage() {
       {!isLoading && notifications.length > 0 && (
         <div className="panel" style={{ padding: 0, overflow: "hidden" }}>
           {notifications.map((n) => (
-            <NotificationRow key={n.id} n={n} onMarkRead={(id) => markReadMutation.mutate(id)} />
+            <NotificationRow
+              key={n.id}
+              n={n}
+              onMarkRead={(id) => markReadMutation.mutate(id)}
+              onAcknowledge={(id) => acknowledgeMutation.mutate(id)}
+            />
           ))}
         </div>
       )}

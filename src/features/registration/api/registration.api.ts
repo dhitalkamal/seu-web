@@ -36,7 +36,9 @@ const registrationApi = {
   /** Get the QR token for a registration, used for check-in scanning. */
   getQrToken: (id: string) =>
     client
-      .get<{ data: { token: string; expires_at: string } }>(`${BASE}/registrations/${id}/qr-token/`)
+      .get<{ data: { token: string; expires_at: string } }>(
+        `${BASE}/registrations/${id}/qr-token/`
+      )
       .then((r) => r.data.data),
 
   /** Delete a registration record. */
@@ -71,6 +73,37 @@ const registrationApi = {
       responseType: "blob",
     });
     return r.data;
+  },
+
+  /**
+   * Initiate a ticket transfer to a recipient by email.
+   * @param registrationId - UUID of the registration to transfer.
+   * @param recipientEmail - email address of the intended recipient.
+   * @returns backend response with transfer details.
+   */
+  initiateTransfer: async (registrationId: string, recipientEmail: string) => {
+    const r = await client.post(`${BASE}/registrations/${registrationId}/transfer/`, {
+      recipient_email: recipientEmail,
+    });
+    return r.data;
+  },
+
+  /**
+   * Accept a pending ticket transfer using its token.
+   * @param token - transfer token from the accept link.
+   * @returns backend response confirming acceptance.
+   */
+  acceptTransfer: async (token: string) => {
+    const r = await client.post(`${BASE}/transfers/${token}/accept/`);
+    return r.data;
+  },
+
+  /**
+   * Cancel a pending ticket transfer.
+   * @param transferId - UUID of the transfer record.
+   */
+  cancelTransfer: async (transferId: string): Promise<void> => {
+    await client.delete(`${BASE}/transfers/${transferId}/`);
   },
 };
 

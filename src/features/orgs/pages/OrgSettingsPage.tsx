@@ -1,16 +1,18 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import AppLayout from "@/shared/layouts/AppLayout";
 import { MS } from "@/shared/components/v8";
 import orgApi from "@/features/orgs/api/org.api";
+import type { OrgInvite } from "@/features/orgs/api/org.api";
 import { useOrgStore, isOrgActive } from "@/shared/store/org.store";
 import { useOrgContext } from "@/features/orgs/hooks/useOrgContext";
-import type { OrgType, OrgDocType, OrgDocument } from "@/features/orgs/types/org.types";
+import type { OrgType, OrgDocType, OrgDocument, OrgMemberRole } from "@/features/orgs/types/org.types";
 
 // * Types
 
-type Tab = "basic" | "address" | "social" | "documents";
+type Tab = "basic" | "address" | "social" | "documents" | "invites";
 
 type FormState = {
   name: string;
@@ -41,6 +43,7 @@ const TABS: TabDef[] = [
   },
   { key: "social", icon: "share", label: "Social Links", desc: "Social media profiles" },
   { key: "documents", icon: "folder_open", label: "Documents", desc: "Verification documents" },
+  { key: "invites", icon: "person_add", label: "Invites", desc: "Invite people by email" },
 ];
 
 const ORG_TYPES: { value: OrgType; label: string }[] = [
@@ -467,10 +470,11 @@ export default function OrgSettingsPage() {
                     onDelete={handleDeleteDoc}
                   />
                 )}
+                {tab === "invites" && <InvitesTab orgId={org!.id} />}
               </div>
 
-              {/* save button - sticky at bottom, visible for all tabs except documents */}
-              {tab !== "documents" && (
+              {/* save button - sticky at bottom, visible for all tabs except documents and invites */}
+              {tab !== "documents" && tab !== "invites" && (
                 <div
                   style={{
                     display: "flex",
@@ -1109,6 +1113,212 @@ function DocumentsTab({ orgId, docs, setDocs, onDelete }: DocsTabProps) {
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+// * Invites Tab
+
+const INVITE_ROLES: { value: OrgMemberRole; label: string }[] = [
+  { value: "admin", label: "Admin" },
+  { value: "manager", label: "Manager" },
+  { value: "member", label: "Member" },
+];
+
+/**
+ * Shows pending invites for the org and lets the owner create new ones by email.
+ * @param orgId - UUID of the organization.
+ */
+function InvitesTab({ orgId }: { orgId: string }) {
+  const qc = useQueryClient();
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState<OrgMemberRole>("member");
+
+  const { data: invites = [], isLoading } = useQuery<OrgInvite[]>({
+    queryKey: ["org-invites", orgId],
+    queryFn: () => orgApi.listInvites(orgId),
+  });
+
+  const createMutation = useMutation({
+    mutationFn: () => orgApi.createInvite(orgId, email.trim(), role),
+    onSuccess: () => {
+      setEmail("");
+      qc.invalidateQueries({ queryKey: ["org-invites", orgId] });
+      toast.success("Invite sent.");
+    },
+    onError: () => {
+      toast.error("Failed to send invite.");
+    },
+  });
+
+  /** Format an ISO date as a short human-readable label. */
+  function fmtDate(iso: string): string {
+    return new Date(iso).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {/* create invite form */}
+      <div>
+        <p
+          style={{
+            fontSize: 13,
+            color: "var(--on-var)",
+            fontFamily: "Manrope, sans-serif",
+            lineHeight: 1.55,
+            marginBottom: 16,
+          }}
+        >
+          Invite a team member by email. They will receive a link to accept the invite.
+        </p>
+        <div style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
+          <div style={{ flex: 2, minWidth: 180 }}>
+            <label style={labelStyle}>Email address</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="colleague@example.com"
+              style={fieldStyle}
+            />
+          </div>
+          <div style={{ flex: 1, minWidth: 120 }}>
+            <label style={labelStyle}>Role</label>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value as OrgMemberRole)}
+              style={{ ...fieldStyle, appearance: "auto", cursor: "pointer" }}
+            >
+              {INVITE_ROLES.map((r) => (
+                <option key={r.value} value={r.value}>
+                  {r.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            disabled={createMutation.isPending || !email.trim()}
+            onClick={() => createMutation.mutate()}
+            style={{
+              padding: "10px 20px",
+              borderRadius: 10,
+              border: "none",
+              background: "var(--primary)",
+              color: "#fff",
+              fontSize: 13,
+              fontWeight: 700,
+              fontFamily: "Manrope, sans-serif",
+              cursor: createMutation.isPending || !email.trim() ? "not-allowed" : "pointer",
+              opacity: createMutation.isPending || !email.trim() ? 0.6 : 1,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              flexShrink: 0,
+            }}
+          >
+            <MS n="person_add" size={15} />
+            {createMutation.isPending ? "Sending..." : "Send invite"}
+          </button>
+        </div>
+      </div>
+
+      {/* pending invites list */}
+      <div>
+        <p style={{ ...labelStyle, marginBottom: 10 }}>
+          Pending invites ({isLoading ? "..." : invites.length})
+        </p>
+        {isLoading && (
+          <p style={{ fontSize: 13, color: "var(--on-mut)", fontFamily: "Manrope, sans-serif" }}>
+            Loading invites...
+          </p>
+        )}
+        {!isLoading && invites.length === 0 && (
+          <p style={{ fontSize: 13, color: "var(--on-mut)", fontFamily: "Manrope, sans-serif" }}>
+            No pending invites.
+          </p>
+        )}
+        {!isLoading && invites.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {invites.map((inv) => (
+              <div
+                key={inv.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "10px 14px",
+                  background: "var(--low)",
+                  borderRadius: 10,
+                }}
+              >
+                <div
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 9,
+                    background: "rgba(99,102,241,0.08)",
+                    display: "grid",
+                    placeItems: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <MS n="mail" size={17} style={{ color: "#6366f1" }} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: "var(--on-bg)",
+                      fontFamily: "Manrope, sans-serif",
+                    }}
+                  >
+                    {inv.email}
+                  </p>
+                  <p
+                    style={{
+                      fontSize: 11,
+                      color: "var(--on-mut)",
+                      fontFamily: "'JetBrains Mono', monospace",
+                      marginTop: 2,
+                    }}
+                  >
+                    {inv.role} · invited {fmtDate(inv.created_at)}
+                  </p>
+                </div>
+                <span
+                  style={{
+                    padding: "3px 10px",
+                    borderRadius: 6,
+                    fontSize: 10.5,
+                    fontWeight: 700,
+                    fontFamily: "Manrope, sans-serif",
+                    background:
+                      inv.status === "accepted"
+                        ? "rgba(34,197,94,0.1)"
+                        : inv.status === "expired"
+                          ? "rgba(107,114,128,0.1)"
+                          : "rgba(245,158,11,0.1)",
+                    color:
+                      inv.status === "accepted"
+                        ? "#16a34a"
+                        : inv.status === "expired"
+                          ? "#6b7280"
+                          : "#b45309",
+                    textTransform: "capitalize",
+                  }}
+                >
+                  {inv.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

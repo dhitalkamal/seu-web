@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import AppLayout from "@/shared/layouts/AppLayout";
 import { MS } from "@/shared/components/v8";
 import UserAvatar from "@/shared/components/UserAvatar";
@@ -10,7 +11,7 @@ import { useOrgStore, isOrgActive, isOrgPending, isOrgSuspended } from "@/shared
 import { usePreferencesStore } from "@/shared/store/preferences.store";
 import { useOrgContext } from "@/features/orgs/hooks/useOrgContext"; // only used inside OrgTab
 import notificationsApi from "@/features/notifications/api/notifications.api";
-import type { Notification } from "@/features/notifications/api/notifications.api";
+import type { Notification, NotificationPreference } from "@/features/notifications/api/notifications.api";
 import paymentApi from "@/features/payment/api/payment.api";
 import type { PaymentOrder } from "@/features/payment/types";
 import authApi from "@/features/auth/api/auth.api";
@@ -1560,13 +1561,26 @@ function SecurityTab() {
   const [confirmPw, setConfirmPw] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // * MFA setup state
+  // * MFA setup state (TOTP)
   const [mfaStep, setMfaStep] = useState<"setup" | "verify" | "backup">("setup");
   const [mfaSecret, setMfaSecret] = useState("");
   const [mfaUri, setMfaUri] = useState("");
   const [mfaCode, setMfaCode] = useState("");
   const [mfaBackupCodes, setMfaBackupCodes] = useState<string[]>([]);
   const [mfaLoading, setMfaLoading] = useState(false);
+
+  // * SMS MFA state
+  const [smsMfaModalOpen, setSmsMfaModalOpen] = useState(false);
+  const [smsMfaStep, setSmsMfaStep] = useState<"phone" | "verify">("phone");
+  const [smsMfaPhone, setSmsMfaPhone] = useState("");
+  const [smsMfaCode, setSmsMfaCode] = useState("");
+  const [smsMfaLoading, setSmsMfaLoading] = useState(false);
+
+  // * Email MFA state
+  const [emailMfaModalOpen, setEmailMfaModalOpen] = useState(false);
+  const [emailMfaStep, setEmailMfaStep] = useState<"confirm" | "verify">("confirm");
+  const [emailMfaCode, setEmailMfaCode] = useState("");
+  const [emailMfaLoading, setEmailMfaLoading] = useState(false);
 
   /** Kick off MFA setup  - gets secret and provisioning URI from backend. */
   async function handleMfaSetup() {
@@ -1623,7 +1637,7 @@ function SecurityTab() {
     }
   }
 
-  /** Reset MFA modal to initial state. */
+  /** Reset TOTP MFA modal to initial state. */
   function closeMfaModal() {
     setMfaModalOpen(false);
     setMfaStep("setup");
@@ -1631,6 +1645,77 @@ function SecurityTab() {
     setMfaUri("");
     setMfaCode("");
     setMfaBackupCodes([]);
+  }
+
+  /** Send OTP to phone number to begin SMS MFA setup. */
+  async function handleSmsMfaSetup() {
+    if (!smsMfaPhone.trim()) {
+      toast.error("Enter a phone number.");
+      return;
+    }
+    setSmsMfaLoading(true);
+    try {
+      await authApi.setupSmsMFA(smsMfaPhone.trim());
+      setSmsMfaStep("verify");
+    } catch (err) {
+      toast.error(getApiError(err));
+    } finally {
+      setSmsMfaLoading(false);
+    }
+  }
+
+  /** Confirm OTP to enable SMS MFA. */
+  async function handleSmsMfaEnable() {
+    if (!smsMfaCode.trim()) {
+      toast.error("Enter the OTP code.");
+      return;
+    }
+    setSmsMfaLoading(true);
+    try {
+      await authApi.enableSmsMFA(smsMfaCode.trim());
+      toast.success("SMS two-factor authentication enabled.");
+      setSmsMfaModalOpen(false);
+      setSmsMfaStep("phone");
+      setSmsMfaPhone("");
+      setSmsMfaCode("");
+    } catch (err) {
+      toast.error(getApiError(err));
+    } finally {
+      setSmsMfaLoading(false);
+    }
+  }
+
+  /** Send OTP to email to begin email MFA setup. */
+  async function handleEmailMfaSetup() {
+    setEmailMfaLoading(true);
+    try {
+      await authApi.setupEmailMFA();
+      setEmailMfaStep("verify");
+    } catch (err) {
+      toast.error(getApiError(err));
+    } finally {
+      setEmailMfaLoading(false);
+    }
+  }
+
+  /** Confirm OTP to enable email MFA. */
+  async function handleEmailMfaEnable() {
+    if (!emailMfaCode.trim()) {
+      toast.error("Enter the OTP code.");
+      return;
+    }
+    setEmailMfaLoading(true);
+    try {
+      await authApi.enableEmailMFA(emailMfaCode.trim());
+      toast.success("Email two-factor authentication enabled.");
+      setEmailMfaModalOpen(false);
+      setEmailMfaStep("confirm");
+      setEmailMfaCode("");
+    } catch (err) {
+      toast.error(getApiError(err));
+    } finally {
+      setEmailMfaLoading(false);
+    }
   }
 
   /** Submit password change then close modal on success. */
@@ -1708,6 +1793,33 @@ function SecurityTab() {
           badge={user?.mfa_enabled ? "Active" : "Inactive"}
           badgeColor={user?.mfa_enabled ? "#16a34a" : "#b45309"}
           badgeBg={user?.mfa_enabled ? "rgba(34,197,94,0.1)" : "rgba(245,158,11,0.1)"}
+        />
+
+        {/* SMS MFA row */}
+        <SettingsRow
+          icon="sms"
+          title="SMS Two-Factor Auth"
+          description="Receive a one-time code via SMS each time you sign in."
+          actionLabel="Set up"
+          onAction={() => {
+            setSmsMfaStep("phone");
+            setSmsMfaPhone("");
+            setSmsMfaCode("");
+            setSmsMfaModalOpen(true);
+          }}
+        />
+
+        {/* Email MFA row */}
+        <SettingsRow
+          icon="mark_email_read"
+          title="Email Two-Factor Auth"
+          description="Receive a one-time code via email each time you sign in."
+          actionLabel="Set up"
+          onAction={() => {
+            setEmailMfaStep("confirm");
+            setEmailMfaCode("");
+            setEmailMfaModalOpen(true);
+          }}
         />
 
         {/* Sign Out row */}
@@ -1911,7 +2023,166 @@ function SecurityTab() {
         </SecurityModal>
       )}
 
-      {/* MFA setup / disable modal */}
+      {/* SMS MFA setup modal */}
+      {smsMfaModalOpen && (
+        <SecurityModal
+          title="SMS Two-Factor Auth"
+          icon="sms"
+          onClose={() => {
+            setSmsMfaModalOpen(false);
+            setSmsMfaStep("phone");
+          }}
+          footer={
+            smsMfaStep === "phone" ? (
+              <>
+                <Btn label="Cancel" onClick={() => setSmsMfaModalOpen(false)} />
+                <Btn
+                  label={smsMfaLoading ? "Sending..." : "Send OTP"}
+                  onClick={handleSmsMfaSetup}
+                  disabled={smsMfaLoading}
+                  primary
+                />
+              </>
+            ) : (
+              <>
+                <Btn label="Cancel" onClick={() => setSmsMfaModalOpen(false)} />
+                <Btn
+                  label={smsMfaLoading ? "Verifying..." : "Enable SMS MFA"}
+                  onClick={handleSmsMfaEnable}
+                  disabled={smsMfaLoading}
+                  primary
+                />
+              </>
+            )
+          }
+        >
+          {smsMfaStep === "phone" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <p
+                style={{
+                  fontSize: 14,
+                  color: "var(--on-var)",
+                  fontFamily: "Manrope, sans-serif",
+                  lineHeight: 1.6,
+                }}
+              >
+                Enter the phone number to receive one-time codes. Standard SMS rates may apply.
+              </p>
+              <div>
+                <label style={labelStyle}>Phone number</label>
+                <input
+                  type="tel"
+                  value={smsMfaPhone}
+                  onChange={(e) => setSmsMfaPhone(e.target.value)}
+                  placeholder="+977 9800000000"
+                  style={fieldStyle}
+                />
+              </div>
+            </div>
+          )}
+          {smsMfaStep === "verify" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <p
+                style={{
+                  fontSize: 14,
+                  color: "var(--on-var)",
+                  fontFamily: "Manrope, sans-serif",
+                  lineHeight: 1.6,
+                }}
+              >
+                A code was sent to {smsMfaPhone}. Enter it below to activate SMS two-factor
+                authentication.
+              </p>
+              <div>
+                <label style={labelStyle}>OTP code</label>
+                <input
+                  value={smsMfaCode}
+                  onChange={(e) => setSmsMfaCode(e.target.value)}
+                  placeholder="000000"
+                  maxLength={8}
+                  style={{ ...fieldStyle, textAlign: "center", letterSpacing: 6, fontSize: 16 }}
+                />
+              </div>
+            </div>
+          )}
+        </SecurityModal>
+      )}
+
+      {/* Email MFA setup modal */}
+      {emailMfaModalOpen && (
+        <SecurityModal
+          title="Email Two-Factor Auth"
+          icon="mark_email_read"
+          onClose={() => {
+            setEmailMfaModalOpen(false);
+            setEmailMfaStep("confirm");
+          }}
+          footer={
+            emailMfaStep === "confirm" ? (
+              <>
+                <Btn label="Cancel" onClick={() => setEmailMfaModalOpen(false)} />
+                <Btn
+                  label={emailMfaLoading ? "Sending..." : "Send OTP"}
+                  onClick={handleEmailMfaSetup}
+                  disabled={emailMfaLoading}
+                  primary
+                />
+              </>
+            ) : (
+              <>
+                <Btn label="Cancel" onClick={() => setEmailMfaModalOpen(false)} />
+                <Btn
+                  label={emailMfaLoading ? "Verifying..." : "Enable Email MFA"}
+                  onClick={handleEmailMfaEnable}
+                  disabled={emailMfaLoading}
+                  primary
+                />
+              </>
+            )
+          }
+        >
+          {emailMfaStep === "confirm" && (
+            <p
+              style={{
+                fontSize: 14,
+                color: "var(--on-var)",
+                fontFamily: "Manrope, sans-serif",
+                lineHeight: 1.6,
+              }}
+            >
+              A one-time code will be sent to your registered email address. Click Send OTP to
+              continue.
+            </p>
+          )}
+          {emailMfaStep === "verify" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <p
+                style={{
+                  fontSize: 14,
+                  color: "var(--on-var)",
+                  fontFamily: "Manrope, sans-serif",
+                  lineHeight: 1.6,
+                }}
+              >
+                A code was sent to your email. Enter it below to activate email two-factor
+                authentication.
+              </p>
+              <div>
+                <label style={labelStyle}>OTP code</label>
+                <input
+                  value={emailMfaCode}
+                  onChange={(e) => setEmailMfaCode(e.target.value)}
+                  placeholder="000000"
+                  maxLength={8}
+                  style={{ ...fieldStyle, textAlign: "center", letterSpacing: 6, fontSize: 16 }}
+                />
+              </div>
+            </div>
+          )}
+        </SecurityModal>
+      )}
+
+      {/* TOTP MFA setup / disable modal */}
       {mfaModalOpen && (
         <SecurityModal
           title={user?.mfa_enabled ? "Disable Two-Factor Auth" : "Enable Two-Factor Auth"}
@@ -2395,6 +2666,182 @@ function SecurityModal({
   );
 }
 
+// * --- Notification Preferences -----------------------------------------------
+
+// notification types the backend supports (maps to GET/PATCH /preferences/{type}/)
+const PREF_TYPES: { type: string; label: string; desc: string }[] = [
+  {
+    type: "event_reminder",
+    label: "Event Reminders",
+    desc: "Get notified before events you have registered for",
+  },
+  {
+    type: "registration_confirmed",
+    label: "Registration Confirmations",
+    desc: "Confirmation notifications when you register",
+  },
+  {
+    type: "org_update",
+    label: "Organization Updates",
+    desc: "Status changes, approvals, and team notifications",
+  },
+  {
+    type: "announcement",
+    label: "Announcements",
+    desc: "Event suggestions and platform announcements",
+  },
+];
+
+type PrefChannel = "email_enabled" | "push_enabled" | "sms_enabled" | "in_app_enabled";
+
+/**
+ * Single row for a notification type with per-channel toggle buttons.
+ * @param pref - preference object from the backend (undefined if not yet loaded).
+ * @param notifType - notification type slug used to patch the backend.
+ * @param label - human-friendly label.
+ * @param desc - description text.
+ */
+function NotifPrefRow({
+  pref,
+  notifType,
+  label,
+  desc,
+}: {
+  pref: NotificationPreference | undefined;
+  notifType: string;
+  label: string;
+  desc: string;
+}) {
+  const qc = useQueryClient();
+
+  const updateMutation = useMutation({
+    mutationFn: (patch: Partial<Pick<NotificationPreference, PrefChannel>>) =>
+      notificationsApi.updatePreference(notifType, patch),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["notif-prefs"] });
+    },
+    onError: () => {
+      toast.error("Failed to update preference.");
+    },
+  });
+
+  /**
+   * Toggle a single channel for this notification type.
+   * @param channel - which channel flag to flip.
+   */
+  function toggle(channel: PrefChannel) {
+    if (!pref) return;
+    updateMutation.mutate({ [channel]: !pref[channel] });
+  }
+
+  const channels: { key: PrefChannel; icon: string; tip: string }[] = [
+    { key: "email_enabled", icon: "mail", tip: "Email" },
+    { key: "push_enabled", icon: "notifications", tip: "Push" },
+    { key: "sms_enabled", icon: "sms", tip: "SMS" },
+    { key: "in_app_enabled", icon: "inbox", tip: "In-app" },
+  ];
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 14,
+        padding: "10px 0",
+        borderBottom: "1px solid var(--outline)",
+      }}
+    >
+      <div style={{ flex: 1 }}>
+        <p
+          style={{
+            fontSize: 13.5,
+            fontWeight: 600,
+            fontFamily: "Manrope, sans-serif",
+            color: "var(--on-bg)",
+            marginBottom: 2,
+          }}
+        >
+          {label}
+        </p>
+        <p style={{ fontSize: 12, color: "var(--on-mut)", fontFamily: "Manrope, sans-serif" }}>
+          {desc}
+        </p>
+      </div>
+      <div style={{ display: "flex", gap: 6 }}>
+        {channels.map((ch) => {
+          const on = pref ? pref[ch.key] : false;
+          return (
+            <button
+              key={ch.key}
+              title={ch.tip}
+              onClick={() => toggle(ch.key)}
+              disabled={!pref || updateMutation.isPending}
+              style={{
+                width: 30,
+                height: 30,
+                borderRadius: 8,
+                border: `1.5px solid ${on ? "var(--primary)" : "var(--mid)"}`,
+                background: on ? "rgba(5,10,38,0.08)" : "transparent",
+                cursor: !pref || updateMutation.isPending ? "not-allowed" : "pointer",
+                display: "grid",
+                placeItems: "center",
+                opacity: !pref ? 0.4 : 1,
+              }}
+            >
+              <MS
+                n={ch.icon}
+                size={14}
+                style={{ color: on ? "var(--primary)" : "var(--on-mut)" }}
+              />
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Full notification preferences section - fetches prefs per type and renders rows.
+ * Placed inside PreferencesTab.
+ */
+function NotificationPrefsSection() {
+  const { data: prefsMap = {} } = useQuery<Record<string, NotificationPreference>>({
+    queryKey: ["notif-prefs"],
+    queryFn: async () => {
+      // fetch prefs for each known type; backend may 404 if no pref saved yet
+      const results: Record<string, NotificationPreference> = {};
+      await Promise.all(
+        PREF_TYPES.map(async (pt) => {
+          try {
+            const r = await notificationsApi.updatePreference(pt.type, {});
+            if (r) results[pt.type] = r;
+          } catch {
+            // pref not saved yet for this type - leave undefined so row disables its toggles
+          }
+        })
+      );
+      return results;
+    },
+    // stale after 5 minutes
+    staleTime: 5 * 60_000,
+  });
+
+  return (
+    <SectionCard title="Notification Preferences" icon="notifications_active" style={{ marginTop: 20 }}>
+      {PREF_TYPES.map((pt) => (
+        <NotifPrefRow
+          key={pt.type}
+          pref={prefsMap[pt.type]}
+          notifType={pt.type}
+          label={pt.label}
+          desc={pt.desc}
+        />
+      ))}
+    </SectionCard>
+  );
+}
+
 // * --- Preferences Tab --------------------------------------------------------
 
 /** User preferences  - volunteer mode toggle, theme, notification prefs. */
@@ -2532,87 +2979,7 @@ function PreferencesTab() {
         </div>
       </SectionCard>
 
-      <SectionCard
-        title="Notification Preferences"
-        icon="notifications_active"
-        style={{ marginTop: 20 }}
-      >
-        {[
-          {
-            key: "events",
-            label: "Event Reminders",
-            desc: "Get notified before events you've registered for",
-            enabled: true,
-          },
-          {
-            key: "org",
-            label: "Organization Updates",
-            desc: "Status changes, approvals, and team notifications",
-            enabled: true,
-          },
-          {
-            key: "marketing",
-            label: "Marketing & Recommendations",
-            desc: "Event suggestions and platform announcements",
-            enabled: false,
-          },
-        ].map((pref) => (
-          <div
-            key={pref.key}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 14,
-              padding: "10px 0",
-              borderBottom: "1px solid var(--outline)",
-            }}
-          >
-            <div style={{ flex: 1 }}>
-              <p
-                style={{
-                  fontSize: 13.5,
-                  fontWeight: 600,
-                  fontFamily: "Manrope, sans-serif",
-                  color: "var(--on-bg)",
-                  marginBottom: 2,
-                }}
-              >
-                {pref.label}
-              </p>
-              <p
-                style={{ fontSize: 12, color: "var(--on-mut)", fontFamily: "Manrope, sans-serif" }}
-              >
-                {pref.desc}
-              </p>
-            </div>
-            <div
-              style={{
-                width: 40,
-                height: 22,
-                borderRadius: 11,
-                background: pref.enabled ? "#4338ca" : "var(--mid)",
-                position: "relative",
-                flexShrink: 0,
-                cursor: "pointer",
-              }}
-            >
-              <div
-                style={{
-                  width: 16,
-                  height: 16,
-                  borderRadius: 8,
-                  background: "white",
-                  position: "absolute",
-                  top: 3,
-                  left: pref.enabled ? 21 : 3,
-                  transition: "left 200ms",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
-                }}
-              />
-            </div>
-          </div>
-        ))}
-      </SectionCard>
+      <NotificationPrefsSection />
 
       <SectionCard title="Data & Privacy" icon="privacy_tip" style={{ marginTop: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>

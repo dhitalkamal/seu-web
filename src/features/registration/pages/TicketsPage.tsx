@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import AppLayout from "@/shared/layouts/AppLayout";
 import { PH, MS, useToast } from "@/shared/components/v8";
 import { useMyRegistrations } from "@/features/registration/hooks/useRegistrations";
@@ -143,12 +143,134 @@ function TicketQR({ registrationId, onClose }: { registrationId: string; onClose
   );
 }
 
+/**
+ * Modal for initiating a ticket transfer to another user.
+ * @param registrationId - UUID of the registration to transfer.
+ * @param onClose - callback to dismiss the modal.
+ */
+function TransferModal({
+  registrationId,
+  onClose,
+}: {
+  registrationId: string;
+  onClose: () => void;
+}) {
+  const [email, setEmail] = useState("");
+
+  const { mutate, isPending } = useMutation({
+    mutationFn: (recipientEmail: string) =>
+      registrationApi.initiateTransfer(registrationId, recipientEmail),
+    onSuccess: () => {
+      onClose();
+    },
+    onError: () => {
+      // leave modal open so the user can retry with a different address
+    },
+  });
+
+  /** Submit the transfer request. */
+  function handleSend() {
+    const trimmed = email.trim();
+    if (!trimmed) return;
+    mutate(trimmed);
+  }
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.5)",
+        zIndex: 100,
+        display: "grid",
+        placeItems: "center",
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: "var(--surface)",
+          borderRadius: 20,
+          padding: 28,
+          maxWidth: 380,
+          width: "90%",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div
+          style={{
+            fontFamily: "Space Grotesk, sans-serif",
+            fontWeight: 700,
+            fontSize: 17,
+            marginBottom: 6,
+          }}
+        >
+          Transfer ticket
+        </div>
+        <div style={{ fontSize: 12.5, color: "var(--on-mut)", marginBottom: 18, lineHeight: 1.45 }}>
+          Enter the email address of the person you want to transfer this ticket to. They will
+          receive a link to accept it.
+        </div>
+        <label
+          style={{
+            display: "block",
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            color: "var(--on-mut)",
+            marginBottom: 6,
+            fontFamily: "JetBrains Mono, monospace",
+          }}
+        >
+          Recipient email
+        </label>
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="someone@example.com"
+          style={{
+            width: "100%",
+            padding: "10px 14px",
+            borderRadius: 10,
+            border: "1px solid var(--mid)",
+            background: "var(--low)",
+            color: "var(--on-bg)",
+            fontSize: 14,
+            outline: "none",
+            fontFamily: "Manrope, sans-serif",
+            boxSizing: "border-box",
+            marginBottom: 16,
+          }}
+        />
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          <button className="btn-sm" onClick={onClose} disabled={isPending}>
+            Cancel
+          </button>
+          <button
+            className="btn-sm"
+            onClick={handleSend}
+            disabled={isPending || !email.trim()}
+            style={{ background: "var(--primary)", color: "white", borderColor: "transparent" }}
+          >
+            <MS n="send" size={13} />
+            {isPending ? "Sending..." : "Send transfer"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** My tickets page - shows upcoming registrations with countdown hero, 30-day timeline, and QR tokens. */
 export default function TicketsPage() {
   const { toast, toastEl } = useToast();
   const navigate = useNavigate();
   const { data: registrations, isLoading } = useMyRegistrations();
   const [qrFor, setQrFor] = useState<string | null>(null);
+  // transfer modal - holds the registration ID currently being transferred
+  const [transferFor, setTransferFor] = useState<string | null>(null);
 
   // * event detail cache keyed by event_id
   const [eventCache, setEventCache] = useState<Record<string, Event>>({});
@@ -264,6 +386,16 @@ export default function TicketsPage() {
       {toastEl}
       {/* qr modal */}
       {qrFor && <TicketQR registrationId={qrFor} onClose={() => setQrFor(null)} />}
+      {/* transfer modal */}
+      {transferFor && (
+        <TransferModal
+          registrationId={transferFor}
+          onClose={() => {
+            setTransferFor(null);
+            toast("Transfer request sent");
+          }}
+        />
+      )}
       <PH
         crumbs={["Tickets"]}
         title="My tickets"
@@ -576,6 +708,15 @@ export default function TicketsPage() {
                   >
                     <MS n="receipt" size={12} />
                     Receipt
+                  </button>
+                  {/* transfer ticket to another user */}
+                  <button
+                    className="btn-sm"
+                    style={{ fontSize: 11 }}
+                    onClick={() => setTransferFor(reg.id)}
+                  >
+                    <MS n="swap_horiz" size={12} />
+                    Transfer
                   </button>
                 </div>
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>

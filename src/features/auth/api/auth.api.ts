@@ -20,7 +20,7 @@ const AUTH = "/iam/api/v1/auth";
 const PROFILE = "/iam/api/v1/profile";
 const GDPR = "/iam/api/v1/gdpr";
 
-/** @returns Full login response — either tokens or mfa_required signal. */
+/** @returns Full login response - either tokens or mfa_required signal. */
 async function login(email: string, password: string): Promise<LoginResponse> {
   const res = await client.post<LoginResponse>(`${AUTH}/login/`, { email, password });
   return res.data;
@@ -81,7 +81,7 @@ async function changePassword(payload: ChangePasswordRequest): Promise<MessageRe
 
 // * MFA
 
-/** Initiates MFA setup — returns secret and provisioning URI. */
+/** Initiates TOTP MFA setup - returns secret and provisioning URI. */
 async function setupMFA(): Promise<{ data: { secret: string; provisioning_uri: string } }> {
   const res = await client.post(`${AUTH}/mfa/setup/`);
   return res.data;
@@ -110,6 +110,30 @@ async function backupCodeStatus(): Promise<{ data: { remaining: number } }> {
 /** Regenerates backup codes. Requires current TOTP code. */
 async function regenerateBackupCodes(code: string): Promise<{ data: { backup_codes: string[] } }> {
   const res = await client.post(`${AUTH}/mfa/backup-codes/regenerate/`, { code });
+  return res.data;
+}
+
+/** Initiates SMS MFA setup - sends an OTP to the provided phone number. */
+async function setupSmsMFA(phone: string): Promise<{ data: { message: string } }> {
+  const res = await client.post(`${AUTH}/mfa/sms/setup/`, { phone });
+  return res.data;
+}
+
+/** Enables SMS MFA by confirming with the OTP received via SMS. */
+async function enableSmsMFA(otpCode: string): Promise<{ data: { message: string } }> {
+  const res = await client.post(`${AUTH}/mfa/sms/enable/`, { otp_code: otpCode });
+  return res.data;
+}
+
+/** Initiates email MFA setup - sends an OTP to the user's registered email. */
+async function setupEmailMFA(): Promise<{ data: { message: string } }> {
+  const res = await client.post(`${AUTH}/mfa/email/setup/`);
+  return res.data;
+}
+
+/** Enables email MFA by confirming with the OTP received via email. */
+async function enableEmailMFA(otpCode: string): Promise<{ data: { message: string } }> {
+  const res = await client.post(`${AUTH}/mfa/email/enable/`, { otp_code: otpCode });
   return res.data;
 }
 
@@ -184,6 +208,10 @@ const authApi = {
   disableMFA,
   backupCodeStatus,
   regenerateBackupCodes,
+  setupSmsMFA,
+  enableSmsMFA,
+  setupEmailMFA,
+  enableEmailMFA,
   listSessions,
   revokeSession,
   getProfile,
