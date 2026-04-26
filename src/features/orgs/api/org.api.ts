@@ -1,4 +1,4 @@
-/** API calls for organization CRUD, lifecycle management, and document uploads. */
+/** API calls for organization CRUD, lifecycle management, document uploads, and invites. */
 
 import client from "@/shared/api/client";
 import type {
@@ -8,9 +8,21 @@ import type {
   CreateOrgRequest,
   AddMemberRequest,
   UploadDocRequest,
+  OrgMemberRole,
 } from "@/features/orgs/types/org.types";
 
 const BASE = "/org/api/v1/organizations";
+
+/** A pending organization invite record returned by the backend. */
+export type OrgInvite = {
+  id: string;
+  organization_id: string;
+  email: string;
+  role: OrgMemberRole;
+  status: "pending" | "accepted" | "expired";
+  created_at: string;
+  expires_at: string | null;
+};
 
 /**
  * Unwraps the standard { data: T } envelope the management-service returns.
@@ -95,6 +107,30 @@ const orgApi = {
   /** Reinstate a suspended org. */
   reinstate: (orgId: string) =>
     client.post<{ data: Organization }>(`${BASE}/${orgId}/reinstate/`).then(unwrap),
+
+  // * Invites
+
+  /**
+   * List pending invites for an organization.
+   * @param orgId - UUID of the organization.
+   * @returns array of invite objects.
+   */
+  listInvites: async (orgId: string): Promise<OrgInvite[]> => {
+    const r = await client.get(`${BASE}/${orgId}/invites/`);
+    return (r.data?.data ?? r.data ?? []) as OrgInvite[];
+  },
+
+  /**
+   * Create a new invite for an email address with a given role.
+   * @param orgId - UUID of the organization.
+   * @param email - email address to invite.
+   * @param role - role to assign on acceptance.
+   * @returns the created invite object.
+   */
+  createInvite: async (orgId: string, email: string, role: string): Promise<OrgInvite> => {
+    const r = await client.post(`${BASE}/${orgId}/invites/`, { email, role });
+    return r.data?.data ?? r.data;
+  },
 };
 
 export default orgApi;

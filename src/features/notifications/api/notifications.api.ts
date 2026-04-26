@@ -90,6 +90,15 @@ const notificationsApi = {
     client
       .post<{ data: unknown }>(`/notification/api/v1/journeys/events/${eventId}/`, { stages })
       .then((r) => r.data.data),
+
+  /**
+   * Acknowledge a notification by ID - used for event_update notifications.
+   * @param id - UUID of the notification to acknowledge.
+   */
+  acknowledge: (id: string) =>
+    client
+      .post<ApiOk<Notification>>(`${BASE}/notifications/${id}/acknowledge/`)
+      .then((r) => r.data.data),
 };
 
 export default notificationsApi;
