@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import AppLayout from "@/shared/layouts/AppLayout";
 import { MS } from "@/shared/components/v8";
 import checkinApi from "@/features/checkin/api/checkin.api";
+import volunteerRolesApi from "@/features/volunteer-apps/api/volunteer-roles.api";
 
 // * types
 
@@ -46,6 +47,12 @@ export default function VolunteerHomePage() {
     queryFn: checkinApi.getVolunteerShifts,
   });
 
+  // volunteer profile: hours, skills, availability
+  const { data: profile } = useQuery({
+    queryKey: ["volunteer-profile"],
+    queryFn: volunteerRolesApi.getProfile,
+  });
+
   const shifts = rawShifts as Shift[];
 
   const eventsServed = passport?.events_attended ?? 0;
@@ -59,10 +66,13 @@ export default function VolunteerHomePage() {
     .filter((s) => s.start_time && new Date(s.start_time).getTime() > now)
     .sort((a, b) => new Date(a.start_time!).getTime() - new Date(b.start_time!).getTime());
 
+  // prefer backend profile hours when available, fall back to shift computation
+  const displayHours = profile?.total_hours ?? totalHours;
+
   const kpis = [
     {
       label: "Total Hours",
-      value: totalHours > 0 ? `${totalHours}h` : "0h",
+      value: displayHours > 0 ? `${displayHours}h` : "0h",
       icon: "timer",
       bg: "#dce1ff",
       color: "var(--primary)",
@@ -248,6 +258,118 @@ export default function VolunteerHomePage() {
           </div>
         ))}
       </div>
+
+      {/* volunteer profile panel - shows when profile data is loaded */}
+      {profile && (
+        <div
+          style={{
+            background: "var(--surface)",
+            border: "1px solid var(--outline)",
+            borderRadius: 14,
+            padding: "16px 20px",
+            marginBottom: 18,
+          }}
+        >
+          <p
+            style={{
+              fontFamily: "'Space Grotesk', sans-serif",
+              fontWeight: 600,
+              fontSize: 15,
+              letterSpacing: "-0.02em",
+              marginBottom: 12,
+            }}
+          >
+            My Volunteer Profile
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 20 }}>
+            {/* availability */}
+            <div>
+              <p
+                style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  color: "var(--on-mut)",
+                  marginBottom: 4,
+                  fontFamily: "'JetBrains Mono', monospace",
+                }}
+              >
+                Availability
+              </p>
+              <p style={{ fontSize: 13, fontFamily: "Manrope, sans-serif", color: "var(--on-bg)" }}>
+                {profile.availability || "Not set"}
+              </p>
+            </div>
+
+            {/* skills */}
+            {profile.skills && profile.skills.length > 0 && (
+              <div>
+                <p
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    color: "var(--on-mut)",
+                    marginBottom: 4,
+                    fontFamily: "'JetBrains Mono', monospace",
+                  }}
+                >
+                  Skills
+                </p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {profile.skills.map((skill) => (
+                    <span
+                      key={skill}
+                      style={{
+                        padding: "2px 10px",
+                        borderRadius: 999,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        background: "#dce1ff",
+                        color: "var(--primary)",
+                        fontFamily: "Manrope, sans-serif",
+                      }}
+                    >
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* bio */}
+            {profile.bio && (
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <p
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    color: "var(--on-mut)",
+                    marginBottom: 4,
+                    fontFamily: "'JetBrains Mono', monospace",
+                  }}
+                >
+                  Bio
+                </p>
+                <p
+                  style={{
+                    fontSize: 13,
+                    fontFamily: "Manrope, sans-serif",
+                    color: "var(--on-var)",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {profile.bio}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* two-column: upcoming shifts + quick links */}
       <div className="grid" style={{ gridTemplateColumns: "1fr 340px", gap: 18 }}>

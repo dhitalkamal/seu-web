@@ -1,7 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import AppLayout from "@/shared/layouts/AppLayout";
 import { MS } from "@/shared/components/v8";
 import client from "@/shared/api/client";
+import volunteerRolesApi from "@/features/volunteer-apps/api/volunteer-roles.api";
 
 // * types
 
@@ -37,11 +39,33 @@ async function fetchCertificates(): Promise<Certificate[]> {
 
 // * component
 
-/** Certificates page - view and download earned volunteer certificates. */
+/** Certificates page - view, download, and verify earned volunteer certificates. */
 export default function VolunteerCertificatesPage() {
   const { data: certs = [], isLoading } = useQuery({
     queryKey: ["volunteer-certificates"],
     queryFn: fetchCertificates,
+  });
+
+  // track per-cert verify results: cert id -> { valid: boolean } | "loading" | null
+  const [verifyResults, setVerifyResults] = useState<
+    Record<string, { valid: boolean; error?: string } | "loading">
+  >({});
+
+  // verify mutation - fires per cert id
+  const verifyMutation = useMutation({
+    mutationFn: (certId: string) => volunteerRolesApi.verifyCertificate(certId),
+    onMutate: (certId) => {
+      setVerifyResults((prev) => ({ ...prev, [certId]: "loading" }));
+    },
+    onSuccess: (data, certId) => {
+      setVerifyResults((prev) => ({ ...prev, [certId]: { valid: data.valid } }));
+    },
+    onError: (_err, certId) => {
+      setVerifyResults((prev) => ({
+        ...prev,
+        [certId]: { valid: false, error: "Verification failed" },
+      }));
+    },
   });
 
   return (
@@ -235,7 +259,15 @@ export default function VolunteerCertificatesPage() {
                     {cert.type ?? "event"}
                   </span>
 
-                  <div style={{ paddingTop: 12, borderTop: "1px solid var(--outline)" }}>
+                  <div
+                    style={{
+                      paddingTop: 12,
+                      borderTop: "1px solid var(--outline)",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 8,
+                    }}
+                  >
                     {cert.download_url ? (
                       <a
                         href={cert.download_url}
@@ -285,6 +317,51 @@ export default function VolunteerCertificatesPage() {
                         <MS n="download" size={15} />
                         Not available
                       </button>
+                    )}
+
+                    {/* verify button and result */}
+                    <button
+                      disabled={verifyResults[cert.id] === "loading"}
+                      onClick={() => verifyMutation.mutate(cert.id)}
+                      style={{
+                        width: "100%",
+                        padding: "9px 0",
+                        borderRadius: 9,
+                        border: "1px solid var(--outline)",
+                        background: "var(--low)",
+                        color: "var(--on-var)",
+                        fontSize: 13,
+                        fontWeight: 600,
+                        fontFamily: "Manrope, sans-serif",
+                        cursor: verifyResults[cert.id] === "loading" ? "not-allowed" : "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <MS n="verified" size={15} />
+                      {verifyResults[cert.id] === "loading" ? "Verifying..." : "Verify Certificate"}
+                    </button>
+
+                    {/* inline verify result */}
+                    {verifyResults[cert.id] && verifyResults[cert.id] !== "loading" && (
+                      <p
+                        style={{
+                          fontSize: 12,
+                          fontFamily: "Manrope, sans-serif",
+                          fontWeight: 600,
+                          textAlign: "center",
+                          color: (verifyResults[cert.id] as { valid: boolean }).valid
+                            ? "#166534"
+                            : "#991b1b",
+                        }}
+                      >
+                        {(verifyResults[cert.id] as { valid: boolean; error?: string }).error ??
+                          ((verifyResults[cert.id] as { valid: boolean }).valid
+                            ? "Certificate is valid"
+                            : "Certificate is invalid")}
+                      </p>
                     )}
                   </div>
                 </div>

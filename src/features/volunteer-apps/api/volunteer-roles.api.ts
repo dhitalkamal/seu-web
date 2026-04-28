@@ -1,4 +1,4 @@
-/** API calls for volunteer roles and applications. */
+/** API calls for volunteer roles, applications, shifts, checkin/checkout, certificates, and profile. */
 
 import client from "@/shared/api/client";
 
@@ -18,9 +18,41 @@ export type VolunteerApplication = {
   id: string;
   role_id: string;
   user_id: string;
-  status: "pending" | "approved" | "rejected" | "cancelled";
+  status: "pending" | "approved" | "rejected" | "cancelled" | "completed";
   message: string;
   created_at: string;
+  checked_in_at?: string;
+  checked_out_at?: string;
+  rating?: number;
+  feedback?: string;
+};
+
+export type VolunteerShift = {
+  id: string;
+  role_id: string;
+  title: string;
+  start_time: string;
+  end_time: string;
+  capacity: number;
+  location?: string;
+  created_at?: string;
+};
+
+export type VolunteerCertificate = {
+  id: string;
+  application_id: string;
+  issued_at: string;
+  title?: string;
+  download_url?: string;
+};
+
+export type VolunteerProfile = {
+  id: string;
+  user_id: string;
+  total_hours: number;
+  skills: string[];
+  availability: string;
+  bio?: string;
 };
 
 type ApiOk<T> = { data: T };
@@ -67,6 +99,93 @@ const volunteerRolesApi = {
     client
       .post<ApiOk<VolunteerApplication>>(`${BASE}/applications/${applicationId}/cancel/`)
       .then((r) => r.data.data),
+
+  // * shift management
+
+  /** List shifts for a given role. */
+  listShifts: (roleId: string) =>
+    client
+      .get<ApiOk<VolunteerShift[]>>(`${BASE}/roles/${roleId}/shifts/list/`)
+      .then((r) => r.data.data ?? []),
+
+  /** Create a new shift for a role. */
+  createShift: (
+    roleId: string,
+    data: {
+      title: string;
+      start_time: string;
+      end_time: string;
+      capacity: number;
+      location?: string;
+    }
+  ) =>
+    client
+      .post<ApiOk<VolunteerShift>>(`${BASE}/roles/${roleId}/shifts/`, data)
+      .then((r) => r.data.data),
+
+  /** Update an existing shift by id. */
+  updateShift: (
+    shiftId: string,
+    data: Partial<{
+      title: string;
+      start_time: string;
+      end_time: string;
+      capacity: number;
+      location: string;
+    }>
+  ) =>
+    client
+      .patch<ApiOk<VolunteerShift>>(`${BASE}/shifts/${shiftId}/`, data)
+      .then((r) => r.data.data),
+
+  /** Delete a shift by id. */
+  deleteShift: (shiftId: string) => client.delete(`${BASE}/shifts/${shiftId}/`),
+
+  // * checkin / checkout / rating
+
+  /** Check in a volunteer application by id. */
+  checkin: (applicationId: string) =>
+    client
+      .post<ApiOk<VolunteerApplication>>(`${BASE}/applications/${applicationId}/checkin/`)
+      .then((r) => r.data.data),
+
+  /** Check out a volunteer application by id. */
+  checkout: (applicationId: string) =>
+    client
+      .post<ApiOk<VolunteerApplication>>(`${BASE}/applications/${applicationId}/checkout/`)
+      .then((r) => r.data.data),
+
+  /** Rate a volunteer after they complete a shift. */
+  rate: (applicationId: string, payload: { rating: number; feedback?: string }) =>
+    client
+      .post<ApiOk<VolunteerApplication>>(`${BASE}/applications/${applicationId}/rate/`, payload)
+      .then((r) => r.data.data),
+
+  // * certificates
+
+  /** Generate a certificate for a completed volunteer application. */
+  generateCertificate: (applicationId: string) =>
+    client
+      .post<ApiOk<VolunteerCertificate>>(`${BASE}/applications/${applicationId}/certificate/`)
+      .then((r) => r.data.data),
+
+  /** Verify a certificate by its id. */
+  verifyCertificate: (certificateId: string) =>
+    client
+      .get<
+        ApiOk<VolunteerCertificate & { valid: boolean }>
+      >(`${BASE}/certificates/${certificateId}/verify/`)
+      .then((r) => r.data.data),
+
+  // * profile
+
+  /** Fetch the current volunteer's profile. */
+  getProfile: () =>
+    client.get<ApiOk<VolunteerProfile>>(`${BASE}/profile/`).then((r) => r.data.data),
+
+  /** Partially update the current volunteer's profile. */
+  updateProfile: (data: Partial<Pick<VolunteerProfile, "skills" | "availability" | "bio">>) =>
+    client.patch<ApiOk<VolunteerProfile>>(`${BASE}/profile/`, data).then((r) => r.data.data),
 };
 
 export default volunteerRolesApi;
