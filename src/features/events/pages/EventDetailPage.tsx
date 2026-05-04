@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { Button } from "@/shared/components/ui";
 import PublicLayout from "@/shared/layouts/PublicLayout";
 import AppLayout from "@/shared/layouts/AppLayout";
@@ -7,6 +8,9 @@ import { useEvent, useEventMutations } from "@/features/events/hooks/useEvents";
 import { useAuthStore } from "@/shared/store/auth.store";
 import registrationApi from "@/features/registration/api/registration.api";
 import JourneyPanel from "@/features/events/components/JourneyPanel";
+
+// lazy-load the heavy Leaflet bundle so it doesn't block the initial paint
+const EventMap = lazy(() => import("@/shared/components/EventMap"));
 
 const STATUS_CHIP: Record<string, { bg: string; color: string }> = {
   published: { bg: "#dcfce7", color: "#16a34a" },
@@ -131,6 +135,15 @@ export default function EventDetailPage() {
 
   return (
     <Layout isAuthenticated={isAuthenticated} isOrgContext={isOrgContext}>
+      {/* open graph + page title */}
+      <Helmet>
+        <title>{event.title} - Sansaar</title>
+        <meta property="og:title" content={event.title} />
+        <meta property="og:description" content={event.description?.slice(0, 160)} />
+        <meta property="og:image" content={event.cover_image || ""} />
+        <meta property="og:type" content="website" />
+      </Helmet>
+
       {/* full-bleed hero -pulls into navbar area */}
       <div
         className="relative overflow-hidden"
@@ -345,6 +358,48 @@ export default function EventDetailPage() {
             ))}
           </div>
 
+          {/* location map - only shown when backend provides coordinates */}
+          {event.latitude != null && event.longitude != null && (
+            <div style={{ marginBottom: 32 }}>
+              <h4
+                style={{
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontWeight: 600,
+                  fontSize: 15,
+                  letterSpacing: "-0.02em",
+                  marginBottom: 12,
+                  color: "var(--on-bg)",
+                }}
+              >
+                Location
+              </h4>
+              <Suspense
+                fallback={
+                  <div
+                    style={{
+                      height: 300,
+                      borderRadius: 12,
+                      background: "var(--low)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "var(--on-mut)",
+                      fontSize: 13,
+                    }}
+                  >
+                    Loading map…
+                  </div>
+                }
+              >
+                <EventMap
+                  latitude={event.latitude}
+                  longitude={event.longitude}
+                  title={event.location}
+                />
+              </Suspense>
+            </div>
+          )}
+
           {/* organiser actions */}
           {isOrganiser && (
             <>
@@ -352,13 +407,18 @@ export default function EventDetailPage() {
                 className="flex gap-3 flex-wrap pt-6"
                 style={{ borderTop: "1px solid var(--outline)" }}
               >
-                <Button variant="secondary" onClick={() => navigate(`/org/events/${event.id}/edit`)}>
+                <Button
+                  variant="secondary"
+                  onClick={() => navigate(`/org/events/${event.id}/edit`)}
+                >
                   Edit
                 </Button>
                 {event.status === "draft" && (
                   <Button
                     loading={publishMutation.isPending}
-                    onClick={() => publishMutation.mutate(event.id, { onSuccess: () => navigate(0) })}
+                    onClick={() =>
+                      publishMutation.mutate(event.id, { onSuccess: () => navigate(0) })
+                    }
                   >
                     Publish
                   </Button>

@@ -14,6 +14,9 @@ export type Venue = {
   description: string;
   organization_id: string;
   created_at: string;
+  // optional geo coords provided by backend
+  latitude: number | null;
+  longitude: number | null;
 };
 
 export type Space = {

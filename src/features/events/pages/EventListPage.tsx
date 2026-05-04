@@ -1,6 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import FullCalendar from "@fullcalendar/react";
+import dayGridPlugin from "@fullcalendar/daygrid";
+import timeGridPlugin from "@fullcalendar/timegrid";
+import listPlugin from "@fullcalendar/list";
+import interactionPlugin from "@fullcalendar/interaction";
 import AppLayout from "@/shared/layouts/AppLayout";
 import { PH, MS, useToast } from "@/shared/components/v8";
 import { usePublicEvents } from "@/features/events/hooks/useEvents";
@@ -30,12 +35,33 @@ function shortDate(iso: string): string {
   return `${d.toLocaleDateString("en-US", { month: "short" }).toUpperCase()} ${d.getDate()}`;
 }
 
-/** Discover events - live data, featured hero, category filter, event grid. */
+/**
+ * Approximate great-circle distance between two points using the Haversine formula.
+ * @param lat1 - origin latitude in decimal degrees
+ * @param lng1 - origin longitude in decimal degrees
+ * @param lat2 - destination latitude in decimal degrees
+ * @param lng2 - destination longitude in decimal degrees
+ * @returns distance in kilometres
+ */
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+/** Discover events - live data, featured hero, category filter, event grid, calendar view. */
 export default function EventListPage() {
   const navigate = useNavigate();
   const { toast, toastEl } = useToast();
   const qc = useQueryClient();
   const [searchParams] = useSearchParams();
+
+  // * toggle between card grid and FullCalendar view
+  const [viewMode, setViewMode] = useState<"grid" | "calendar">("grid");
 
   // * category filter uses real category IDs from the API
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
@@ -49,6 +75,13 @@ export default function EventListPage() {
 
   // * search term populated from URL params (issue 30)
   const [searchTerm, setSearchTerm] = useState(() => searchParams.get("search") ?? "");
+
+  // * location radius filter state
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationError, setLocationError] = useState("");
+  const [locating, setLocating] = useState(false);
+  const [radiusKm, setRadiusKm] = useState<number>(10);
+  const [sortByDistance, setSortByDistance] = useState(false);
 
   // * saved events state - backed by real API, keyed by event_id -> saved record
   const { data: savedRecords = [] } = useQuery<SavedEvent[]>({
@@ -99,6 +132,8 @@ export default function EventListPage() {
     ...(selectedCategoryId !== "all" ? { category: selectedCategoryId } : {}),
     ...(filterFree !== undefined ? { is_free: filterFree } : {}),
     ...(searchTerm.trim() ? { search: searchTerm.trim() } : {}),
+    // include geo params only when we have the user's location
+    ...(userLocation ? { lat: userLocation.lat, lng: userLocation.lng, radius_km: radiusKm } : {}),
   };
 
   const { data, isLoading } = usePublicEvents(
@@ -114,6 +149,25 @@ export default function EventListPage() {
   if (filterDateTo) {
     const to = new Date(filterDateTo).getTime();
     events = events.filter((ev) => new Date(ev.start_date).getTime() <= to);
+  }
+
+  // * sort by distance (haversine) when the user has enabled it and shared location
+  if (sortByDistance && userLocation) {
+    events = [...events].sort((a, b) => {
+      const distA = haversineKm(
+        userLocation.lat,
+        userLocation.lng,
+        a.latitude ?? 0,
+        a.longitude ?? 0
+      );
+      const distB = haversineKm(
+        userLocation.lat,
+        userLocation.lng,
+        b.latitude ?? 0,
+        b.longitude ?? 0
+      );
+      return distA - distB;
+    });
   }
 
   const featured = events.length > 0 ? events[0] : null;
@@ -309,14 +363,106 @@ export default function EventListPage() {
               )}
             </div>
 
-            {/* calendar view - coming soon (issue 19) */}
-            <button className="btn-sm" onClick={() => toast("Calendar view coming soon")}>
-              <MS n="event" size={13} />
-              Calendar view
+            {/* location radius search */}
+            {userLocation ? (
+              // when location is active: show radius picker, sort toggle, and clear
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <select
+                  value={radiusKm}
+                  onChange={(e) => setRadiusKm(Number(e.target.value))}
+                  className="btn-sm"
+                  style={{
+                    fontFamily: "Manrope, sans-serif",
+                    fontSize: 12,
+                    cursor: "pointer",
+                    background: "var(--surface)",
+                    border: "1px solid var(--mid)",
+                    color: "var(--on-bg)",
+                    borderRadius: 7,
+                    padding: "5px 8px",
+                  }}
+                >
+                  {[5, 10, 25, 50].map((km) => (
+                    <option key={km} value={km}>
+                      {km} km
+                    </option>
+                  ))}
+                </select>
+                <button
+                  className={`btn-sm${sortByDistance ? " primary" : ""}`}
+                  onClick={() => setSortByDistance((s) => !s)}
+                  title="Sort by distance from your location"
+                >
+                  <MS n="near_me" size={13} />
+                  {sortByDistance ? "Sorted" : "Sort by distance"}
+                </button>
+                <button
+                  className="btn-sm"
+                  onClick={() => {
+                    setUserLocation(null);
+                    setSortByDistance(false);
+                    setLocationError("");
+                  }}
+                  title="Clear location filter"
+                >
+                  <MS n="location_off" size={13} />
+                  Clear
+                </button>
+              </div>
+            ) : (
+              // no location yet: show the "Near me" button
+              <button
+                className="btn-sm"
+                disabled={locating}
+                onClick={() => {
+                  setLocating(true);
+                  setLocationError("");
+                  navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                      setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+                      setLocating(false);
+                    },
+                    (err) => {
+                      setLocationError(err.message);
+                      setLocating(false);
+                    }
+                  );
+                }}
+              >
+                <MS n="my_location" size={13} />
+                {locating ? "Locating…" : "Near me"}
+              </button>
+            )}
+
+            {/* calendar / grid toggle */}
+            <button
+              className={`btn-sm${viewMode === "calendar" ? " primary" : ""}`}
+              onClick={() => setViewMode((m) => (m === "grid" ? "calendar" : "grid"))}
+            >
+              <MS n={viewMode === "calendar" ? "grid_view" : "event"} size={13} />
+              {viewMode === "calendar" ? "Grid view" : "Calendar view"}
             </button>
           </>
         }
       />
+
+      {/* geolocation error - shown below the header bar */}
+      {locationError && (
+        <div
+          style={{
+            marginBottom: 12,
+            padding: "8px 14px",
+            background: "rgba(232,49,81,0.08)",
+            borderRadius: 10,
+            border: "1px solid rgba(232,49,81,0.2)",
+            fontSize: 13,
+            color: "var(--secondary)",
+            fontFamily: "Manrope, sans-serif",
+          }}
+        >
+          Location error: {locationError}
+        </div>
+      )}
 
       {/* search bar - populated from URL params (issue 30) */}
       {searchTerm && (
@@ -520,114 +666,162 @@ export default function EventListPage() {
         </div>
       )}
 
-      {/* event grid */}
-      {isLoading ? (
-        <div className="disc-grid">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div
-              key={i}
-              className="animate-pulse"
-              style={{ height: 300, borderRadius: 16, background: "var(--surface)" }}
-            />
-          ))}
+      {/* calendar view */}
+      {viewMode === "calendar" && (
+        <div
+          style={{
+            background: "var(--surface)",
+            border: "1px solid var(--outline)",
+            borderRadius: 16,
+            padding: 20,
+            marginBottom: 24,
+          }}
+        >
+          <FullCalendar
+            plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
+            initialView="dayGridMonth"
+            headerToolbar={{
+              left: "prev,next today",
+              center: "title",
+              right: "dayGridMonth,timeGridWeek,timeGridDay,listWeek",
+            }}
+            events={events.map((ev) => ({
+              id: ev.id,
+              title: ev.title,
+              start: ev.start_date,
+              end: ev.end_date,
+              // use the platform accent colours based on event status
+              backgroundColor:
+                ev.status === "published"
+                  ? "#050a26"
+                  : ev.status === "cancelled"
+                    ? "#e83151"
+                    : "#6b7280",
+              borderColor: "transparent",
+              extendedProps: { event: ev },
+            }))}
+            eventClick={(info: { event: { id: string } }) => {
+              navigate(`/events/${info.event.id}`);
+            }}
+            height="auto"
+          />
         </div>
-      ) : (
-        <div className="disc-grid">
-          {events.map((ev) => {
-            const f = fillPercent(ev);
-            const priceLabel = ev.is_free ? "Free" : `NPR ${parseFloat(ev.price).toLocaleString()}`;
-            return (
-              <div key={ev.id} className="disc-card" onClick={() => navigate(`/events/${ev.id}`)}>
-                <div
-                  className="disc-hero"
-                  style={{ background: "linear-gradient(135deg,#1a2750,#050a26)" }}
-                >
-                  <span className="disc-date">{shortDate(ev.start_date)}</span>
-                  {f > 85 && (
-                    <span
-                      style={{
-                        position: "absolute",
-                        top: 10,
-                        right: 10,
-                        zIndex: 1,
-                        background: "#e83151",
-                        color: "white",
-                        padding: "3px 9px",
-                        borderRadius: 6,
-                        fontSize: 10,
-                        fontWeight: 700,
-                        fontFamily: "JetBrains Mono, monospace",
-                        letterSpacing: "0.06em",
-                      }}
-                    >
-                      Filling fast
-                    </span>
-                  )}
-                </div>
-                <div className="disc-body">
+      )}
+
+      {/* event grid - only shown in grid mode */}
+      {viewMode === "grid" &&
+        (isLoading ? (
+          <div className="disc-grid">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="animate-pulse"
+                style={{ height: 300, borderRadius: 16, background: "var(--surface)" }}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="disc-grid">
+            {events.map((ev) => {
+              const f = fillPercent(ev);
+              const priceLabel = ev.is_free
+                ? "Free"
+                : `NPR ${parseFloat(ev.price).toLocaleString()}`;
+              return (
+                <div key={ev.id} className="disc-card" onClick={() => navigate(`/events/${ev.id}`)}>
                   <div
-                    style={{
-                      fontFamily: "JetBrains Mono, monospace",
-                      fontSize: 9.5,
-                      letterSpacing: "0.1em",
-                      textTransform: "uppercase",
-                      color: "var(--secondary)",
-                      fontWeight: 700,
-                    }}
+                    className="disc-hero"
+                    style={{ background: "linear-gradient(135deg,#1a2750,#050a26)" }}
                   >
-                    {ev.status}
-                  </div>
-                  <div className="disc-title">{ev.title}</div>
-                  <div className="disc-meta">
-                    {ev.location} &middot; {ev.registered_count.toLocaleString()} attending
-                  </div>
-                  <div
-                    style={{
-                      height: 4,
-                      background: "var(--mid)",
-                      borderRadius: 999,
-                      overflow: "hidden",
-                      margin: "4px 0 2px",
-                    }}
-                  >
-                    <div
-                      style={{
-                        height: "100%",
-                        width: `${f}%`,
-                        background: f > 85 ? "#e83151" : f > 60 ? "#dba13d" : "#16a34a",
-                        borderRadius: 999,
-                      }}
-                    />
-                  </div>
-                  <div className="disc-foot">
-                    <span className="disc-price">{priceLabel}</span>
-                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                      {/* per-card save (issue 20) */}
-                      <button
-                        className="btn-sm"
-                        onClick={(e) => toggleSave(ev.id, e)}
-                        style={{ fontSize: 11 }}
-                      >
-                        <MS n={savedByEventId.has(ev.id) ? "bookmark" : "bookmark_add"} size={12} />
-                        {savedByEventId.has(ev.id) ? "Saved" : "Save"}
-                      </button>
-                      <button
-                        className="btn-sm primary"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/events/${ev.id}`);
+                    <span className="disc-date">{shortDate(ev.start_date)}</span>
+                    {f > 85 && (
+                      <span
+                        style={{
+                          position: "absolute",
+                          top: 10,
+                          right: 10,
+                          zIndex: 1,
+                          background: "#e83151",
+                          color: "white",
+                          padding: "3px 9px",
+                          borderRadius: 6,
+                          fontSize: 10,
+                          fontWeight: 700,
+                          fontFamily: "JetBrains Mono, monospace",
+                          letterSpacing: "0.06em",
                         }}
                       >
-                        View
-                      </button>
+                        Filling fast
+                      </span>
+                    )}
+                  </div>
+                  <div className="disc-body">
+                    <div
+                      style={{
+                        fontFamily: "JetBrains Mono, monospace",
+                        fontSize: 9.5,
+                        letterSpacing: "0.1em",
+                        textTransform: "uppercase",
+                        color: "var(--secondary)",
+                        fontWeight: 700,
+                      }}
+                    >
+                      {ev.status}
+                    </div>
+                    <div className="disc-title">{ev.title}</div>
+                    <div className="disc-meta">
+                      {ev.location} &middot; {ev.registered_count.toLocaleString()} attending
+                    </div>
+                    <div
+                      style={{
+                        height: 4,
+                        background: "var(--mid)",
+                        borderRadius: 999,
+                        overflow: "hidden",
+                        margin: "4px 0 2px",
+                      }}
+                    >
+                      <div
+                        style={{
+                          height: "100%",
+                          width: `${f}%`,
+                          background: f > 85 ? "#e83151" : f > 60 ? "#dba13d" : "#16a34a",
+                          borderRadius: 999,
+                        }}
+                      />
+                    </div>
+                    <div className="disc-foot">
+                      <span className="disc-price">{priceLabel}</span>
+                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                        {/* per-card save (issue 20) */}
+                        <button
+                          className="btn-sm"
+                          onClick={(e) => toggleSave(ev.id, e)}
+                          style={{ fontSize: 11 }}
+                        >
+                          <MS
+                            n={savedByEventId.has(ev.id) ? "bookmark" : "bookmark_add"}
+                            size={12}
+                          />
+                          {savedByEventId.has(ev.id) ? "Saved" : "Save"}
+                        </button>
+                        <button
+                          className="btn-sm primary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/events/${ev.id}`);
+                          }}
+                        >
+                          View
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        ))}
     </AppLayout>
   );
 }

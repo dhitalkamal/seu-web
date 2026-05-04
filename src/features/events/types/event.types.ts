@@ -17,6 +17,9 @@ export type Event = {
   title: string;
   description: string;
   location: string;
+  // optional geo-coordinates populated by the backend when set
+  latitude: number | null;
+  longitude: number | null;
   start_date: string;
   end_date: string;
   capacity: number;
@@ -61,6 +64,10 @@ export type EventListFilters = {
   is_free?: boolean;
   search?: string;
   category?: string;
+  // geo radius search - pass all three together
+  lat?: number;
+  lng?: number;
+  radius_km?: number;
 };
 
 export type PaginatedEvents = {
