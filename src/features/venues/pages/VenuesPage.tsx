@@ -1,13 +1,18 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import AppLayout from "@/shared/layouts/AppLayout";
 import { PH, KPI, MS, useToast } from "@/shared/components/v8";
 import venuesApi from "../api/venues.api";
 
+// lazy load so leaflet CSS doesn't block the venues bundle
+const EventMap = lazy(() => import("@/shared/components/EventMap"));
+
 export default function VenuesPage() {
   const { toast, toastEl } = useToast();
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  // track which venue row has its map expanded
+  const [expandedMapId, setExpandedMapId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
@@ -23,7 +28,15 @@ export default function VenuesPage() {
 
   const createMutation = useMutation({
     mutationFn: () =>
-      venuesApi.create({ name, address, city, country, capacity: Number(capacity), description: description || undefined, website: website || undefined }),
+      venuesApi.create({
+        name,
+        address,
+        city,
+        country,
+        capacity: Number(capacity),
+        description: description || undefined,
+        website: website || undefined,
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["venues"] });
       toast("Venue created");
@@ -179,51 +192,101 @@ export default function VenuesPage() {
                   <th>Country</th>
                   <th>Capacity</th>
                   <th>Since</th>
+                  <th />
                 </tr>
               </thead>
               <tbody>
                 {venues.map((v) => (
-                  <tr key={v.id}>
-                    <td>
-                      <div className="ev-cell">
-                        <div
-                          className="ev-icon"
-                          style={{
-                            background: "linear-gradient(135deg,#1b4a5c,#3b3a72)",
-                            color: "white",
-                          }}
-                        >
-                          <MS n="location_on" size={14} />
-                        </div>
-                        <div>
-                          <div className="ev-name">{v.name}</div>
+                  <>
+                    <tr key={v.id}>
+                      <td>
+                        <div className="ev-cell">
                           <div
+                            className="ev-icon"
                             style={{
-                              fontSize: 11,
-                              color: "var(--on-mut)",
-                              fontFamily: "JetBrains Mono, monospace",
+                              background: "linear-gradient(135deg,#1b4a5c,#3b3a72)",
+                              color: "white",
                             }}
                           >
-                            {v.address}
+                            <MS n="location_on" size={14} />
+                          </div>
+                          <div>
+                            <div className="ev-name">{v.name}</div>
+                            <div
+                              style={{
+                                fontSize: 11,
+                                color: "var(--on-mut)",
+                                fontFamily: "JetBrains Mono, monospace",
+                              }}
+                            >
+                              {v.address}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    <td>{v.city}</td>
-                    <td>{v.country}</td>
-                    <td style={{ fontFamily: "JetBrains Mono, monospace", fontWeight: 700 }}>
-                      {v.capacity?.toLocaleString()}
-                    </td>
-                    <td
-                      style={{
-                        fontFamily: "JetBrains Mono, monospace",
-                        fontSize: 11,
-                        color: "var(--on-mut)",
-                      }}
-                    >
-                      {new Date(v.created_at).toLocaleDateString()}
-                    </td>
-                  </tr>
+                      </td>
+                      <td>{v.city}</td>
+                      <td>{v.country}</td>
+                      <td style={{ fontFamily: "JetBrains Mono, monospace", fontWeight: 700 }}>
+                        {v.capacity?.toLocaleString()}
+                      </td>
+                      <td
+                        style={{
+                          fontFamily: "JetBrains Mono, monospace",
+                          fontSize: 11,
+                          color: "var(--on-mut)",
+                        }}
+                      >
+                        {new Date(v.created_at).toLocaleDateString()}
+                      </td>
+                      <td>
+                        {/* show map toggle only when the backend provides coordinates */}
+                        {v.latitude != null && v.longitude != null && (
+                          <button
+                            className="btn-sm"
+                            onClick={() =>
+                              setExpandedMapId((prev) => (prev === v.id ? null : v.id))
+                            }
+                            style={{ fontSize: 11 }}
+                          >
+                            <MS n="map" size={12} />
+                            {expandedMapId === v.id ? "Hide map" : "Map"}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                    {/* inline map row - only rendered when the toggle is active */}
+                    {expandedMapId === v.id && v.latitude != null && v.longitude != null && (
+                      <tr key={`${v.id}-map`}>
+                        <td colSpan={6} style={{ padding: "12px 16px" }}>
+                          <Suspense
+                            fallback={
+                              <div
+                                style={{
+                                  height: 200,
+                                  background: "var(--low)",
+                                  borderRadius: 10,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  fontSize: 12,
+                                  color: "var(--on-mut)",
+                                }}
+                              >
+                                Loading map…
+                              </div>
+                            }
+                          >
+                            <EventMap
+                              latitude={v.latitude}
+                              longitude={v.longitude}
+                              title={`${v.name} - ${v.address}`}
+                              className="venue-map"
+                            />
+                          </Suspense>
+                        </td>
+                      </tr>
+                    )}
+                  </>
                 ))}
               </tbody>
             </table>

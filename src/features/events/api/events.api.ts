@@ -20,6 +20,10 @@ async function listPublicEvents(filters?: EventListFilters): Promise<PaginatedEv
   if (filters?.is_free !== undefined) params.set("is_free", String(filters.is_free));
   if (filters?.search) params.set("search", filters.search);
   if (filters?.category) params.set("category_id", filters.category);
+  // geo radius search params
+  if (filters?.lat !== undefined) params.set("lat", String(filters.lat));
+  if (filters?.lng !== undefined) params.set("lng", String(filters.lng));
+  if (filters?.radius_km !== undefined) params.set("radius_km", String(filters.radius_km));
   const res = await client.get<PaginatedEvents>(`${EVENTS_BASE}/?${params}`);
   return res.data;
 }
@@ -109,6 +113,24 @@ function deleteMedia(eventId: string, mediaId: string) {
   return client.delete(`${EVENTS_BASE}/${eventId}/media/${mediaId}/`);
 }
 
+/**
+ * Update position (or other fields) on a single media item.
+ * @param eventId - the parent event UUID
+ * @param mediaId - the media record UUID
+ * @param payload - partial update; typically `{ position: number }`
+ */
+async function updateMedia(
+  eventId: string,
+  mediaId: string,
+  payload: { position?: number; caption?: string }
+): Promise<MediaItem> {
+  const res = await client.patch<{ data: MediaItem }>(
+    `${EVENTS_BASE}/${eventId}/media/${mediaId}/`,
+    payload
+  );
+  return res.data.data;
+}
+
 /** A single event review submitted by an attendee. */
 export type EventReview = {
   id: string;
@@ -172,6 +194,7 @@ const eventsApi = {
   listMedia,
   addMedia,
   deleteMedia,
+  updateMedia,
   submitReview,
   listReviews,
   getReviewSummary,
