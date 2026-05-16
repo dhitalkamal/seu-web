@@ -1,1 +1,12 @@
 @import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Manrope', sans-serif;
+    background-color: #f4f5f7;
+    color: #19191e;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Space Grotesk', sans-serif;
+  }
+}

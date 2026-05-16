@@ -1,23 +1,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { Role, User } from "@/features/auth/types/auth.types";
 
-type Role =
-  | "attendee"
-  | "organiser"
-  | "super-admin"
-  | "platform-mgr"
-  | "compliance"
-  | "fin-admin"
-  | "support"
-  | "moderator";
-
-type User = {
-  id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  role: Role;
-};
+export type { Role, User };
 
 type AuthState = {
   user: User | null;
@@ -28,7 +13,7 @@ type AuthState = {
   clearAuth: () => void;
 };
 
-/** Persisted auth store -- survives page refresh via localStorage. */
+/** Persisted auth store -- survives page refresh via localStorage under key "sansaar-auth". */
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
