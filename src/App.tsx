@@ -1,5 +1,5 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import HomePage from "./pages/public/HomePage";
+import HomePage from "@/features/events/pages/HomePage";
 
 /** Root router -- add routes here as pages are implemented. */
 export default function App() {
