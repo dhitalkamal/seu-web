@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button, Input } from "@/shared/components/ui";
 import AuthLayout from "@/shared/layouts/AuthLayout";
 import { useAuth, getApiError } from "@/features/auth/hooks/useAuth";
+import GoogleSignInButton from "@/features/auth/components/GoogleSignInButton";
 import type { LoginTokens } from "@/features/auth/types/auth.types";
 
 type LocationState = { flash?: string };
@@ -115,6 +116,17 @@ export default function LoginPage() {
           Sign in
         </Button>
       </form>
+
+      <div className="flex items-center gap-3 my-5">
+        <hr className="flex-1 border-[#e0dfd8]" />
+        <span className="text-xs text-[#9b9ca4] font-['Manrope']">or</span>
+        <hr className="flex-1 border-[#e0dfd8]" />
+      </div>
+
+      <GoogleSignInButton
+        onSuccess={() => navigate("/")}
+        onError={(msg) => loginMutation.reset()}
+      />
 
       <p className="text-center text-sm text-[#6b6c75] mt-6 font-['Manrope']">
         Don&apos;t have an account?{" "}

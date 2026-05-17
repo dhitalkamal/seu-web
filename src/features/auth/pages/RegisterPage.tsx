@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button, Input } from "@/shared/components/ui";
 import AuthLayout from "@/shared/layouts/AuthLayout";
+import GoogleSignInButton from "@/features/auth/components/GoogleSignInButton";
 import { useAuth, getApiError } from "@/features/auth/hooks/useAuth";
 
 /** Register page — creates a new account and navigates to email verification. */
@@ -116,6 +117,17 @@ export default function RegisterPage() {
           Create account
         </Button>
       </form>
+
+      <div className="flex items-center gap-3 my-5">
+        <hr className="flex-1 border-[#e0dfd8]" />
+        <span className="text-xs text-[#9b9ca4] font-['Manrope']">or</span>
+        <hr className="flex-1 border-[#e0dfd8]" />
+      </div>
+
+      <GoogleSignInButton
+        onSuccess={(isNew) => navigate(isNew ? "/" : "/", { state: { flash: "Welcome back!" } })}
+        onError={() => {}}
+      />
 
       <p className="text-center text-sm text-[#6b6c75] mt-6 font-['Manrope']">
         Already have an account?{" "}
