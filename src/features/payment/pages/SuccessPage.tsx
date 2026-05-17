@@ -1,6 +1,5 @@
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-
 import PublicLayout from "@/shared/layouts/PublicLayout";
 import paymentApi from "../api/payment.api";
 
@@ -17,27 +16,69 @@ export default function SuccessPage() {
 
   return (
     <PublicLayout>
-      <div className="max-w-lg mx-auto px-4 py-20 flex flex-col items-center gap-6 text-center">
-        <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center text-3xl">
-          ✓
+      <div className="flex flex-col items-center text-center" style={{ maxWidth: 520, margin: "0 auto", padding: "60px 24px 80px" }}>
+        {/* success icon */}
+        <div
+          className="grid place-items-center mb-6"
+          style={{ width: 72, height: 72, borderRadius: "50%", background: "#d8efe2" }}
+        >
+          <span className="ms" style={{ fontSize: 36, color: "var(--success)" }}>check_circle</span>
         </div>
-        <h1 className="text-2xl font-bold text-[#19191e] font-['Manrope']">Payment successful!</h1>
-        <p className="text-sm text-[#6b6c75] font-['Manrope']">
-          Your registration is confirmed. See your QR code below and save it for entry.
+
+        <h1
+          style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600, fontSize: 32, letterSpacing: "-0.04em", color: "var(--on-bg)", marginBottom: 12 }}
+        >
+          Payment successful!
+        </h1>
+
+        <p
+          style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 19, color: "var(--on-var)", lineHeight: 1.5, marginBottom: 28, maxWidth: "34ch" }}
+        >
+          Your registration is confirmed. Check My Tickets for your QR code.
         </p>
+
         {order && (
-          <div className="bg-white border border-[#e0dfd8] rounded-2xl p-6 flex flex-col items-center gap-4">
-            <p className="text-xs text-[#6b6c75] font-['Manrope']">Order #{order.id.slice(0, 8)}</p>
-            <p className="text-sm font-bold text-[#19191e] font-['Manrope']">
-              NPR {order.total_amount} — {order.status}
+          <div
+            style={{
+              background: "var(--surface)",
+              border: "1px solid var(--outline)",
+              borderRadius: 14,
+              padding: "20px 28px",
+              marginBottom: 28,
+              width: "100%",
+            }}
+          >
+            <p
+              style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--on-mut)", marginBottom: 6 }}
+            >
+              Order #{order.id.slice(0, 8)}
             </p>
+            <div className="flex justify-between items-center">
+              <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 20, color: "var(--on-bg)", letterSpacing: "-0.03em" }}>
+                NPR {order.total_amount}
+              </span>
+              <span
+                style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, padding: "3px 9px", borderRadius: 999, background: "#dcfce7", color: "#16a34a", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" }}
+              >
+                {order.status}
+              </span>
+            </div>
           </div>
         )}
-        <div className="flex gap-4">
-          <Link to="/tickets" className="text-sm font-bold text-[#19191e] font-['Manrope'] border border-[#e0dfd8] rounded-xl px-5 py-2.5 hover:bg-[#f3f2ef] transition-colors">
+
+        <div className="flex gap-3">
+          <Link
+            to="/tickets"
+            className="no-underline font-semibold transition-colors"
+            style={{ padding: "11px 22px", borderRadius: 10, border: "1px solid var(--outline)", background: "white", color: "var(--on-bg)", fontSize: 14, fontFamily: "Manrope, sans-serif" }}
+          >
             My tickets
           </Link>
-          <Link to="/" className="text-sm font-bold text-white bg-[#19191e] font-['Manrope'] rounded-xl px-5 py-2.5 hover:opacity-90 transition-opacity">
+          <Link
+            to="/"
+            className="no-underline font-semibold text-white transition-opacity hover:opacity-90"
+            style={{ padding: "11px 22px", borderRadius: 10, background: "linear-gradient(135deg, #050a26, #121d3f)", fontSize: 14, fontFamily: "Manrope, sans-serif" }}
+          >
             Browse events
           </Link>
         </div>
