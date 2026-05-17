@@ -1,8 +1,14 @@
 import type { ReactNode } from "react";
+import Navbar from "./Navbar";
 
 type Props = { children: ReactNode };
 
-/** Navbar + main content area + Footer for public pages. */
+/** Full-page layout with navbar for public-facing pages. */
 export default function PublicLayout({ children }: Props) {
-  return <div>{children}</div>;
+  return (
+    <div className="min-h-screen bg-[#f3f2ef]">
+      <Navbar />
+      <main>{children}</main>
+    </div>
+  );
 }
