@@ -17,6 +17,9 @@ import OrgEventsPage from "@/features/events/pages/OrgEventsPage";
 import NotificationsPage from "@/features/notifications/pages/NotificationsPage";
 import ProfilePage from "@/features/profile/pages/ProfilePage";
 import SettingsPage from "@/features/profile/pages/SettingsPage";
+import CheckoutPage from "@/features/payment/pages/CheckoutPage";
+import FailurePage from "@/features/payment/pages/FailurePage";
+import SuccessPage from "@/features/payment/pages/SuccessPage";
 import TicketsPage from "@/features/registration/pages/TicketsPage";
 
 /** Wrap a page in ProtectedRoute. */
@@ -122,6 +125,16 @@ export default function App() {
             </P>
           }
         />
+        <Route
+          path="/checkout"
+          element={
+            <P>
+              <CheckoutPage />
+            </P>
+          }
+        />
+        <Route path="/payment/success" element={<SuccessPage />} />
+        <Route path="/payment/failure" element={<FailurePage />} />
         <Route
           path="/events/create"
           element={
