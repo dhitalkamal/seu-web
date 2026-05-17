@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { v4 as uuidv4 } from "uuid";
-import PublicLayout from "@/shared/layouts/PublicLayout";
+import AppLayout from "@/shared/layouts/AppLayout";
 import paymentApi, { khaltiPaymentUrl, esewaPaymentUrl } from "../api/payment.api";
 import type { Gateway } from "../types";
 
@@ -46,11 +46,11 @@ export default function CheckoutPage() {
 
   if (!eventId || !registrationId) {
     return (
-      <PublicLayout>
+      <AppLayout title="Checkout">
         <div className="max-w-lg mx-auto px-4 py-20 text-center">
           <p className="text-sm text-red-600 font-['Manrope']">Invalid checkout link. Please go back and try again.</p>
         </div>
-      </PublicLayout>
+      </AppLayout>
     );
   }
 
@@ -58,7 +58,7 @@ export default function CheckoutPage() {
   const total = (parseFloat(subtotal) + parseFloat(platformFee)).toFixed(2);
 
   return (
-    <PublicLayout>
+    <AppLayout title="Checkout">
       <div className="max-w-lg mx-auto px-4 py-10">
         <h1 className="text-2xl font-bold text-[#19191e] font-['Manrope'] mb-8">Checkout</h1>
 
@@ -128,6 +128,6 @@ export default function CheckoutPage() {
           </button>
         </div>
       </div>
-    </PublicLayout>
+    </AppLayout>
   );
 }
