@@ -3,33 +3,116 @@ import { Link } from "react-router-dom";
 
 type Props = {
   title: string;
+  titleAccent?: string;
   subtitle?: string;
+  eyebrow?: string;
   children: ReactNode;
 };
 
 /**
- * Centered card layout for all auth screens (login, register, forgot-password).
- * Shows the Sansaar wordmark at the top and a white card below.
+ * Glass-modal auth layout on a dark radial gradient background.
+ * SEU Platform v8 sign-up/sign-in modal design.
  */
-export default function AuthLayout({ title, subtitle, children }: Props) {
+export default function AuthLayout({ title, titleAccent, subtitle, eyebrow, children }: Props) {
   return (
-    <div className="min-h-screen bg-[#f3f2ef] flex flex-col items-center justify-center px-4 py-12">
-      {/* wordmark */}
+    <div
+      className="min-h-screen flex items-center justify-center px-4 py-12 relative overflow-hidden"
+      style={{ background: "radial-gradient(ellipse at top, #1a2750 0%, #050a26 70%)" }}
+    >
+      {/* bloom accents */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(ellipse 50% 60% at 80% 20%, rgba(232,49,81,0.2), transparent 60%), radial-gradient(ellipse 40% 50% at 15% 80%, rgba(219,161,61,0.14), transparent 60%)",
+        }}
+      />
+
+      {/* logo top-centre */}
       <Link
         to="/"
-        className="mb-8 text-xl font-bold text-[#121d3f] font-['Manrope'] tracking-tight"
+        className="absolute top-6 left-1/2 flex items-center gap-3 no-underline"
+        style={{ transform: "translateX(-50%)" }}
       >
-        Sansaar
+        <div
+          className="grid place-items-center text-white font-bold"
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 9,
+            background: "linear-gradient(135deg, #e83151, #dba13d)",
+            fontFamily: "'Space Grotesk', sans-serif",
+            fontSize: 13,
+          }}
+        >
+          S
+        </div>
+        <span
+          className="font-bold text-white"
+          style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 16, letterSpacing: "-0.02em" }}
+        >
+          Sansaar
+        </span>
       </Link>
 
-      {/* card */}
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-[#e0dfd8] px-8 py-10">
-        <div className="mb-7 text-center">
-          <h1 className="text-2xl font-bold text-[#19191e] font-['Manrope']">{title}</h1>
-          {subtitle ? (
-            <p className="mt-1.5 text-sm text-[#6b6c75] font-['Manrope']">{subtitle}</p>
-          ) : null}
+      {/* modal card */}
+      <div
+        className="relative w-full"
+        style={{
+          maxWidth: 480,
+          background: "var(--surface)",
+          borderRadius: 24,
+          padding: "40px",
+          boxShadow: "0 32px 80px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.15)",
+        }}
+      >
+        {/* header */}
+        <div className="mb-6">
+          {eyebrow && (
+            <p
+              className="mb-2"
+              style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: 10.5,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                color: "var(--secondary)",
+              }}
+            >
+              {eyebrow}
+            </p>
+          )}
+          <h1
+            style={{
+              fontFamily: "'Space Grotesk', sans-serif",
+              fontWeight: 600,
+              fontSize: 26,
+              letterSpacing: "-0.035em",
+              lineHeight: 1.1,
+              color: "var(--on-bg)",
+            }}
+          >
+            {title}{" "}
+            {titleAccent && (
+              <span
+                style={{
+                  fontFamily: "'Cormorant Garamond', serif",
+                  fontStyle: "italic",
+                  fontWeight: 500,
+                  color: "var(--primary)",
+                }}
+              >
+                {titleAccent}
+              </span>
+            )}
+          </h1>
+          {subtitle && (
+            <p className="mt-2" style={{ fontSize: 13.5, color: "var(--on-var)", fontFamily: "Manrope, sans-serif" }}>
+              {subtitle}
+            </p>
+          )}
         </div>
+
         {children}
       </div>
     </div>
