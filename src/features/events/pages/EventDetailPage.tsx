@@ -4,7 +4,14 @@ import PublicLayout from "@/shared/layouts/PublicLayout";
 import { useEvent, useEventMutations } from "@/features/events/hooks/useEvents";
 import { useAuthStore } from "@/shared/store/auth.store";
 
-/** Public event detail page — anyone can view, organiser can manage. */
+const STATUS_CHIP: Record<string, { bg: string; color: string }> = {
+  published: { bg: "#dcfce7", color: "#16a34a" },
+  draft: { bg: "var(--low)", color: "var(--on-var)" },
+  cancelled: { bg: "rgba(232,49,81,0.1)", color: "var(--secondary)" },
+  completed: { bg: "rgba(18,29,63,0.08)", color: "var(--primary)" },
+};
+
+/** Public event detail — full-width hero + two-column body + sticky registration rail. */
 export default function EventDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -15,10 +22,12 @@ export default function EventDetailPage() {
   if (isLoading) {
     return (
       <PublicLayout>
-        <div className="max-w-3xl mx-auto px-4 py-12">
-          <div className="h-10 w-64 bg-[#e0dfd8] rounded-lg animate-pulse mb-4" />
-          <div className="h-4 w-full bg-[#e0dfd8] rounded animate-pulse mb-2" />
-          <div className="h-4 w-3/4 bg-[#e0dfd8] rounded animate-pulse" />
+        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "40px 32px" }}>
+          <div className="animate-pulse space-y-4">
+            <div style={{ height: 420, borderRadius: 24, background: "var(--low)" }} />
+            <div style={{ height: 24, width: "40%", borderRadius: 8, background: "var(--low)" }} />
+            <div style={{ height: 16, width: "70%", borderRadius: 8, background: "var(--low)" }} />
+          </div>
         </div>
       </PublicLayout>
     );
@@ -27,12 +36,11 @@ export default function EventDetailPage() {
   if (!event) {
     return (
       <PublicLayout>
-        <div className="max-w-3xl mx-auto px-4 py-20 text-center">
-          <p className="text-[#6b6c75] font-['Manrope']">Event not found.</p>
-          <Link
-            to="/"
-            className="text-[#121d3f] font-semibold hover:underline text-sm font-['Manrope'] mt-4 inline-block"
-          >
+        <div className="text-center py-24">
+          <p style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 20, color: "var(--on-mut)" }}>
+            Event not found.
+          </p>
+          <Link to="/" className="inline-block mt-4 text-sm font-semibold text-[var(--primary)] no-underline hover:underline">
             Back to events
           </Link>
         </div>
@@ -43,95 +51,323 @@ export default function EventDetailPage() {
   const isOrganiser = user?.id === event.organiser_id;
   const start = new Date(event.start_date);
   const end = new Date(event.end_date);
+  const spots = event.capacity - event.registered_count;
+  const chip = STATUS_CHIP[event.status] ?? STATUS_CHIP.draft;
+  const priceDisplay = event.is_free ? "Free" : `NPR ${parseFloat(event.price).toLocaleString()}`;
 
   return (
     <PublicLayout>
-      <div className="max-w-3xl mx-auto px-4 py-10">
-        {/* breadcrumb */}
-        <Link
-          to="/"
-          className="text-sm text-[#6b6c75] hover:text-[#19191e] font-['Manrope'] mb-6 inline-block"
+      {/* full-bleed hero — pulls into navbar area */}
+      <div
+        className="relative overflow-hidden"
+        style={{
+          height: 420,
+          marginTop: "-96px",
+          background: "linear-gradient(135deg, var(--low), var(--mid))",
+        }}
+      >
+        {/* gradient overlay */}
+        <div
+          className="absolute inset-0"
+          style={{ background: "linear-gradient(to bottom, rgba(5,10,38,0.15) 0%, rgba(5,10,38,0.72) 100%)" }}
+        />
+
+        {/* content */}
+        <div
+          className="absolute bottom-0 left-0 right-0"
+          style={{ padding: "0 32px 40px", maxWidth: 1200, margin: "0 auto" }}
         >
-          ← All events
-        </Link>
+          <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+            {/* back link */}
+            <Link
+              to="/"
+              className="inline-flex items-center gap-1 text-white no-underline mb-5 opacity-70 hover:opacity-100 transition-opacity"
+              style={{ fontFamily: "Manrope, sans-serif", fontSize: 13, fontWeight: 600 }}
+            >
+              ← All events
+            </Link>
 
-        <div className="bg-white border border-[#e0dfd8] rounded-2xl overflow-hidden">
-          {/* header */}
-          <div className="bg-[#f3f2ef] h-40 flex items-center justify-center">
-            <span className="text-6xl">🎟️</span>
-          </div>
-
-          <div className="p-8">
-            {/* status badge */}
-            <div className="flex items-center gap-3 mb-4">
+            {/* category + status pills */}
+            <div className="flex items-center gap-2 mb-4">
               <span
-                className={`text-xs font-semibold font-['Manrope'] px-2.5 py-1 rounded-full ${
-                  event.status === "published"
-                    ? "bg-green-100 text-green-700"
-                    : event.status === "draft"
-                      ? "bg-[#f3f2ef] text-[#6b6c75]"
-                      : "bg-[#e83151]/10 text-[#e83151]"
-                }`}
+                style={{
+                  display: "inline-block",
+                  padding: "5px 12px",
+                  borderRadius: 999,
+                  background: "rgba(255,255,255,0.18)",
+                  backdropFilter: "blur(8px)",
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  color: "white",
+                }}
               >
-                {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
+                {event.visibility}
               </span>
-              <span className="text-xs text-[#6b6c75] font-['Manrope']">{event.visibility}</span>
+              <span
+                style={{
+                  display: "inline-block",
+                  padding: "5px 12px",
+                  borderRadius: 999,
+                  background: chip.bg,
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  color: chip.color,
+                }}
+              >
+                {event.status}
+              </span>
             </div>
 
-            <h1 className="text-2xl font-bold text-[#19191e] font-['Manrope'] mb-3">
+            <h1
+              className="text-white"
+              style={{
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontWeight: 500,
+                fontSize: "clamp(28px, 4vw, 52px)",
+                lineHeight: 1.05,
+                letterSpacing: "-0.04em",
+                marginBottom: 16,
+                maxWidth: "22ch",
+              }}
+            >
               {event.title}
             </h1>
 
-            {/* meta */}
-            <div className="flex flex-col gap-2 mb-6 text-sm text-[#6b6c75] font-['Manrope']">
-              <p>
-                📅 {start.toLocaleString()} — {end.toLocaleString()}
-              </p>
-              <p>📍 {event.location}</p>
-              <p>
-                👥 {event.registered_count} / {event.capacity} registered
-              </p>
-              <p className="font-semibold text-[#19191e]">
-                {event.is_free ? "Free" : `NPR ${parseFloat(event.price).toLocaleString()}`}
-              </p>
+            <div
+              className="flex items-center gap-6 flex-wrap"
+              style={{ fontSize: 14, color: "rgba(255,255,255,0.8)" }}
+            >
+              <span className="flex items-center gap-2">
+                <span className="ms" style={{ fontSize: 16 }}>event</span>
+                {start.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="ms" style={{ fontSize: 16 }}>location_on</span>
+                {event.location}
+              </span>
+              <span className="flex items-center gap-2">
+                <span className="ms" style={{ fontSize: 16 }}>group</span>
+                {event.registered_count.toLocaleString()} / {event.capacity.toLocaleString()} registered
+              </span>
             </div>
+          </div>
+        </div>
+      </div>
 
-            <p className="text-sm text-[#45464e] font-['Manrope'] leading-relaxed mb-8 whitespace-pre-line">
+      {/* body */}
+      <div
+        style={{
+          maxWidth: 1200,
+          margin: "0 auto",
+          padding: "40px 32px 80px",
+          display: "grid",
+          gridTemplateColumns: "1fr 380px",
+          gap: 48,
+          alignItems: "start",
+        }}
+        className="grid-cols-1 lg:grid-cols-[1fr_380px]"
+      >
+        {/* left — content */}
+        <div>
+          {/* description */}
+          <div style={{ marginBottom: 40 }}>
+            <h3
+              style={{
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontWeight: 600,
+                fontSize: 22,
+                letterSpacing: "-0.03em",
+                color: "var(--on-bg)",
+                marginBottom: 16,
+              }}
+            >
+              About this event
+            </h3>
+            <p
+              style={{
+                fontFamily: "'Cormorant Garamond', serif",
+                fontSize: 19,
+                lineHeight: 1.65,
+                color: "var(--on-var)",
+                whiteSpace: "pre-line",
+              }}
+            >
               {event.description}
             </p>
-
-            {/* actions */}
-            {isOrganiser ? (
-              <div className="flex gap-3 flex-wrap pt-6 border-t border-[#e0dfd8]">
-                <Button variant="secondary" onClick={() => navigate(`/events/${event.id}/edit`)}>
-                  Edit
-                </Button>
-                {event.status === "draft" && (
-                  <Button
-                    loading={publishMutation.isPending}
-                    onClick={() =>
-                      publishMutation.mutate(event.id, { onSuccess: () => navigate(0) })
-                    }
-                  >
-                    Publish
-                  </Button>
-                )}
-                <Button
-                  variant="danger"
-                  loading={deleteMutation.isPending}
-                  onClick={() =>
-                    deleteMutation.mutate(event.id, { onSuccess: () => navigate("/events/mine") })
-                  }
-                >
-                  Delete
-                </Button>
-              </div>
-            ) : (
-              <Button size="lg" className="w-full sm:w-auto">
-                Register for this event
-              </Button>
-            )}
           </div>
+
+          {/* schedule overview */}
+          <div
+            style={{
+              background: "var(--surface)",
+              border: "1px solid var(--outline)",
+              borderRadius: 14,
+              padding: "20px 24px",
+              marginBottom: 32,
+            }}
+          >
+            <h4
+              style={{
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontWeight: 600,
+                fontSize: 15,
+                letterSpacing: "-0.02em",
+                marginBottom: 16,
+                color: "var(--on-bg)",
+              }}
+            >
+              Schedule
+            </h4>
+            {[
+              { time: start.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }), label: "Event starts" },
+              { time: end.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }), label: "Event ends" },
+            ].map(({ time, label }) => (
+              <div
+                key={label}
+                className="flex items-center gap-4"
+                style={{ padding: "12px 0", borderTop: "1px solid var(--outline)" }}
+              >
+                <span
+                  style={{
+                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: 12,
+                    color: "var(--on-mut)",
+                    width: 80,
+                    flexShrink: 0,
+                  }}
+                >
+                  {time}
+                </span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: "var(--on-surf)" }}>{label}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* organiser actions */}
+          {isOrganiser && (
+            <div
+              className="flex gap-3 flex-wrap pt-6"
+              style={{ borderTop: "1px solid var(--outline)" }}
+            >
+              <Button variant="secondary" onClick={() => navigate(`/events/${event.id}/edit`)}>
+                Edit
+              </Button>
+              {event.status === "draft" && (
+                <Button
+                  loading={publishMutation.isPending}
+                  onClick={() => publishMutation.mutate(event.id, { onSuccess: () => navigate(0) })}
+                >
+                  Publish
+                </Button>
+              )}
+              <Button
+                variant="danger"
+                loading={deleteMutation.isPending}
+                onClick={() =>
+                  deleteMutation.mutate(event.id, { onSuccess: () => navigate("/events/mine") })
+                }
+              >
+                Delete
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* right — sticky registration rail */}
+        <div
+          style={{
+            position: "sticky",
+            top: 96,
+            background: "var(--surface)",
+            border: "1px solid var(--outline)",
+            borderRadius: 20,
+            padding: 28,
+            boxShadow: "0 4px 24px rgba(18,29,63,0.07), 0 12px 48px rgba(18,29,63,0.05)",
+            display: "flex",
+            flexDirection: "column",
+            gap: 18,
+          }}
+        >
+          {/* price */}
+          <div>
+            <p
+              style={{
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontWeight: 700,
+                fontSize: 42,
+                letterSpacing: "-0.04em",
+                lineHeight: 1,
+                color: "var(--on-bg)",
+              }}
+            >
+              {priceDisplay}
+            </p>
+            <p style={{ fontSize: 13, color: "var(--on-mut)", marginTop: 4 }}>per ticket</p>
+          </div>
+
+          {/* divider */}
+          <div style={{ height: 1, background: "var(--outline)" }} />
+
+          {/* meta rows */}
+          {[
+            {
+              icon: "event",
+              label: "Date",
+              value: start.toLocaleDateString("en-US", { weekday: "short", month: "long", day: "numeric" }),
+            },
+            {
+              icon: "schedule",
+              label: "Time",
+              value: `${start.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })} – ${end.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`,
+            },
+            { icon: "location_on", label: "Location", value: event.location },
+            {
+              icon: "confirmation_number",
+              label: "Capacity",
+              value: `${spots > 0 ? spots.toLocaleString() + " spots left" : "Sold out"} of ${event.capacity.toLocaleString()}`,
+            },
+          ].map(({ icon, label, value }) => (
+            <div key={label} className="flex justify-between items-start" style={{ fontSize: 13.5 }}>
+              <span
+                className="flex items-center gap-2"
+                style={{ color: "var(--on-var)", flexShrink: 0 }}
+              >
+                <span className="ms" style={{ fontSize: 16, color: "var(--on-mut)" }}>{icon}</span>
+                {label}
+              </span>
+              <span style={{ fontWeight: 600, color: "var(--on-surf)", textAlign: "right", maxWidth: "55%" }}>
+                {value}
+              </span>
+            </div>
+          ))}
+
+          {/* register CTA */}
+          {!isOrganiser && (
+            <Link
+              to={`/checkout?event_id=${event.id}&registration_id=&subtotal=${event.price}`}
+              className="flex items-center justify-center gap-2 font-semibold text-white no-underline transition-all hover:opacity-90"
+              style={{
+                padding: "14px",
+                borderRadius: 12,
+                background: spots > 0
+                  ? "linear-gradient(135deg, #050a26, #121d3f)"
+                  : "var(--high)",
+                fontSize: 14.5,
+                fontFamily: "Manrope, sans-serif",
+                color: spots > 0 ? "white" : "var(--on-mut)",
+                pointerEvents: spots === 0 ? "none" : undefined,
+              }}
+            >
+              <span className="ms" style={{ fontSize: 18 }}>confirmation_number</span>
+              {spots > 0 ? "Register for this event" : "Sold out"}
+            </Link>
+          )}
         </div>
       </div>
     </PublicLayout>
