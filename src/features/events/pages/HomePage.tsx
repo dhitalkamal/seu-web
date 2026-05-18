@@ -4,12 +4,6 @@ import PublicLayout from "@/shared/layouts/PublicLayout";
 import { usePublicEvents } from "@/features/events/hooks/useEvents";
 import EventTile from "@/features/events/components/EventTile";
 
-const UPCOMING_PREVIEWS = [
-  { date: "OCT 12", title: "Quantum Computing Summit", meta: "East Atrium · 1,500 seats" },
-  { date: "OCT 26", title: "Sustainability Ethics Gala", meta: "Grand Hall · 1,000 seats" },
-  { date: "NOV 4", title: "Urban Design Workshop", meta: "Studio B · 100 seats" },
-];
-
 /** Public landing page with SEU v8 dark hero + events grid. */
 export default function HomePage() {
   const [search, setSearch] = useState("");
@@ -79,7 +73,13 @@ export default function HomePage() {
             >
               Where events
               <br />
-              <span style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", color: "var(--tertiary)" }}>
+              <span
+                style={{
+                  fontFamily: "'Cormorant Garamond', serif",
+                  fontStyle: "italic",
+                  color: "var(--tertiary)",
+                }}
+              >
                 come alive.
               </span>
             </h1>
@@ -94,8 +94,8 @@ export default function HomePage() {
                 maxWidth: "38ch",
               }}
             >
-              Discover conferences, workshops, galas and more — all in one place.
-              From free meetups to flagship summits.
+              Discover conferences, workshops, galas and more — all in one place. From free meetups
+              to flagship summits.
             </p>
 
             <div className="flex items-center gap-4 flex-wrap mb-12">
@@ -129,89 +129,109 @@ export default function HomePage() {
               </Link>
             </div>
 
-            {/* stats */}
-            <div
-              className="grid gap-12 pt-8"
-              style={{ gridTemplateColumns: "repeat(3, auto)", borderTop: "1px solid rgba(255,255,255,0.12)" }}
-            >
-              {[
-                { v: "2,400+", k: "Events monthly" },
-                { v: "180k", k: "Attendees" },
-                { v: "98%", k: "Satisfaction" },
-              ].map(({ v, k }) => (
-                <div key={k}>
-                  <p
-                    style={{
-                      fontFamily: "'JetBrains Mono', monospace",
-                      fontSize: 10,
-                      letterSpacing: "0.12em",
-                      textTransform: "uppercase",
-                      color: "rgba(255,255,255,0.5)",
-                      marginBottom: 6,
-                    }}
-                  >
-                    {k}
-                  </p>
-                  <p
-                    style={{
-                      fontFamily: "'Space Grotesk', sans-serif",
-                      fontWeight: 600,
-                      fontSize: 32,
-                      letterSpacing: "-0.04em",
-                      color: "white",
-                      lineHeight: 1,
-                    }}
-                  >
-                    {v}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* right — glassmorphic preview cards (desktop) */}
-          <div className="hidden lg:flex flex-col gap-3">
-            {UPCOMING_PREVIEWS.map((ev) => (
+            {/* stats — derived from live data */}
+            {!isLoading && events.length > 0 && (
               <div
-                key={ev.title}
-                className="flex items-center gap-4 cursor-pointer transition-all hover:translate-x-[-4px]"
+                className="grid gap-12 pt-8"
                 style={{
-                  background: "rgba(255,255,255,0.08)",
-                  backdropFilter: "blur(16px)",
-                  WebkitBackdropFilter: "blur(16px)",
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  borderRadius: 16,
-                  padding: "16px 18px",
+                  gridTemplateColumns: "repeat(3, auto)",
+                  borderTop: "1px solid rgba(255,255,255,0.12)",
                 }}
               >
-                <div
-                  className="flex-shrink-0 grid place-items-center text-white font-bold rounded-xl"
+                {[
+                  { v: String(data?.count ?? 0), k: "Events listed" },
+                  {
+                    v: events.reduce((sum, e) => sum + e.registered_count, 0).toLocaleString(),
+                    k: "Registrations",
+                  },
+                  { v: events.filter((e) => e.is_free).length.toString(), k: "Free events" },
+                ].map(({ v, k }) => (
+                  <div key={k}>
+                    <p
+                      style={{
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: 10,
+                        letterSpacing: "0.12em",
+                        textTransform: "uppercase",
+                        color: "rgba(255,255,255,0.5)",
+                        marginBottom: 6,
+                      }}
+                    >
+                      {k}
+                    </p>
+                    <p
+                      style={{
+                        fontFamily: "'Space Grotesk', sans-serif",
+                        fontWeight: 600,
+                        fontSize: 32,
+                        letterSpacing: "-0.04em",
+                        color: "white",
+                        lineHeight: 1,
+                      }}
+                    >
+                      {v}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* right — glassmorphic preview cards from live data (desktop) */}
+          <div className="hidden lg:flex flex-col gap-3">
+            {events.slice(0, 3).map((ev) => {
+              const d = new Date(ev.start_date);
+              const dateLabel = `${d.toLocaleDateString("en-US", { month: "short" }).toUpperCase()} ${d.getDate()}`;
+              const spots = ev.capacity - ev.registered_count;
+              return (
+                <Link
+                  key={ev.id}
+                  to={`/events/${ev.id}`}
+                  className="flex items-center gap-4 cursor-pointer transition-all hover:translate-x-[-4px] no-underline"
                   style={{
-                    width: 52,
-                    height: 52,
-                    background: "rgba(255,255,255,0.12)",
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: 10,
-                    letterSpacing: "0.08em",
-                    textAlign: "center",
+                    background: "rgba(255,255,255,0.08)",
+                    backdropFilter: "blur(16px)",
+                    WebkitBackdropFilter: "blur(16px)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    borderRadius: 16,
+                    padding: "16px 18px",
                   }}
                 >
-                  {ev.date}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p
-                    className="font-semibold text-white truncate"
-                    style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, letterSpacing: "-0.015em" }}
+                  <div
+                    className="flex-shrink-0 grid place-items-center text-white font-bold rounded-xl"
+                    style={{
+                      width: 52,
+                      height: 52,
+                      background: "rgba(255,255,255,0.12)",
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: 10,
+                      letterSpacing: "0.08em",
+                      textAlign: "center",
+                    }}
                   >
-                    {ev.title}
-                  </p>
-                  <p style={{ fontSize: 11.5, color: "rgba(255,255,255,0.55)", marginTop: 2 }}>{ev.meta}</p>
-                </div>
-                <span className="ms text-white opacity-40" style={{ fontSize: 18 }}>
-                  chevron_right
-                </span>
-              </div>
-            ))}
+                    {dateLabel}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p
+                      className="font-semibold text-white truncate"
+                      style={{
+                        fontFamily: "'Space Grotesk', sans-serif",
+                        fontSize: 14,
+                        letterSpacing: "-0.015em",
+                      }}
+                    >
+                      {ev.title}
+                    </p>
+                    <p style={{ fontSize: 11.5, color: "rgba(255,255,255,0.55)", marginTop: 2 }}>
+                      {ev.location} &middot; {spots.toLocaleString()} spots left
+                    </p>
+                  </div>
+                  <span className="ms text-white opacity-40" style={{ fontSize: 18 }}>
+                    chevron_right
+                  </span>
+                </Link>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -259,7 +279,9 @@ export default function HomePage() {
                 padding: "8px 12px",
               }}
             >
-              <span className="ms text-[var(--on-mut)]" style={{ fontSize: 16 }}>search</span>
+              <span className="ms text-[var(--on-mut)]" style={{ fontSize: 16 }}>
+                search
+              </span>
               <input
                 type="search"
                 value={search}
@@ -331,7 +353,11 @@ export default function HomePage() {
         ) : events.length === 0 ? (
           <div
             className="text-center py-20"
-            style={{ background: "var(--surface)", borderRadius: 18, border: "1px solid var(--outline)" }}
+            style={{
+              background: "var(--surface)",
+              borderRadius: 18,
+              border: "1px solid var(--outline)",
+            }}
           >
             <p
               style={{

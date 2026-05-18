@@ -46,14 +46,23 @@ export function SeuField({ label, error, id, ...props }: Props) {
         }}
       />
       {error && (
-        <p style={{ fontSize: 12, color: "var(--error)", fontFamily: "Manrope, sans-serif" }}>{error}</p>
+        <p style={{ fontSize: 12, color: "var(--error)", fontFamily: "Manrope, sans-serif" }}>
+          {error}
+        </p>
       )}
     </div>
   );
 }
 
 /** SEU-design navy gradient submit button. */
-export function SeuSubmitButton({ children, loading, ...props }: { children: React.ReactNode; loading?: boolean } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+export function SeuSubmitButton({
+  children,
+  loading,
+  ...props
+}: {
+  children: React.ReactNode;
+  loading?: boolean;
+} & React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
       {...props}
@@ -63,7 +72,8 @@ export function SeuSubmitButton({ children, loading, ...props }: { children: Rea
         width: "100%",
         border: "none",
         borderRadius: 12,
-        background: loading || props.disabled ? "var(--high)" : "linear-gradient(135deg, #050a26, #121d3f)",
+        background:
+          loading || props.disabled ? "var(--high)" : "linear-gradient(135deg, #050a26, #121d3f)",
         color: loading || props.disabled ? "var(--on-mut)" : "white",
         fontFamily: "Manrope, sans-serif",
         fontWeight: 700,

@@ -49,7 +49,11 @@ export default function AuthLayout({ title, titleAccent, subtitle, eyebrow, chil
         </div>
         <span
           className="font-bold text-white"
-          style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 16, letterSpacing: "-0.02em" }}
+          style={{
+            fontFamily: "'Space Grotesk', sans-serif",
+            fontSize: 16,
+            letterSpacing: "-0.02em",
+          }}
         >
           Sansaar
         </span>
@@ -107,7 +111,10 @@ export default function AuthLayout({ title, titleAccent, subtitle, eyebrow, chil
             )}
           </h1>
           {subtitle && (
-            <p className="mt-2" style={{ fontSize: 13.5, color: "var(--on-var)", fontFamily: "Manrope, sans-serif" }}>
+            <p
+              className="mt-2"
+              style={{ fontSize: 13.5, color: "var(--on-var)", fontFamily: "Manrope, sans-serif" }}
+            >
               {subtitle}
             </p>
           )}

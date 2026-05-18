@@ -1,6 +1,6 @@
-/** Registration domain types. */
+/** Registration domain types — re-exports for feature consumers. */
 
-export interface Registration {
+export type Registration = {
   id: string;
   event_id: string;
   user_id: string;
@@ -12,9 +12,9 @@ export interface Registration {
   cancelled_at: string | null;
   created_at: string;
   updated_at: string;
-}
+};
 
-export interface WaitlistEntry {
+export type WaitlistEntry = {
   id: string;
   event_id: string;
   user_id: string;
@@ -22,6 +22,6 @@ export interface WaitlistEntry {
   expires_at: string | null;
   created_at: string;
   waitlisted: true;
-}
+};
 
 export type RegisterResponse = Registration | WaitlistEntry;

@@ -48,7 +48,9 @@ export default function RegisterPage() {
       {/* SSO */}
       <div className="mb-5">
         <GoogleSignInButton
-          onSuccess={(isNew) => navigate("/", isNew ? undefined : { state: { flash: "Welcome back!" } })}
+          onSuccess={(isNew) =>
+            navigate("/", isNew ? undefined : { state: { flash: "Welcome back!" } })
+          }
           onError={() => {}}
         />
       </div>
@@ -59,29 +61,81 @@ export default function RegisterPage() {
         {registerMutation.isError && (
           <div
             className="px-4 py-3 rounded-xl text-sm"
-            style={{ background: "rgba(232,49,81,0.08)", color: "var(--secondary)", border: "1px solid rgba(232,49,81,0.2)", fontFamily: "Manrope, sans-serif" }}
+            style={{
+              background: "rgba(232,49,81,0.08)",
+              color: "var(--secondary)",
+              border: "1px solid rgba(232,49,81,0.2)",
+              fontFamily: "Manrope, sans-serif",
+            }}
           >
             {getApiError(registerMutation.error)}
           </div>
         )}
 
         <div className="grid grid-cols-2 gap-3">
-          <SeuField label="First name" type="text" value={form.first_name} onChange={set("first_name")} error={errors.first_name} placeholder="Kamal" autoComplete="given-name" />
-          <SeuField label="Last name" type="text" value={form.last_name} onChange={set("last_name")} error={errors.last_name} placeholder="Dhital" autoComplete="family-name" />
+          <SeuField
+            label="First name"
+            type="text"
+            value={form.first_name}
+            onChange={set("first_name")}
+            error={errors.first_name}
+            placeholder="Kamal"
+            autoComplete="given-name"
+          />
+          <SeuField
+            label="Last name"
+            type="text"
+            value={form.last_name}
+            onChange={set("last_name")}
+            error={errors.last_name}
+            placeholder="Dhital"
+            autoComplete="family-name"
+          />
         </div>
 
-        <SeuField label="Email" type="email" value={form.email} onChange={set("email")} error={errors.email} placeholder="you@example.com" autoComplete="email" />
-        <SeuField label="Password" type="password" value={form.password} onChange={set("password")} error={errors.password} placeholder="Min. 8 characters" autoComplete="new-password" />
-        <SeuField label="Confirm password" type="password" value={form.confirm_password} onChange={set("confirm_password")} error={errors.confirm_password} placeholder="Repeat password" autoComplete="new-password" />
+        <SeuField
+          label="Email"
+          type="email"
+          value={form.email}
+          onChange={set("email")}
+          error={errors.email}
+          placeholder="you@example.com"
+          autoComplete="email"
+        />
+        <SeuField
+          label="Password"
+          type="password"
+          value={form.password}
+          onChange={set("password")}
+          error={errors.password}
+          placeholder="Min. 8 characters"
+          autoComplete="new-password"
+        />
+        <SeuField
+          label="Confirm password"
+          type="password"
+          value={form.confirm_password}
+          onChange={set("confirm_password")}
+          error={errors.confirm_password}
+          placeholder="Repeat password"
+          autoComplete="new-password"
+        />
 
         <SeuSubmitButton type="submit" loading={registerMutation.isPending} className="mt-2">
           Create account
         </SeuSubmitButton>
       </form>
 
-      <p className="text-center mt-6" style={{ fontSize: 13, color: "var(--on-var)", fontFamily: "Manrope, sans-serif" }}>
+      <p
+        className="text-center mt-6"
+        style={{ fontSize: 13, color: "var(--on-var)", fontFamily: "Manrope, sans-serif" }}
+      >
         Already have an account?{" "}
-        <Link to="/login" className="font-bold no-underline hover:underline" style={{ color: "var(--primary)" }}>
+        <Link
+          to="/login"
+          className="font-bold no-underline hover:underline"
+          style={{ color: "var(--primary)" }}
+        >
           Sign in
         </Link>
       </p>

@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { v4 as uuidv4 } from "uuid";
 import AppLayout from "@/shared/layouts/AppLayout";
-import paymentApi, { khaltiPaymentUrl, esewaPaymentUrl } from "../api/payment.api";
+import paymentApi, { submitEsewaForm } from "../api/payment.api";
 import type { Gateway } from "../types";
 
 const GATEWAY_LABELS: Record<Gateway, string> = {
@@ -16,7 +16,6 @@ const GATEWAY_LABELS: Record<Gateway, string> = {
 /** Checkout page: build the order, then redirect to the payment gateway. */
 export default function CheckoutPage() {
   const [params] = useSearchParams();
-  const navigate = useNavigate();
   const eventId = params.get("event_id") ?? "";
   const registrationId = params.get("registration_id") ?? "";
   const subtotal = params.get("subtotal") ?? "0.00";
@@ -33,13 +32,16 @@ export default function CheckoutPage() {
         idempotency_key: uuidv4(),
         promo_code: promoCode || undefined,
       }),
-    onSuccess: (order) => {
-      if (gateway === "khalti") {
-        window.location.href = khaltiPaymentUrl(order.gateway_order_id);
-      } else if (gateway === "esewa") {
-        window.location.href = esewaPaymentUrl(order.gateway_order_id, order.total_amount);
-      } else {
-        navigate(`/payment/success?order_id=${order.id}`);
+    onSuccess: (res) => {
+      // * eSewa uses a form POST instead of a simple redirect
+      if (gateway === "esewa" && res.esewa_form_data) {
+        submitEsewaForm(res.esewa_form_url ?? res.payment_url, res.esewa_form_data);
+        return;
+      }
+
+      // * all other gateways return a payment_url — just redirect
+      if (res.payment_url) {
+        window.location.href = res.payment_url;
       }
     },
   });
@@ -48,7 +50,9 @@ export default function CheckoutPage() {
     return (
       <AppLayout title="Checkout">
         <div className="max-w-lg mx-auto px-4 py-20 text-center">
-          <p className="text-sm text-red-600 font-['Manrope']">Invalid checkout link. Please go back and try again.</p>
+          <p className="text-sm text-red-600 font-['Manrope']">
+            Invalid checkout link. Please go back and try again.
+          </p>
         </div>
       </AppLayout>
     );
@@ -66,14 +70,17 @@ export default function CheckoutPage() {
           {/* price summary */}
           <div className="flex flex-col gap-2">
             <div className="flex justify-between text-sm font-['Manrope'] text-[#19191e]">
-              <span>Subtotal</span><span>NPR {subtotal}</span>
+              <span>Subtotal</span>
+              <span>NPR {subtotal}</span>
             </div>
             <div className="flex justify-between text-sm font-['Manrope'] text-[#6b6c75]">
-              <span>Platform fee (5%)</span><span>NPR {platformFee}</span>
+              <span>Platform fee (5%)</span>
+              <span>NPR {platformFee}</span>
             </div>
             <div className="h-px bg-[#e0dfd8]" />
             <div className="flex justify-between text-base font-bold font-['Manrope'] text-[#19191e]">
-              <span>Total</span><span>NPR {total}</span>
+              <span>Total</span>
+              <span>NPR {total}</span>
             </div>
           </div>
 
@@ -124,7 +131,9 @@ export default function CheckoutPage() {
             disabled={orderMutation.isPending}
             className="w-full bg-[#19191e] text-white text-sm font-bold font-['Manrope'] rounded-2xl py-3.5 hover:opacity-90 transition-opacity disabled:opacity-50"
           >
-            {orderMutation.isPending ? "Processing..." : `Pay NPR ${total} with ${GATEWAY_LABELS[gateway]}`}
+            {orderMutation.isPending
+              ? "Processing..."
+              : `Pay NPR ${total} with ${GATEWAY_LABELS[gateway]}`}
           </button>
         </div>
       </div>

@@ -6,9 +6,13 @@ export type User = {
   first_name: string;
   last_name: string;
   avatar_url: string | null;
+  phone?: string | null;
+  bio?: string | null;
   is_email_verified: boolean;
   mfa_enabled: boolean;
   date_joined: string;
+  org_id?: string;
+  role?: string;
 };
 
 /** Wraps every IAM API response in {data, error, meta}. */
@@ -18,7 +22,7 @@ export type ApiResponse<T> = {
   meta: { request_id: string; timestamp: string };
 };
 
-/** POST /auth/login/ — no MFA. */
+/** POST /auth/login/ - no MFA. */
 export type LoginTokens = {
   mfa_required: false;
   user_id: string;
@@ -26,7 +30,7 @@ export type LoginTokens = {
   refresh_token: string;
 };
 
-/** POST /auth/login/ — MFA required. */
+/** POST /auth/login/ - MFA required. */
 export type MFAChallenge = {
   mfa_required: true;
   user_id: string;
@@ -83,6 +87,8 @@ export type ProfileUpdateRequest = {
   first_name?: string;
   last_name?: string;
   avatar_url?: string | null;
+  phone?: string | null;
+  bio?: string | null;
 };
 
 /** GET /auth/sessions/ */
