@@ -10,7 +10,7 @@ const STATUS_CHIP: Record<string, { bg: string; color: string }> = {
   completed: { bg: "rgba(18,29,63,0.08)", color: "var(--primary)" },
 };
 
-/** Organiser event management dashboard — SEU v8 app shell + table. */
+/** Organiser event management dashboard - SEU v8 app shell + table. */
 export default function OrgEventsPage() {
   const { data, isLoading } = useMyEvents();
   const events = data?.results ?? [];
@@ -31,22 +31,30 @@ export default function OrgEventsPage() {
         fontFamily: "Manrope, sans-serif",
       }}
     >
-      <span className="ms" style={{ fontSize: 16 }}>add</span>
+      <span className="ms" style={{ fontSize: 16 }}>
+        add
+      </span>
       New event
     </Link>
   );
 
   return (
-    <AppLayout title="My events" subtitle="Manage all your events and registrations." actions={createAction}>
+    <AppLayout
+      title="My events"
+      subtitle="Manage all your events and registrations."
+      actions={createAction}
+    >
       {/* KPI row */}
-      <div
-        className="grid mb-6"
-        style={{ gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}
-      >
+      <div className="grid mb-6" style={{ gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
         {[
           { label: "Total events", value: events.length, icon: "event", tint: "lav" },
           { label: "Published", value: published, icon: "public", tint: "mnt" },
-          { label: "Total registrations", value: totalReg.toLocaleString(), icon: "how_to_reg", tint: "pch" },
+          {
+            label: "Total registrations",
+            value: totalReg.toLocaleString(),
+            icon: "how_to_reg",
+            tint: "pch",
+          },
         ].map(({ label, value, icon, tint }) => {
           const tints: Record<string, { bg: string; color: string }> = {
             lav: { bg: "#dce1ff", color: "var(--primary)" },
@@ -69,7 +77,9 @@ export default function OrgEventsPage() {
                   className="grid place-items-center"
                   style={{ width: 34, height: 34, borderRadius: 9, background: bg }}
                 >
-                  <span className="ms" style={{ fontSize: 18, color }}>{icon}</span>
+                  <span className="ms" style={{ fontSize: 18, color }}>
+                    {icon}
+                  </span>
                 </div>
               </div>
               <p
@@ -134,19 +144,30 @@ export default function OrgEventsPage() {
               letterSpacing: "0.08em",
             }}
           >
-            {events.length} TOTAL · {drafts} DRAFTS
+            {events.length} TOTAL - {drafts} DRAFTS
           </span>
         </div>
 
         {isLoading ? (
           <div className="p-5 flex flex-col gap-3">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="animate-pulse" style={{ height: 44, borderRadius: 8, background: "var(--low)" }} />
+              <div
+                key={i}
+                className="animate-pulse"
+                style={{ height: 44, borderRadius: 8, background: "var(--low)" }}
+              />
             ))}
           </div>
         ) : events.length === 0 ? (
           <div className="py-16 text-center">
-            <p style={{ fontFamily: "'Cormorant Garamond', serif", fontStyle: "italic", fontSize: 18, color: "var(--on-mut)" }}>
+            <p
+              style={{
+                fontFamily: "'Cormorant Garamond', serif",
+                fontStyle: "italic",
+                fontSize: 18,
+                color: "var(--on-mut)",
+              }}
+            >
               No events yet. Create your first one.
             </p>
           </div>
@@ -211,15 +232,40 @@ function EventRow({ event }: { event: Event }) {
           >
             {event.title.charAt(0)}
           </div>
-          <p style={{ fontWeight: 700, fontSize: 13, color: "var(--on-bg)", fontFamily: "Manrope, sans-serif" }}>
+          <p
+            style={{
+              fontWeight: 700,
+              fontSize: 13,
+              color: "var(--on-bg)",
+              fontFamily: "Manrope, sans-serif",
+            }}
+          >
             {event.title}
           </p>
         </div>
       </td>
-      <td style={{ padding: "12px 16px", fontSize: 12.5, color: "var(--on-var)", fontFamily: "Manrope, sans-serif" }}>
-        {new Date(event.start_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+      <td
+        style={{
+          padding: "12px 16px",
+          fontSize: 12.5,
+          color: "var(--on-var)",
+          fontFamily: "Manrope, sans-serif",
+        }}
+      >
+        {new Date(event.start_date).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })}
       </td>
-      <td style={{ padding: "12px 16px", fontSize: 12.5, color: "var(--on-var)", fontFamily: "Manrope, sans-serif" }}>
+      <td
+        style={{
+          padding: "12px 16px",
+          fontSize: 12.5,
+          color: "var(--on-var)",
+          fontFamily: "Manrope, sans-serif",
+        }}
+      >
         {event.registered_count} / {event.capacity}
       </td>
       <td style={{ padding: "12px 16px" }}>
@@ -245,23 +291,87 @@ function EventRow({ event }: { event: Event }) {
         <div className="flex gap-2">
           <button
             onClick={() => navigate(`/events/${event.id}/edit`)}
-            style={{ padding: "5px 10px", borderRadius: 7, border: "1px solid var(--outline)", background: "white", fontSize: 12, fontFamily: "Manrope, sans-serif", cursor: "pointer", fontWeight: 600, color: "var(--on-bg)" }}
+            style={{
+              padding: "5px 10px",
+              borderRadius: 7,
+              border: "1px solid var(--outline)",
+              background: "white",
+              fontSize: 12,
+              fontFamily: "Manrope, sans-serif",
+              cursor: "pointer",
+              fontWeight: 600,
+              color: "var(--on-bg)",
+            }}
           >
             Edit
+          </button>
+          <button
+            onClick={() => navigate(`/events/${event.id}/analytics`)}
+            style={{
+              padding: "5px 10px",
+              borderRadius: 7,
+              border: "1px solid var(--outline)",
+              background: "white",
+              fontSize: 12,
+              fontFamily: "Manrope, sans-serif",
+              cursor: "pointer",
+              fontWeight: 600,
+              color: "var(--on-bg)",
+            }}
+          >
+            Analytics
+          </button>
+          <button
+            onClick={() => navigate(`/events/${event.id}/volunteers`)}
+            style={{
+              padding: "5px 10px",
+              borderRadius: 7,
+              border: "1px solid var(--outline)",
+              background: "white",
+              fontSize: 12,
+              fontFamily: "Manrope, sans-serif",
+              cursor: "pointer",
+              fontWeight: 600,
+              color: "var(--on-bg)",
+            }}
+          >
+            Volunteers
           </button>
           {event.status === "draft" && (
             <button
               onClick={() => publishMutation.mutate(event.id)}
-              style={{ padding: "5px 10px", borderRadius: 7, border: "none", background: "linear-gradient(135deg, #050a26, #121d3f)", fontSize: 12, fontFamily: "Manrope, sans-serif", cursor: "pointer", fontWeight: 600, color: "white" }}
+              style={{
+                padding: "5px 10px",
+                borderRadius: 7,
+                border: "none",
+                background: "linear-gradient(135deg, #050a26, #121d3f)",
+                fontSize: 12,
+                fontFamily: "Manrope, sans-serif",
+                cursor: "pointer",
+                fontWeight: 600,
+                color: "white",
+              }}
             >
-              {publishMutation.isPending && publishMutation.variables === event.id ? "…" : "Publish"}
+              {publishMutation.isPending && publishMutation.variables === event.id
+                ? "..."
+                : "Publish"}
             </button>
           )}
           <button
             onClick={() => deleteMutation.mutate(event.id)}
-            style={{ padding: "5px 10px", borderRadius: 7, border: "1px solid #fecaca", background: "#fee2e2", fontSize: 12, fontFamily: "Manrope, sans-serif", cursor: "pointer", fontWeight: 600, color: "#991b1b" }}
+            style={{
+              padding: "5px 10px",
+              borderRadius: 7,
+              border: "1px solid #fecaca",
+              background: "#fee2e2",
+              fontSize: 12,
+              fontFamily: "Manrope, sans-serif",
+              cursor: "pointer",
+              fontWeight: 600,
+              color: "#991b1b",
+            }}
           >
-            {deleteMutation.isPending && deleteMutation.variables === event.id ? "…" : "Delete"}
+            {deleteMutation.isPending && deleteMutation.variables === event.id ? "..." : "Delete"}
           </button>
         </div>
       </td>
