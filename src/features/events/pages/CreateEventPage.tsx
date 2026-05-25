@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import AppLayout from "@/shared/layouts/AppLayout";
 import { MS } from "@/shared/components/v8";
 import { cn } from "@/shared/lib/cn";
 import { useEventCategories, useEventMutations } from "@/features/events/hooks/useEvents";
 import { getApiError } from "@/features/auth/hooks/useAuth";
 import intelligenceApi from "@/features/intelligence/api/intelligence.api";
+import eventsApi from "@/features/events/api/events.api";
 import type {
   Category,
   CreateEventRequest,
@@ -502,6 +504,22 @@ function StepBasics({
   categoriesLoading,
   categoriesLoadFailed,
 }: StepBasicsProps) {
+  const qc = useQueryClient();
+  const [showCreate, setShowCreate] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+
+  const slug = newCatName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+
+  const createCatMutation = useMutation({
+    mutationFn: () => eventsApi.createCategory(newCatName.trim(), slug),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ["events", "categories"] });
+      set("category_id", res.data.id);
+      setShowCreate(false);
+      setNewCatName("");
+    },
+  });
+
   return (
     <>
       <StepHeader
@@ -555,6 +573,126 @@ function StepBasics({
               >
                 Categories could not be loaded. Event will be created without a category.
               </p>
+            )}
+
+            {/* inline category creation */}
+            {!showCreate ? (
+              <button
+                type="button"
+                onClick={() => setShowCreate(true)}
+                style={{
+                  marginTop: 6,
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: 0,
+                  fontSize: 11.5,
+                  fontWeight: 600,
+                  color: "var(--primary)",
+                  fontFamily: "Manrope, sans-serif",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 3,
+                }}
+              >
+                <MS n="add" size={13} />
+                Create new category
+              </button>
+            ) : (
+              <div
+                style={{
+                  marginTop: 8,
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  border: "1px solid var(--mid)",
+                  background: "var(--low)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 6,
+                }}
+              >
+                <input
+                  autoFocus
+                  className={inputCls}
+                  value={newCatName}
+                  onChange={(e) => setNewCatName(e.target.value)}
+                  placeholder="Category name"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && newCatName.trim()) {
+                      e.preventDefault();
+                      createCatMutation.mutate();
+                    }
+                    if (e.key === "Escape") {
+                      setShowCreate(false);
+                      setNewCatName("");
+                    }
+                  }}
+                />
+                {slug && (
+                  <p
+                    style={{
+                      fontSize: 10.5,
+                      color: "var(--on-mut)",
+                      fontFamily: "'JetBrains Mono', monospace",
+                    }}
+                  >
+                    slug: {slug}
+                  </p>
+                )}
+                {createCatMutation.isError && (
+                  <p
+                    style={{
+                      fontSize: 11,
+                      color: "var(--secondary)",
+                      fontFamily: "Manrope, sans-serif",
+                    }}
+                  >
+                    {getApiError(createCatMutation.error)}
+                  </p>
+                )}
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button
+                    type="button"
+                    onClick={() => createCatMutation.mutate()}
+                    disabled={!newCatName.trim() || createCatMutation.isPending}
+                    style={{
+                      flex: 1,
+                      padding: "7px 0",
+                      borderRadius: 8,
+                      border: "none",
+                      background: "#050a26",
+                      color: "white",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      fontFamily: "Manrope, sans-serif",
+                      cursor: !newCatName.trim() || createCatMutation.isPending ? "not-allowed" : "pointer",
+                      opacity: !newCatName.trim() || createCatMutation.isPending ? 0.5 : 1,
+                    }}
+                  >
+                    {createCatMutation.isPending ? "Creating..." : "Create"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCreate(false);
+                      setNewCatName("");
+                    }}
+                    style={{
+                      padding: "7px 14px",
+                      borderRadius: 8,
+                      border: "1px solid var(--mid)",
+                      background: "transparent",
+                      color: "var(--on-var)",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      fontFamily: "Manrope, sans-serif",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
             )}
           </Field>
 
