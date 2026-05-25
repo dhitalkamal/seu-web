@@ -1,4 +1,4 @@
-/** API calls for organisation subscription billing. */
+/** API calls for organization subscription billing. */
 
 import client from "@/shared/api/client";
 

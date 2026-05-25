@@ -1,4 +1,4 @@
-/** Organisation-related TypeScript types matching the management-service API contract. */
+/** Organization-related TypeScript types matching the management-service API contract. */
 
 import type { ApiResponse } from "@/features/auth/types/auth.types";
 
@@ -14,7 +14,7 @@ export type OrgType = "company" | "ngo" | "community" | "educational" | "governm
 export type OrgDocType = "registration_cert" | "pan_card" | "tax_clearance" | "logo" | "other";
 
 /** Matches OrgResponseSerializer from management-service. */
-export type Organisation = {
+export type Organization = {
   id: string;
   created_by: string;
   name: string;
@@ -43,7 +43,7 @@ export type Organisation = {
 /** Matches OrgMemberResponseSerializer. */
 export type OrgMember = {
   id: string;
-  organisation_id: string;
+  organization_id: string;
   user_id: string;
   role: OrgMemberRole;
   is_active: boolean;
@@ -53,7 +53,7 @@ export type OrgMember = {
 /** Matches OrgDocumentResponseSerializer. */
 export type OrgDocument = {
   id: string;
-  organisation_id: string;
+  organization_id: string;
   doc_type: OrgDocType;
   file_url: string;
   file_name: string;
@@ -61,7 +61,7 @@ export type OrgDocument = {
   uploaded_at: string;
 };
 
-/** POST /organisations/ — create request body. */
+/** POST /organizations/ — create request body. */
 export type CreateOrgRequest = {
   name: string;
   slug: string;
@@ -95,6 +95,6 @@ export type AddMemberRequest = {
 };
 
 // ! Response wrappers — backend wraps everything in { data, error, meta }
-export type OrgResponse = ApiResponse<Organisation>;
-export type OrgListResponse = ApiResponse<Organisation[]>;
+export type OrgResponse = ApiResponse<Organization>;
+export type OrgListResponse = ApiResponse<Organization[]>;
 export type OrgMemberResponse = ApiResponse<OrgMember>;

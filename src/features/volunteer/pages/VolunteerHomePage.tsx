@@ -59,7 +59,7 @@ export default function VolunteerHomePage() {
 
   return (
     <AppLayout
-      variant="user"
+      variant="volunteer"
       title="Volunteer Dashboard"
       subtitle="Track your shifts, hours, and impact."
       crumbs={["Volunteer", "Overview"]}

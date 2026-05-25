@@ -63,9 +63,9 @@ export default function Footer() {
             </h4>
             <ul className="space-y-2">
               {[
-                { label: "Create Event", to: "/events/create" },
-                { label: "My Events", to: "/events/mine" },
-                { label: "Analytics", to: "/events/mine" },
+                { label: "Create Event", to: "/org/events/create" },
+                { label: "My Events", to: "/org/events" },
+                { label: "Analytics", to: "/org/analytics" },
               ].map(({ label, to }) => (
                 <li key={label}>
                   <Link

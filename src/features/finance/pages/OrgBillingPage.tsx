@@ -15,7 +15,7 @@ const GATEWAY_LABELS: Record<Gateway, string> = {
   paypal: "PayPal",
 };
 
-/** Organisation billing page — view current plan, upgrade, payment history. */
+/** Organization billing page — view current plan, upgrade, payment history. */
 export default function OrgBillingPage() {
   const user = useAuthStore((s) => s.user);
   const orgId = user?.org_id ?? "";
@@ -69,7 +69,7 @@ export default function OrgBillingPage() {
       <PH
         crumbs={["Numbers", "Billing"]}
         title="Billing & plan"
-        sub="Manage your organisation's subscription plan."
+        sub="Manage your organization's subscription plan."
         actions={
           currentSub?.status === "active" ? (
             <button

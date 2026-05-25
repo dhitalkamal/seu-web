@@ -89,7 +89,11 @@ export default function OrgEventsPage() {
         title="Events calendar"
         sub="From intimate workshops to flagship galas - capacity, registration, and logistics in one timeline."
         actions={
-          <Link to="/events/create" className="btn-sm primary" style={{ textDecoration: "none" }}>
+          <Link
+            to="/org/events/create"
+            className="btn-sm primary"
+            style={{ textDecoration: "none" }}
+          >
             <MS n="add" size={13} />
             New event
           </Link>
@@ -148,7 +152,8 @@ export default function OrgEventsPage() {
               </thead>
               <tbody>
                 {filtered.map((ev) => (
-                  <tr key={ev.id} onClick={() => navigate(`/events/${ev.id}`)}>
+                  <tr key={ev.id} onClick={() => navigate(`/org/events/${ev.id}`)}>
+                    {" "}
                     <td>
                       <div className="ev-cell">
                         <div className="ev-icon" style={{ background: "#050a26", color: "white" }}>

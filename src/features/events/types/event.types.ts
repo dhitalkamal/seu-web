@@ -3,6 +3,14 @@
 export type EventStatus = "draft" | "published" | "cancelled" | "completed";
 export type EventVisibility = "public" | "private" | "unlisted";
 
+export type Category = {
+  id: string;
+  name: string;
+  slug: string;
+  parent_id: string | null;
+  depth: number;
+};
+
 export type Event = {
   id: string;
   organiser_id: string;
@@ -52,6 +60,7 @@ export type EventListFilters = {
   organiser_id?: string;
   is_free?: boolean;
   search?: string;
+  category?: string;
 };
 
 export type PaginatedEvents = {

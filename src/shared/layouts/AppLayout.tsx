@@ -15,40 +15,39 @@ import type { Notification } from "@/features/notifications/api/notifications.ap
 type NavItem = { to: string; icon: string; label: string; badge?: string };
 type NavSection = { section: string; items: NavItem[] };
 
-/** Nav sections for org context — streamlined: no Speakers, no Communications. */
 const ORG_NAV: NavSection[] = [
   {
     section: "Workspace",
     items: [
-      { to: "/dashboard", icon: "space_dashboard", label: "Overview" },
-      { to: "/events/mine", icon: "event", label: "Events" },
-      { to: "/participation", icon: "how_to_reg", label: "Participation" },
-      { to: "/sponsors", icon: "handshake", label: "Sponsors" },
-      { to: "/taxonomy", icon: "category", label: "Taxonomy" },
+      { to: "/org/dashboard", icon: "space_dashboard", label: "Overview" },
+      { to: "/org/events", icon: "event", label: "Events" },
+      { to: "/org/participation", icon: "how_to_reg", label: "Participation" },
+      { to: "/org/sponsors", icon: "handshake", label: "Sponsors" },
+      { to: "/org/taxonomy", icon: "category", label: "Taxonomy" },
     ],
   },
   {
     section: "Operations",
     items: [
-      { to: "/venues", icon: "place", label: "Venues" },
-      { to: "/volunteer-apps", icon: "assignment_ind", label: "Volunteer Apps", badge: "12" },
+      { to: "/org/venues", icon: "place", label: "Venues" },
+      { to: "/org/volunteer-apps", icon: "assignment_ind", label: "Volunteer Apps", badge: "12" },
       { to: "/org/checkin", icon: "qr_code_scanner", label: "Check-in" },
-      { to: "/waitlist", icon: "hourglass_top", label: "Waitlist", badge: "34" },
-      { to: "/team", icon: "group", label: "Team" },
+      { to: "/org/waitlist", icon: "hourglass_top", label: "Waitlist", badge: "34" },
+      { to: "/org/team", icon: "group", label: "Team" },
     ],
   },
   {
     section: "Numbers",
     items: [
       { to: "/org/analytics", icon: "analytics", label: "Analytics" },
-      { to: "/event-health", icon: "monitor_heart", label: "Event Health" },
-      { to: "/finance", icon: "payments", label: "Finance" },
-      { to: "/reports", icon: "description", label: "Reports" },
+      { to: "/org/event-health", icon: "monitor_heart", label: "Event Health" },
+      { to: "/org/finance", icon: "payments", label: "Finance" },
+      { to: "/org/reports", icon: "description", label: "Reports" },
     ],
   },
 ];
 
-/** Nav sections for user/attendee context — discover, tickets, saved events.
+/** Nav sections for user/attendee context - discover, tickets, saved events.
  *  Profile & Settings are accessed from the topbar avatar, not the sidebar. */
 const USER_NAV: NavSection[] = [
   {
@@ -75,7 +74,7 @@ const USER_NAV: NavSection[] = [
   },
 ];
 
-/** Nav sections for volunteer context — dashboard, shifts, applications, progress. */
+/** Nav sections for volunteer context - dashboard, shifts, applications, progress. */
 const VOLUNTEER_NAV: NavSection[] = [
   {
     section: "Dashboard",
@@ -120,7 +119,7 @@ export default function AppLayout({
   const { logoutMutation } = useAuth();
   const user = useAuthStore((s) => s.user);
 
-  // ! fetch full user profile on mount — replaces the login skeleton with real data
+  // ! fetch full user profile on mount - replaces the login skeleton with real data
   useProfileBootstrap();
 
   // ! only fetch org from the API when we're actually on the org dashboard
@@ -128,10 +127,6 @@ export default function AppLayout({
   useOrgContext({ enabled: variant === "org" });
   const org = useOrgStore((s) => s.org);
   const hasActiveOrg = isOrgActive(org);
-
-  const initials = user
-    ? `${user.first_name?.[0] ?? ""}${user.last_name?.[0] ?? ""}`.toUpperCase() || "U"
-    : "U";
 
   const fullName = user ? `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim() : "Account";
 
@@ -152,7 +147,7 @@ export default function AppLayout({
     switchOptions.push({ label: "Volunteer", target: "/volunteer", icon: "volunteer_activism" });
   }
   if (variant !== "org" && hasActiveOrg) {
-    switchOptions.push({ label: "Organiser", target: "/dashboard", icon: "domain" });
+    switchOptions.push({ label: "Organiser", target: "/org/dashboard", icon: "domain" });
   }
 
   function handleLogout() {
@@ -236,7 +231,7 @@ export default function AppLayout({
               </p>
               {items.map(({ to, icon, label, badge }) => {
                 // ! Exact match for root-level routes that are prefixes of siblings
-                const exactRoutes = ["/", "/volunteer", "/dashboard", "/org"];
+                const exactRoutes = ["/", "/volunteer", "/org/dashboard", "/org"];
                 const isActive = exactRoutes.includes(to)
                   ? location.pathname === to
                   : location.pathname === to || location.pathname.startsWith(to + "/");
@@ -322,10 +317,10 @@ export default function AppLayout({
         </div>
       </aside>
 
-      {/* main column — h-screen + overflow-y-auto makes this the scroll container
+      {/* main column - h-screen + overflow-y-auto makes this the scroll container
            so the header inside can be position:sticky relative to it */}
       <div className="flex flex-col flex-1 min-w-0 h-screen overflow-y-auto">
-        {/* topbar — always sticky */}
+        {/* topbar - always sticky */}
         <header
           className="flex items-center justify-between flex-shrink-0"
           style={{
@@ -344,7 +339,7 @@ export default function AppLayout({
 
           {/* right: role switcher + notifications + profile */}
           <div className="flex items-center gap-3">
-            {/* single switcher dropdown — one button, options appear below */}
+            {/* single switcher dropdown - one button, options appear below */}
             {switchOptions.length > 0 && (
               <>
                 <RoleSwitcher current={roleLabel} options={switchOptions} />
@@ -358,7 +353,7 @@ export default function AppLayout({
             {/* vertical divider between notification bell and profile */}
             <div style={{ width: 1, height: 24, background: "var(--outline)" }} />
 
-            {/* profile display: name + avatar + role badge — org variant goes to org settings */}
+            {/* profile display: name + avatar + role badge - org variant goes to org settings */}
             <button
               onClick={() => navigate(variant === "org" ? "/org/settings" : "/profile")}
               className="flex items-center gap-3"
@@ -480,7 +475,7 @@ export default function AppLayout({
   );
 }
 
-// * ─── Role Switcher Dropdown ──────────────────────────────────────────────────
+// * --- Role Switcher Dropdown --------------------------------------------------
 
 /** Single-button dropdown to switch between Attendee / Volunteer / Organiser dashboards. */
 function RoleSwitcher({
@@ -503,7 +498,7 @@ function RoleSwitcher({
     return () => document.removeEventListener("mousedown", handleClick);
   }, [open]);
 
-  // ! If there's only one option, just navigate directly — no dropdown needed
+  // ! If there's only one option, just navigate directly - no dropdown needed
   if (options.length === 1) {
     return (
       <button
@@ -617,21 +612,21 @@ function RoleSwitcher({
   );
 }
 
-// * ─── Global Search ─────────────────────────────────────────────────────────
+// * --- Global Search ---------------------------------------------------------
 
 type GlobalSearchProps = { onNavigate: (path: string) => void };
 
-/** Inline search bar — type to search events, results drop down without navigation. */
+/** Inline search bar - type to search events, results drop down without navigation. */
 function GlobalSearch({ onNavigate }: GlobalSearchProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Event[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  /** Debounced search — fires 300ms after the user stops typing. */
+  /** Debounced search - fires 300ms after the user stops typing. */
   const handleChange = useCallback((value: string) => {
     setQuery(value);
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -665,7 +660,7 @@ function GlobalSearch({ onNavigate }: GlobalSearchProps) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  /** Keyboard shortcut — Cmd+K or Ctrl+K to focus the search bar. */
+  /** Keyboard shortcut - Cmd+K or Ctrl+K to focus the search bar. */
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
@@ -901,7 +896,7 @@ function GlobalSearch({ onNavigate }: GlobalSearchProps) {
   );
 }
 
-// * ─── Notification Bell + Dropdown ─────────────────────────────────────────────
+// * --- Notification Bell + Dropdown ---------------------------------------------
 
 /** Navbar bell icon that opens a dropdown panel with recent notifications. */
 function NotificationBell() {
@@ -938,7 +933,7 @@ function NotificationBell() {
       const count = await notificationsApi.unreadCount();
       setUnread(count);
     } catch {
-      // silent — bell still works, just no count badge
+      // silent - bell still works, just no count badge
     }
   }
 
@@ -952,7 +947,7 @@ function NotificationBell() {
         const data = await notificationsApi.list();
         setNotifications(data);
       } catch {
-        // silent — show empty state
+        // silent - show empty state
       } finally {
         setLoading(false);
       }
@@ -981,7 +976,7 @@ function NotificationBell() {
     }
   }
 
-  /** Human-friendly relative time — "2m ago", "3h ago", "Jan 12". */
+  /** Human-friendly relative time - "2m ago", "3h ago", "Jan 12". */
   function timeAgo(iso: string): string {
     const diff = Date.now() - new Date(iso).getTime();
     const mins = Math.floor(diff / 60_000);

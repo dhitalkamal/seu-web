@@ -10,21 +10,21 @@ type Props = {
 };
 
 /**
- * Glass-modal auth layout on a dark radial gradient background.
- * SEU Platform v8 sign-up/sign-in modal design.
+ * Clean white auth layout — SEU Platform v8.
+ * Light background with subtle accent blobs, centred card with soft shadow.
  */
 export default function AuthLayout({ title, titleAccent, subtitle, eyebrow, children }: Props) {
   return (
     <div
       className="min-h-screen flex items-center justify-center px-4 py-12 relative overflow-hidden"
-      style={{ background: "radial-gradient(ellipse at top, #1a2750 0%, #050a26 70%)" }}
+      style={{ background: "#f7f8fa" }}
     >
-      {/* bloom accents */}
+      {/* subtle decorative blobs — very faint, keeps the page from feeling flat */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            "radial-gradient(ellipse 50% 60% at 80% 20%, rgba(232,49,81,0.2), transparent 60%), radial-gradient(ellipse 40% 50% at 15% 80%, rgba(219,161,61,0.14), transparent 60%)",
+            "radial-gradient(ellipse 55% 55% at 80% 15%, rgba(5,10,38,0.04), transparent 60%), radial-gradient(ellipse 45% 50% at 10% 85%, rgba(5,10,38,0.03), transparent 60%)",
         }}
       />
 
@@ -40,7 +40,7 @@ export default function AuthLayout({ title, titleAccent, subtitle, eyebrow, chil
             width: 32,
             height: 32,
             borderRadius: 9,
-            background: "linear-gradient(135deg, #e83151, #dba13d)",
+            background: "linear-gradient(135deg, #050a26, #121d3f)",
             fontFamily: "'Space Grotesk', sans-serif",
             fontSize: 13,
           }}
@@ -48,11 +48,12 @@ export default function AuthLayout({ title, titleAccent, subtitle, eyebrow, chil
           S
         </div>
         <span
-          className="font-bold text-white"
+          className="font-bold"
           style={{
             fontFamily: "'Space Grotesk', sans-serif",
             fontSize: 16,
             letterSpacing: "-0.02em",
+            color: "#050a26",
           }}
         >
           Sansaar
@@ -64,10 +65,11 @@ export default function AuthLayout({ title, titleAccent, subtitle, eyebrow, chil
         className="relative w-full"
         style={{
           maxWidth: 480,
-          background: "var(--surface)",
+          background: "#ffffff",
           borderRadius: 24,
           padding: "40px",
-          boxShadow: "0 32px 80px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.15)",
+          border: "1px solid var(--outline)",
+          boxShadow: "0 4px 24px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.04)",
         }}
       >
         {/* header */}
@@ -80,7 +82,7 @@ export default function AuthLayout({ title, titleAccent, subtitle, eyebrow, chil
                 fontSize: 10.5,
                 letterSpacing: "0.12em",
                 textTransform: "uppercase",
-                color: "var(--secondary)",
+                color: "var(--on-mut)",
               }}
             >
               {eyebrow}
@@ -93,7 +95,7 @@ export default function AuthLayout({ title, titleAccent, subtitle, eyebrow, chil
               fontSize: 26,
               letterSpacing: "-0.035em",
               lineHeight: 1.1,
-              color: "var(--on-bg)",
+              color: "#050a26",
             }}
           >
             {title}{" "}

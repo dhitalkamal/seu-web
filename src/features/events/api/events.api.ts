@@ -1,5 +1,6 @@
 import client from "@/shared/api/client";
 import type {
+  Category,
   CreateEventRequest,
   Event,
   EventListFilters,
@@ -7,7 +8,8 @@ import type {
   UpdateEventRequest,
 } from "@/features/events/types/event.types";
 
-const BASE = "/event/api/v1/events";
+const EVENTS_BASE = "/event/api/v1/events";
+const CATEGORIES_BASE = "/event/api/v1/categories";
 
 type ApiResponse<T> = { data: T; error: unknown; meta: unknown };
 
@@ -17,43 +19,49 @@ async function listPublicEvents(filters?: EventListFilters): Promise<PaginatedEv
   if (filters?.organiser_id) params.set("organiser_id", filters.organiser_id);
   if (filters?.is_free !== undefined) params.set("is_free", String(filters.is_free));
   if (filters?.search) params.set("search", filters.search);
-  const res = await client.get<PaginatedEvents>(`${BASE}/?${params}`);
+  const res = await client.get<PaginatedEvents>(`${EVENTS_BASE}/?${params}`);
   return res.data;
 }
 
 /** Fetch all events owned by the authenticated organiser. */
 async function listMyEvents(): Promise<PaginatedEvents> {
-  const res = await client.get<PaginatedEvents>(`${BASE}/my/`);
+  const res = await client.get<PaginatedEvents>(`${EVENTS_BASE}/my/`);
   return res.data;
 }
 
 /** Fetch a single event by ID. */
 async function getEvent(id: string): Promise<ApiResponse<Event>> {
-  const res = await client.get<ApiResponse<Event>>(`${BASE}/${id}/`);
+  const res = await client.get<ApiResponse<Event>>(`${EVENTS_BASE}/${id}/`);
   return res.data;
 }
 
 /** Create a new draft event. */
 async function createEvent(payload: CreateEventRequest): Promise<ApiResponse<Event>> {
-  const res = await client.post<ApiResponse<Event>>(`${BASE}/`, payload);
+  const res = await client.post<ApiResponse<Event>>(`${EVENTS_BASE}/`, payload);
+  return res.data;
+}
+
+/** Fetch all event categories. */
+async function listCategories(): Promise<ApiResponse<Category[]>> {
+  const res = await client.get<ApiResponse<Category[]>>(`${CATEGORIES_BASE}/`);
   return res.data;
 }
 
 /** Partially update an event. */
 async function updateEvent(id: string, payload: UpdateEventRequest): Promise<ApiResponse<Event>> {
-  const res = await client.patch<ApiResponse<Event>>(`${BASE}/${id}/`, payload);
+  const res = await client.patch<ApiResponse<Event>>(`${EVENTS_BASE}/${id}/`, payload);
   return res.data;
 }
 
 /** Publish a draft event. */
 async function publishEvent(id: string): Promise<ApiResponse<Event>> {
-  const res = await client.post<ApiResponse<Event>>(`${BASE}/${id}/publish/`);
+  const res = await client.post<ApiResponse<Event>>(`${EVENTS_BASE}/${id}/publish/`);
   return res.data;
 }
 
 /** Soft-delete an event. */
 async function deleteEvent(id: string): Promise<void> {
-  await client.delete(`${BASE}/${id}/`);
+  await client.delete(`${EVENTS_BASE}/${id}/`);
 }
 
 /** Upload a cover image and get back the URL. */
@@ -68,7 +76,7 @@ async function uploadCover(file: File): Promise<string> {
 
 /** Mark an event as completed. */
 async function completeEvent(id: string): Promise<ApiResponse<Event>> {
-  const res = await client.post<ApiResponse<Event>>(`${BASE}/${id}/complete/`);
+  const res = await client.post<ApiResponse<Event>>(`${EVENTS_BASE}/${id}/complete/`);
   return res.data;
 }
 
@@ -76,7 +84,7 @@ type MediaItem = { id: string; url: string; caption: string; position: number };
 
 /** List gallery media for an event. */
 async function listMedia(id: string): Promise<MediaItem[]> {
-  const res = await client.get<{ data: MediaItem[] }>(`${BASE}/${id}/media/`);
+  const res = await client.get<{ data: MediaItem[] }>(`${EVENTS_BASE}/${id}/media/`);
   return res.data.data ?? [];
 }
 
@@ -85,18 +93,19 @@ async function addMedia(
   id: string,
   payload: { url: string; caption?: string; position?: number }
 ): Promise<MediaItem> {
-  const res = await client.post<{ data: MediaItem }>(`${BASE}/${id}/media/`, payload);
+  const res = await client.post<{ data: MediaItem }>(`${EVENTS_BASE}/${id}/media/`, payload);
   return res.data.data;
 }
 
 /** Remove a media item from an event gallery. */
 function deleteMedia(eventId: string, mediaId: string) {
-  return client.delete(`${BASE}/${eventId}/media/${mediaId}/`);
+  return client.delete(`${EVENTS_BASE}/${eventId}/media/${mediaId}/`);
 }
 
 const eventsApi = {
   listPublicEvents,
   listMyEvents,
+  listCategories,
   getEvent,
   createEvent,
   updateEvent,

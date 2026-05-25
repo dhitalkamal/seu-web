@@ -1,10 +1,19 @@
 import axios from "axios";
 import type { AxiosError, InternalAxiosRequestConfig } from "axios";
+import { WEB_AUTH_STORAGE_KEY, useAuthStore } from "@/shared/store/auth.store";
+
+const LEGACY_AUTH_STORAGE_KEY = "sansaar-auth";
+
+function getAuthBlob(): string | null {
+  return (
+    localStorage.getItem(WEB_AUTH_STORAGE_KEY) ?? localStorage.getItem(LEGACY_AUTH_STORAGE_KEY)
+  );
+}
 
 /** Read access token from the Zustand persisted store in localStorage. */
 function getAccessToken(): string | null {
   try {
-    const raw = localStorage.getItem("sansaar-auth");
+    const raw = getAuthBlob();
     if (!raw) return null;
     const parsed = JSON.parse(raw) as { state?: { accessToken?: string | null } };
     return parsed.state?.accessToken ?? null;
@@ -16,7 +25,7 @@ function getAccessToken(): string | null {
 /** Read refresh token from the Zustand persisted store in localStorage. */
 function getRefreshToken(): string | null {
   try {
-    const raw = localStorage.getItem("sansaar-auth");
+    const raw = getAuthBlob();
     if (!raw) return null;
     const parsed = JSON.parse(raw) as { state?: { refreshToken?: string | null } };
     return parsed.state?.refreshToken ?? null;
@@ -27,7 +36,14 @@ function getRefreshToken(): string | null {
 
 const client = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
-  headers: { "Content-Type": "application/json" },
+});
+
+// set content-type to json by default, but let axios auto-detect for FormData
+client.interceptors.request.use((config) => {
+  if (!(config.data instanceof FormData)) {
+    config.headers["Content-Type"] = config.headers["Content-Type"] ?? "application/json";
+  }
+  return config;
 });
 
 // * Attach Bearer token to every request
@@ -53,28 +69,44 @@ client.interceptors.response.use(
   async (error: AxiosError) => {
     const original = error.config as InternalAxiosRequestConfig & { _retried?: boolean };
 
-    if (error.response?.status !== 401 || original._retried) {
+    // not a 401 - pass through
+    if (error.response?.status !== 401) {
       return Promise.reject(error);
     }
 
-    original._retried = true;
+    // already retried after refresh, or this IS the refresh call - force logout
+    if (original._retried || original.url?.includes("/auth/token/refresh/")) {
+      localStorage.removeItem(WEB_AUTH_STORAGE_KEY);
+      localStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
+      window.location.href = "/login";
+      return Promise.reject(error);
+    }
 
+    const refreshToken = getRefreshToken();
+    if (!refreshToken) {
+      localStorage.removeItem(WEB_AUTH_STORAGE_KEY);
+      localStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
+      window.location.href = "/login";
+      return Promise.reject(error);
+    }
+
+    // another request is already refreshing - queue this one
     if (isRefreshing) {
-      return new Promise((resolve) => {
+      return new Promise((resolve, reject) => {
         pendingQueue.push((token) => {
           original.headers.Authorization = `Bearer ${token}`;
+          original._retried = true;
           resolve(client(original));
         });
+        // if refresh fails, reject queued requests
+        setTimeout(() => reject(error), 10000);
       });
     }
 
     isRefreshing = true;
+    original._retried = true;
 
     try {
-      const refreshToken = getRefreshToken();
-      if (!refreshToken) throw new Error("No refresh token.");
-
-      // simplejwt's token refresh returns { access, refresh } directly (no envelope)
       const res = await axios.post<{ access: string; refresh?: string }>(
         `${import.meta.env.VITE_API_BASE_URL}/iam/api/v1/auth/token/refresh/`,
         { refresh: refreshToken }
@@ -83,20 +115,26 @@ client.interceptors.response.use(
       const newAccess = res.data.access;
       const newRefresh = res.data.refresh ?? refreshToken;
 
-      const raw = localStorage.getItem("sansaar-auth");
+      // update localStorage so getAccessToken reads the fresh value immediately
+      const raw = getAuthBlob();
       if (raw) {
         const blob = JSON.parse(raw) as { state: Record<string, unknown> };
         blob.state.accessToken = newAccess;
         blob.state.refreshToken = newRefresh;
-        localStorage.setItem("sansaar-auth", JSON.stringify(blob));
+        localStorage.setItem(WEB_AUTH_STORAGE_KEY, JSON.stringify(blob));
+        localStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
       }
+
+      // keep Zustand in-memory state in sync so store readers never see stale tokens
+      useAuthStore.getState().updateTokens(newAccess, newRefresh);
 
       drainQueue(newAccess);
       original.headers.Authorization = `Bearer ${newAccess}`;
       return client(original);
     } catch {
       pendingQueue = [];
-      localStorage.removeItem("sansaar-auth");
+      localStorage.removeItem(WEB_AUTH_STORAGE_KEY);
+      localStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
       window.location.href = "/login";
       return Promise.reject(error);
     } finally {

@@ -184,9 +184,9 @@ export default function App() {
           }
         />
 
-        {/* * org workspace */}
+        {/* * org workspace - all under /org prefix */}
         <Route
-          path="/dashboard"
+          path="/org/dashboard"
           element={
             <P>
               <OrgDashboardPage />
@@ -194,7 +194,7 @@ export default function App() {
           }
         />
         <Route
-          path="/events/mine"
+          path="/org/events"
           element={
             <P>
               <OrgEventsPage />
@@ -202,7 +202,7 @@ export default function App() {
           }
         />
         <Route
-          path="/events/create"
+          path="/org/events/create"
           element={
             <P>
               <CreateEventPage />
@@ -210,7 +210,15 @@ export default function App() {
           }
         />
         <Route
-          path="/events/:id/edit"
+          path="/org/events/:id"
+          element={
+            <P>
+              <EventDetailPage />
+            </P>
+          }
+        />
+        <Route
+          path="/org/events/:id/edit"
           element={
             <P>
               <EditEventPage />
@@ -218,7 +226,7 @@ export default function App() {
           }
         />
         <Route
-          path="/events/:id/registrations"
+          path="/org/events/:id/registrations"
           element={
             <P>
               <EventRegistrationsPage />
@@ -226,7 +234,7 @@ export default function App() {
           }
         />
         <Route
-          path="/events/:id/analytics"
+          path="/org/events/:id/analytics"
           element={
             <P>
               <EventAnalyticsPage />
@@ -234,7 +242,7 @@ export default function App() {
           }
         />
         <Route
-          path="/events/:id/volunteers"
+          path="/org/events/:id/volunteers"
           element={
             <P>
               <VolunteerManagementPage />
@@ -242,7 +250,7 @@ export default function App() {
           }
         />
         <Route
-          path="/participation"
+          path="/org/participation"
           element={
             <P>
               <ParticipationPage />
@@ -250,7 +258,7 @@ export default function App() {
           }
         />
         <Route
-          path="/sponsors"
+          path="/org/sponsors"
           element={
             <P>
               <SponsorsPage />
@@ -258,7 +266,7 @@ export default function App() {
           }
         />
         <Route
-          path="/templates"
+          path="/org/templates"
           element={
             <P>
               <LandingTemplatesPage />
@@ -266,7 +274,7 @@ export default function App() {
           }
         />
         <Route
-          path="/taxonomy"
+          path="/org/taxonomy"
           element={
             <P>
               <TaxonomyPage />
@@ -274,7 +282,7 @@ export default function App() {
           }
         />
         <Route
-          path="/venues"
+          path="/org/venues"
           element={
             <P>
               <VenuesPage />
@@ -282,7 +290,7 @@ export default function App() {
           }
         />
         <Route
-          path="/volunteer-apps"
+          path="/org/volunteer-apps"
           element={
             <P>
               <VolAppsPage />
@@ -298,7 +306,7 @@ export default function App() {
           }
         />
         <Route
-          path="/waitlist"
+          path="/org/waitlist"
           element={
             <P>
               <WaitlistPage />
@@ -306,7 +314,7 @@ export default function App() {
           }
         />
         <Route
-          path="/team"
+          path="/org/team"
           element={
             <P>
               <TeamPage />
@@ -314,7 +322,7 @@ export default function App() {
           }
         />
         <Route
-          path="/event-health"
+          path="/org/event-health"
           element={
             <P>
               <EventHealthPage />
@@ -322,7 +330,7 @@ export default function App() {
           }
         />
         <Route
-          path="/finance"
+          path="/org/finance"
           element={
             <P>
               <FinanceHubPage />
@@ -330,7 +338,7 @@ export default function App() {
           }
         />
         <Route
-          path="/reports"
+          path="/org/reports"
           element={
             <P>
               <ReportsPage />
@@ -338,7 +346,7 @@ export default function App() {
           }
         />
         <Route
-          path="/audit-log"
+          path="/org/audit-log"
           element={
             <P>
               <AuditLogPage />
@@ -482,7 +490,7 @@ export default function App() {
           }
         />
         <Route
-          path="/campaigns"
+          path="/org/campaigns"
           element={
             <P>
               <CampaignsPage />
