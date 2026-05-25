@@ -60,6 +60,8 @@ import VolunteerApplicationsPage from "@/features/volunteer/pages/VolunteerAppli
 import VolunteerHoursPage from "@/features/volunteer/pages/VolunteerHoursPage";
 import VolunteerCertificatesPage from "@/features/volunteer/pages/VolunteerCertificatesPage";
 
+import PassportPage from "@/features/participation/pages/PassportPage";
+
 // attendee extras
 import SavedEventsPage from "@/features/registration/pages/SavedEventsPage";
 
@@ -421,6 +423,14 @@ export default function App() {
         />
         <Route path="/payment/success" element={<SuccessPage />} />
         <Route path="/payment/failure" element={<FailurePage />} />
+        <Route
+          path="/passport"
+          element={
+            <P>
+              <PassportPage />
+            </P>
+          }
+        />
         <Route
           path="/profile"
           element={
