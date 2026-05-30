@@ -79,17 +79,46 @@ export default function VolAppsPage() {
         <KPI icon="volunteer_activism" color="lav" label="Roles" value={roles.length.toString()} />
       </div>
 
-      <div className="tabs" style={{ marginBottom: 18 }}>
-        {(["pending", "approved", "rejected"] as const).map((t) => (
-          <button
-            key={t}
-            className={`tab-btn${tab === t ? " active" : ""}`}
-            onClick={() => setTab(t)}
-            style={{ textTransform: "capitalize" }}
-          >
-            {t}
-          </button>
-        ))}
+      <div style={{ display: "flex", gap: 6, marginBottom: 18 }}>
+        {(["pending", "approved", "rejected"] as const).map((t) => {
+          const active = tab === t;
+          const count = apps.filter((a) => a.status === t).length;
+          return (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              style={{
+                padding: "8px 16px",
+                borderRadius: 10,
+                border: active ? "none" : "1px solid var(--mid)",
+                background: active ? "#050a26" : "var(--surface)",
+                color: active ? "white" : "var(--on-var)",
+                fontSize: 13,
+                fontWeight: 600,
+                fontFamily: "Manrope, sans-serif",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                textTransform: "capitalize",
+              }}
+            >
+              {t}
+              <span
+                style={{
+                  fontSize: 10,
+                  fontFamily: "'JetBrains Mono', monospace",
+                  padding: "2px 7px",
+                  borderRadius: 999,
+                  background: active ? "rgba(255,255,255,0.15)" : "var(--low)",
+                  color: active ? "rgba(255,255,255,0.8)" : "var(--on-mut)",
+                }}
+              >
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       <div className="panel">
