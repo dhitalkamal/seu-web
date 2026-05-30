@@ -56,6 +56,7 @@ export type CreateEventRequest = {
   category_id?: string | null;
   tag_ids?: string[];
   allowed_domains?: string[];
+  organization_id?: string | null;
 };
 
 export type UpdateEventRequest = Partial<CreateEventRequest>;

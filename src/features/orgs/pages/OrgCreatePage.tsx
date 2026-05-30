@@ -123,17 +123,9 @@ export default function OrgCreatePage() {
   const [slugTouched, setSlugTouched] = useState(false);
   const [docs, setDocs] = useState<DocFile[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const [visited, setVisited] = useState<Set<Tab>>(new Set(["basic"]));
 
-  /** Mark a tab as visited when navigated to. */
   function goToTab(t: Tab) {
     setTab(t);
-    setVisited((prev) => {
-      if (prev.has(t)) return prev;
-      const next = new Set(prev);
-      next.add(t);
-      return next;
-    });
   }
 
   /** Keep slug in sync with name until the user manually edits it. */
@@ -154,13 +146,13 @@ export default function OrgCreatePage() {
   function isTabComplete(t: Tab): boolean {
     switch (t) {
       case "basic":
-        return !!(form.name.trim() && form.slug.trim() && form.contact_email.trim());
+        return !!(form.name.trim() && form.slug.trim() && form.contact_email.trim() && form.phone.trim() && form.description.trim().length >= 20);
       case "address":
-        return !!(form.city.trim() && form.country.trim());
+        return !!(form.address.trim() && form.city.trim() && form.country.trim());
       case "social":
-        return visited.has("social");
+        return !!(form.facebook_url || form.twitter_url || form.instagram_url || form.linkedin_url);
       case "documents":
-        return docs.length > 0;
+        return docs.length >= 2;
       default:
         return false;
     }
@@ -171,6 +163,17 @@ export default function OrgCreatePage() {
     if (!form.name.trim()) return "Organization name is required.";
     if (!form.slug.trim()) return "Slug is required.";
     if (!form.contact_email.trim()) return "Contact email is required.";
+    if (!form.phone.trim()) return "Phone number is required.";
+    if (!/^\+?\d{7,15}$/.test(form.phone.trim())) return "Phone must contain only digits (7-15), optionally starting with +.";
+    if (form.description.trim().length < 20) return "Description must be at least 20 characters.";
+    if (!form.address.trim()) return "Address is required.";
+    if (!form.city.trim()) return "City is required.";
+    if (!form.country.trim()) return "Country is required.";
+    if (form.website && !/^https?:\/\/.+\..+/.test(form.website)) return "Website must be a valid URL (https://...).";
+    if (form.logo_url && !/^https?:\/\/.+\..+/.test(form.logo_url)) return "Logo URL must be a valid URL.";
+    const hasSocial = form.facebook_url || form.twitter_url || form.instagram_url || form.linkedin_url;
+    if (!hasSocial) return "At least one social media link is required.";
+    if (docs.length < 2) return "At least 2 verification documents are required.";
     return null;
   }
 
@@ -216,8 +219,8 @@ export default function OrgCreatePage() {
       }
 
       setOrg(org);
-      toast.success("Organization created! Explore subscription plans below.");
-      navigate("/org/pricing");
+      toast.success("Organization submitted for review! You will be notified once verified.");
+      navigate("/profile");
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error
@@ -733,14 +736,20 @@ function BasicTab({
           />
         </div>
         <div>
-          <label style={labelStyle}>Phone</label>
+          <label style={labelStyle}>Phone <span style={{ color: "#ef4444" }}>*</span></label>
           <input
             type="tel"
+            required
             value={form.phone}
-            onChange={(e) => onChange("phone", e.target.value)}
-            placeholder="+977 9800000000"
+            onChange={(e) => {
+              const v = e.target.value.replace(/[^0-9+]/g, "");
+              onChange("phone", v);
+            }}
+            placeholder="+9779800000000"
             style={fieldStyle}
+            maxLength={16}
           />
+          <p style={hintStyle}>Numbers only, optionally starting with +.</p>
         </div>
       </div>
 
@@ -758,7 +767,7 @@ function BasicTab({
 
       {/* description */}
       <div>
-        <label style={labelStyle}>Description</label>
+        <label style={labelStyle}>Description <span style={{ color: "#ef4444" }}>*</span></label>
         <textarea
           rows={4}
           value={form.description}
@@ -769,19 +778,69 @@ function BasicTab({
         <p style={hintStyle}>This will appear on your public organization profile.</p>
       </div>
 
-      {/* logo URL */}
+      {/* logo upload or URL */}
       <div>
-        <label style={labelStyle}>Logo URL</label>
-        <input
-          type="url"
-          value={form.logo_url}
-          onChange={(e) => onChange("logo_url", e.target.value)}
-          placeholder="https://example.com/logo.png"
-          style={fieldStyle}
-        />
-        <p style={hintStyle}>
-          Direct link to your organization logo. You can also upload it in the Documents tab.
-        </p>
+        <label style={labelStyle}>Organization Logo</label>
+        <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+          <div style={{ flex: 1 }}>
+            <input
+              type="url"
+              value={form.logo_url}
+              onChange={(e) => onChange("logo_url", e.target.value)}
+              placeholder="https://example.com/logo.png"
+              style={fieldStyle}
+            />
+            <p style={hintStyle}>Paste a URL or upload a file below.</p>
+          </div>
+          <label
+            style={{
+              padding: "10px 16px",
+              borderRadius: 10,
+              border: "1px solid var(--mid)",
+              background: "var(--low)",
+              cursor: "pointer",
+              fontSize: 12,
+              fontWeight: 600,
+              fontFamily: "Manrope, sans-serif",
+              color: "var(--on-var)",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              whiteSpace: "nowrap" as const,
+            }}
+          >
+            <span className="ms" style={{ fontSize: 16 }}>upload_file</span>
+            Upload
+            <input
+              type="file"
+              accept="image/*"
+              style={{ display: "none" }}
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                try {
+                  const { default: eventsApi } = await import("@/features/events/api/events.api");
+                  const url = await eventsApi.uploadCover(file);
+                  onChange("logo_url", url);
+                  toast.success("Logo uploaded");
+                } catch {
+                  toast.error("Logo upload failed");
+                }
+              }}
+            />
+          </label>
+        </div>
+        {form.logo_url && (
+          <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 10 }}>
+            <img
+              src={form.logo_url}
+              alt="Logo preview"
+              style={{ width: 48, height: 48, borderRadius: 8, objectFit: "cover", border: "1px solid var(--mid)" }}
+              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+            />
+            <span style={{ fontSize: 11, color: "var(--on-mut)", fontFamily: "'JetBrains Mono', monospace" }}>Preview</span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -832,7 +891,7 @@ function AddressTab({ form, onChange }: AddressProps) {
 
       {/* address */}
       <div>
-        <label style={labelStyle}>Address</label>
+        <label style={labelStyle}>Address <span style={{ color: "#ef4444" }}>*</span></label>
         <textarea
           rows={2}
           value={form.address}
@@ -922,7 +981,7 @@ function SocialTab({ form, onChange }: SocialProps) {
           marginBottom: 4,
         }}
       >
-        These links will be displayed on your public organization profile. All fields are optional.
+        At least one social media link is required. These will be displayed on your public profile.
       </p>
       {socials.map((s) => (
         <div key={s.key}>
@@ -1004,8 +1063,8 @@ function DocumentsTab({ docs, onDocsChange }: DocsProps) {
           lineHeight: 1.55,
         }}
       >
-        Upload verification documents to speed up the review process. Accepted: PDF, PNG, JPG, WEBP,
-        SVG (max 10MB each).
+        At least 2 verification documents are required for review. Accepted: PDF, PNG, JPG, WEBP,
+        SVG (max 10MB each). <span style={{ color: "#ef4444", fontWeight: 600 }}>*</span>
       </p>
 
       {/* doc type selector */}

@@ -5,6 +5,7 @@ import { SeuDivider, SeuField, SeuSubmitButton } from "@/shared/components/SeuFi
 import { useAuth, getApiError } from "@/features/auth/hooks/useAuth";
 import authApi from "@/features/auth/api/auth.api";
 import GoogleSignInButton from "@/features/auth/components/GoogleSignInButton";
+import { setRememberMe } from "@/shared/store/auth.store";
 import type { LoginTokens } from "@/features/auth/types/auth.types";
 
 type LocationState = { flash?: string };
@@ -18,6 +19,7 @@ export default function LoginPage() {
   const { loginMutation, setAuth } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMeState] = useState(true);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
   function validate(): boolean {
@@ -32,6 +34,7 @@ export default function LoginPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!validate()) return;
+    setRememberMe(rememberMe);
     loginMutation.mutate(
       { email, password },
       {
@@ -130,13 +133,27 @@ export default function LoginPage() {
             placeholder="••••••••"
             autoComplete="current-password"
           />
-          <Link
-            to="/forgot-password"
-            className="self-end text-xs no-underline hover:underline"
-            style={{ color: "var(--on-mut)", fontFamily: "Manrope, sans-serif" }}
-          >
-            Forgot password?
-          </Link>
+          <div className="flex items-center justify-between" style={{ marginTop: 2 }}>
+            <label
+              className="flex items-center gap-2 cursor-pointer"
+              style={{ fontSize: 13, fontFamily: "Manrope, sans-serif", color: "var(--on-var)" }}
+            >
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMeState(e.target.checked)}
+                style={{ accentColor: "var(--primary)" }}
+              />
+              Remember me
+            </label>
+            <Link
+              to="/forgot-password"
+              className="text-xs no-underline hover:underline"
+              style={{ color: "var(--on-mut)", fontFamily: "Manrope, sans-serif" }}
+            >
+              Forgot password?
+            </Link>
+          </div>
         </div>
 
         <SeuSubmitButton type="submit" loading={loginMutation.isPending} className="mt-2">

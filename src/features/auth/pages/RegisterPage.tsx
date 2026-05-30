@@ -17,6 +17,8 @@ export default function RegisterPage() {
     password: "",
     confirm_password: "",
   });
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [termsError, setTermsError] = useState("");
   const [errors, setErrors] = useState<Partial<typeof form>>({});
 
   function set(field: keyof typeof form) {
@@ -32,13 +34,18 @@ export default function RegisterPage() {
     if (form.password.length < 8) next.password = "Password must be at least 8 characters.";
     if (form.password !== form.confirm_password) next.confirm_password = "Passwords do not match.";
     setErrors(next);
-    return Object.keys(next).length === 0;
+    if (!agreedToTerms) {
+      setTermsError("You must agree to the terms and conditions.");
+    } else {
+      setTermsError("");
+    }
+    return Object.keys(next).length === 0 && agreedToTerms;
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!validate()) return;
-    registerMutation.mutate(form, {
+    registerMutation.mutate({ ...form, agreed_to_terms: agreedToTerms }, {
       onSuccess: () => navigate("/verify-email", { state: { email: form.email } }),
     });
   }
@@ -120,6 +127,36 @@ export default function RegisterPage() {
           placeholder="Repeat password"
           autoComplete="new-password"
         />
+
+        <div className="flex flex-col gap-1">
+          <label
+            className="flex items-start gap-2 cursor-pointer"
+            style={{ fontSize: 13, fontFamily: "Manrope, sans-serif", color: "var(--on-var)" }}
+          >
+            <input
+              type="checkbox"
+              checked={agreedToTerms}
+              onChange={(e) => { setAgreedToTerms(e.target.checked); setTermsError(""); }}
+              style={{ marginTop: 2, accentColor: "var(--primary)" }}
+            />
+            <span>
+              I agree to the{" "}
+              <a href="/terms" target="_blank" style={{ color: "var(--primary)", fontWeight: 600 }}>
+                Terms of Service
+              </a>{" "}
+              and{" "}
+              <a href="/privacy" target="_blank" style={{ color: "var(--primary)", fontWeight: 600 }}>
+                Privacy Policy
+              </a>
+              <span style={{ color: "#ef4444", marginLeft: 3 }}>*</span>
+            </span>
+          </label>
+          {termsError && (
+            <p style={{ fontSize: 12, color: "var(--error)", fontFamily: "Manrope, sans-serif" }}>
+              {termsError}
+            </p>
+          )}
+        </div>
 
         <SeuSubmitButton type="submit" loading={registerMutation.isPending} className="mt-2">
           Create account

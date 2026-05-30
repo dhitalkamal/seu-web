@@ -10,7 +10,7 @@ type Props = {
 export default function JourneyPanel({ eventId }: Props) {
   const { data: journey, isLoading } = useQuery({
     queryKey: ["event-journey", eventId],
-    queryFn: () => notificationsApi.getEventJourney(eventId),
+    queryFn: () => notificationsApi.getEventJourney(eventId).catch(() => null),
     enabled: !!eventId,
   });
 

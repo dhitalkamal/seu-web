@@ -899,7 +899,9 @@ function OrgTab() {
             borderTop: "1px solid var(--outline)",
           }}
         >
-          <Btn label="Edit Details" icon="edit" onClick={() => navigate("/org/settings")} />
+          {(org.status === "rejected" || isOrgActive(org)) && (
+            <Btn label="Edit Details" icon="edit" onClick={() => navigate("/org/settings")} />
+          )}
           {isOrgActive(org) ? (
             <Btn
               label="Go to Dashboard"
@@ -907,11 +909,18 @@ function OrgTab() {
               onClick={() => navigate("/org/dashboard")}
               primary
             />
+          ) : org.status === "rejected" ? (
+            <Btn
+              label="Rejected - Edit & Resubmit"
+              icon="error"
+              onClick={() => navigate("/org/settings")}
+              primary
+            />
           ) : (
             <Btn
               label="Pending Verification"
               icon="hourglass_top"
-              onClick={() => navigate("/org/pricing")}
+              onClick={() => {}}
             />
           )}
         </div>

@@ -39,8 +39,16 @@ async function listPublicEvents(filters?: EventListFilters): Promise<PaginatedEv
 
 /** Fetch all events owned by the authenticated organizer. */
 async function listMyEvents(): Promise<PaginatedEvents> {
-  const res = await client.get<PaginatedEvents>(`${EVENTS_BASE}/my/`);
-  return res.data;
+  const res = await client.get(`${EVENTS_BASE}/my/`);
+  const body = res.data as Record<string, unknown>;
+  const events = (body.data ?? []) as Event[];
+  const pagination = (body.meta as Record<string, unknown>)?.pagination as Record<string, unknown> | undefined;
+  return {
+    results: events,
+    count: (pagination?.total as number) ?? events.length,
+    next: pagination?.has_next ? "next" : null,
+    previous: pagination?.has_prev ? "prev" : null,
+  };
 }
 
 /** Fetch a single event by ID. */

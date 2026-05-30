@@ -149,7 +149,11 @@ export default function EventDetailPage() {
         style={{
           height: 420,
           marginTop: "-96px",
-          background: "linear-gradient(135deg, var(--low), var(--mid))",
+          backgroundImage: event.cover_image
+            ? `url(${event.cover_image})`
+            : "linear-gradient(135deg, #050a26, #121d3f)",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
         }}
       >
         {/* gradient overlay */}
