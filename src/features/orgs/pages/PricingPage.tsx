@@ -293,23 +293,62 @@ export default function PricingPage() {
         })}
       </div>
 
-      {/* gateway selection + confirm - only shown after user picks a plan */}
+      {/* gateway selection modal overlay */}
       {selectedPlan && (
-        <div className="panel" style={{ borderColor: "#050a26", marginBottom: 28 }}>
-          <div className="panel-head">
-            <span className="panel-title">
-              Subscribe to {PLAN_CATALOGUE.find((p) => p.name === selectedPlan)?.label}
-            </span>
-            <button className="btn-sm" onClick={() => setSelectedPlan(null)}>
-              <MS n="close" size={13} />
-              Cancel
-            </button>
-          </div>
-          <div className="panel-body">
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0,0,0,0.45)",
+          }}
+          onClick={() => setSelectedPlan(null)}
+        >
+          <div
+            style={{
+              background: "var(--surface)",
+              borderRadius: 18,
+              border: "1px solid var(--outline)",
+              width: "100%",
+              maxWidth: 480,
+              padding: 28,
+              boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 20,
+                paddingBottom: 14,
+                borderBottom: "1px solid var(--outline)",
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: "Space Grotesk, sans-serif",
+                  fontWeight: 700,
+                  fontSize: 18,
+                  color: "var(--on-bg)",
+                }}
+              >
+                Subscribe to {PLAN_CATALOGUE.find((p) => p.name === selectedPlan)?.label}
+              </span>
+              <button className="btn-sm" onClick={() => setSelectedPlan(null)}>
+                <MS n="close" size={13} />
+                Cancel
+              </button>
+            </div>
+
+            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10, color: "var(--on-bg)" }}>
               Select payment method
             </div>
-            <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
+            <div style={{ display: "flex", gap: 8, marginBottom: 22 }}>
               {(Object.keys(GATEWAY_LABELS) as Gateway[]).map((gw) => (
                 <button
                   key={gw}
@@ -331,7 +370,7 @@ export default function PricingPage() {
               className="btn-sm primary"
               onClick={() => subscribeMutation.mutate(selectedPlan)}
               disabled={subscribeMutation.isPending}
-              style={{ width: "100%", justifyContent: "center", padding: "12px 0" }}
+              style={{ width: "100%", justifyContent: "center", padding: "14px 0", borderRadius: 12 }}
             >
               <MS n="rocket_launch" size={14} />
               {subscribeMutation.isPending
