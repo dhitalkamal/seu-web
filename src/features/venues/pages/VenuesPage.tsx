@@ -2,6 +2,7 @@ import { lazy, Suspense, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import AppLayout from "@/shared/layouts/AppLayout";
 import { PH, KPI, MS, useToast } from "@/shared/components/v8";
+import { useOrgStore } from "@/shared/store/org.store";
 import venuesApi from "../api/venues.api";
 
 // lazy load so leaflet CSS doesn't block the venues bundle
@@ -10,7 +11,9 @@ const EventMap = lazy(() => import("@/shared/components/EventMap"));
 export default function VenuesPage() {
   const { toast, toastEl } = useToast();
   const qc = useQueryClient();
-  const [showForm, setShowForm] = useState(false);
+  const org = useOrgStore((s) => s.org);
+  const orgId = org?.id ?? "";
+  const [showModal, setShowModal] = useState(false);
   // track which venue row has its map expanded
   const [expandedMapId, setExpandedMapId] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -20,11 +23,28 @@ export default function VenuesPage() {
   const [capacity, setCapacity] = useState("");
   const [description, setDescription] = useState("");
   const [website, setWebsite] = useState("");
+  const [lat, setLat] = useState<number | null>(null);
+  const [lng, setLng] = useState<number | null>(null);
 
   const { data: venues = [], isLoading } = useQuery({
-    queryKey: ["venues"],
-    queryFn: venuesApi.list,
+    queryKey: ["venues", orgId],
+    queryFn: () => venuesApi.list(orgId),
+    enabled: !!orgId,
   });
+
+  /** Reset all form fields and close the modal. */
+  function closeModal() {
+    setShowModal(false);
+    setName("");
+    setAddress("");
+    setCity("");
+    setCountry("Nepal");
+    setCapacity("");
+    setDescription("");
+    setWebsite("");
+    setLat(null);
+    setLng(null);
+  }
 
   const createMutation = useMutation({
     mutationFn: () =>
@@ -34,19 +54,16 @@ export default function VenuesPage() {
         city,
         country,
         capacity: Number(capacity),
+        organisation_id: orgId,
+        latitude: lat ?? undefined,
+        longitude: lng ?? undefined,
         description: description || undefined,
         website: website || undefined,
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["venues"] });
       toast("Venue created");
-      setShowForm(false);
-      setName("");
-      setAddress("");
-      setCity("");
-      setCapacity("");
-      setDescription("");
-      setWebsite("");
+      closeModal();
     },
     onError: () => toast("Failed to create venue"),
   });
@@ -61,9 +78,9 @@ export default function VenuesPage() {
         title="Venues register"
         sub="Manage locations, monitor utilisation, and assign venues to events."
         actions={
-          <button className="btn-sm primary" onClick={() => setShowForm((p) => !p)}>
+          <button className="btn-sm primary" onClick={() => setShowModal(true)}>
             <MS n="add" size={13} />
-            {showForm ? "Cancel" : "Add venue"}
+            New venue
           </button>
         }
       />
@@ -85,68 +102,315 @@ export default function VenuesPage() {
         />
       </div>
 
-      {showForm && (
-        <div className="panel" style={{ marginBottom: 18 }}>
-          <div className="panel-head">
-            <span className="panel-title">New venue</span>
-          </div>
+      {/* new venue modal */}
+      {showModal && (
+        <div
+          onClick={closeModal}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.35)",
+            display: "grid",
+            placeItems: "center",
+            zIndex: 1000,
+          }}
+        >
           <div
-            className="panel-body"
-            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "var(--surface)",
+              borderRadius: 20,
+              maxWidth: 520,
+              width: "100%",
+              boxShadow: "0 16px 48px rgba(0,0,0,0.15)",
+            }}
           >
-            <div className="field">
-              <label className="field-lab">Name</label>
-              <input
-                className="field-in"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Grand Conference Hall"
-              />
-            </div>
-            <div className="field">
-              <label className="field-lab">Capacity</label>
-              <input
-                className="field-in"
-                type="number"
-                value={capacity}
-                onChange={(e) => setCapacity(e.target.value)}
-                placeholder="500"
-              />
-            </div>
-            <div className="field">
-              <label className="field-lab">Address</label>
-              <input
-                className="field-in"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="123 Main St"
-              />
-            </div>
-            <div className="field">
-              <label className="field-lab">City</label>
-              <input
-                className="field-in"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                placeholder="Kathmandu"
-              />
-            </div>
-            <div className="field">
-              <label className="field-lab">Country</label>
-              <input
-                className="field-in"
-                value={country}
-                onChange={(e) => setCountry(e.target.value)}
-              />
-            </div>
-            <div style={{ display: "flex", alignItems: "flex-end" }}>
+            {/* modal header */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                padding: "20px 24px 16px",
+                borderBottom: "1px solid var(--outline)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <MS n="location_on" size={20} />
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 15 }}>New venue</div>
+                  <div style={{ fontSize: 12, color: "var(--on-mut)", marginTop: 2 }}>
+                    Add a new location to the venues register
+                  </div>
+                </div>
+              </div>
               <button
-                className="btn-sm primary"
-                onClick={() => createMutation.mutate()}
-                disabled={!name || !capacity || createMutation.isPending}
-                style={{ width: "100%", justifyContent: "center" }}
+                onClick={closeModal}
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 8,
+                  border: "1px solid var(--mid)",
+                  background: "transparent",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  flexShrink: 0,
+                }}
               >
-                {createMutation.isPending ? "Saving..." : "Save venue"}
+                <MS n="close" size={14} />
+              </button>
+            </div>
+
+            {/* modal body */}
+            <div
+              style={{
+                padding: "20px 24px",
+                display: "flex",
+                flexDirection: "column",
+                gap: 16,
+              }}
+            >
+              {/* name */}
+              <div>
+                <label
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    color: "var(--on-mut)",
+                    marginBottom: 6,
+                    display: "block",
+                    fontFamily: "'JetBrains Mono', monospace",
+                  }}
+                >
+                  Name <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Grand Conference Hall"
+                  style={{
+                    width: "100%",
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    border: "1px solid var(--mid)",
+                    background: "var(--low)",
+                    fontSize: 14,
+                    fontFamily: "'Manrope', sans-serif",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+
+              {/* capacity */}
+              <div>
+                <label
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    color: "var(--on-mut)",
+                    marginBottom: 6,
+                    display: "block",
+                    fontFamily: "'JetBrains Mono', monospace",
+                  }}
+                >
+                  Capacity <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <input
+                  type="number"
+                  value={capacity}
+                  onChange={(e) => setCapacity(e.target.value)}
+                  placeholder="500"
+                  style={{
+                    width: "100%",
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    border: "1px solid var(--mid)",
+                    background: "var(--low)",
+                    fontSize: 14,
+                    fontFamily: "'Manrope', sans-serif",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+
+              {/* address */}
+              <div>
+                <label
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    color: "var(--on-mut)",
+                    marginBottom: 6,
+                    display: "block",
+                    fontFamily: "'JetBrains Mono', monospace",
+                  }}
+                >
+                  Address <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <input
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="123 Main St"
+                  style={{
+                    width: "100%",
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    border: "1px solid var(--mid)",
+                    background: "var(--low)",
+                    fontSize: 14,
+                    fontFamily: "'Manrope', sans-serif",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+
+              {/* city */}
+              <div>
+                <label
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    color: "var(--on-mut)",
+                    marginBottom: 6,
+                    display: "block",
+                    fontFamily: "'JetBrains Mono', monospace",
+                  }}
+                >
+                  City <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <input
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder="Kathmandu"
+                  style={{
+                    width: "100%",
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    border: "1px solid var(--mid)",
+                    background: "var(--low)",
+                    fontSize: 14,
+                    fontFamily: "'Manrope', sans-serif",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+
+              {/* country */}
+              <div>
+                <label
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    color: "var(--on-mut)",
+                    marginBottom: 6,
+                    display: "block",
+                    fontFamily: "'JetBrains Mono', monospace",
+                  }}
+                >
+                  Country <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <input
+                  value={country}
+                  onChange={(e) => setCountry(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    border: "1px solid var(--mid)",
+                    background: "var(--low)",
+                    fontSize: 14,
+                    fontFamily: "'Manrope', sans-serif",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* map picker */}
+            <div style={{ padding: "0 24px 16px" }}>
+              <label
+                style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  color: "var(--on-mut)",
+                  marginBottom: 6,
+                  display: "block",
+                  fontFamily: "'JetBrains Mono', monospace",
+                }}
+              >
+                Location on map{" "}
+                <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>
+                  (click to set pin)
+                </span>
+              </label>
+              <Suspense fallback={<div style={{ height: 200, background: "var(--low)", borderRadius: 12 }} />}>
+                <div style={{ height: 200, borderRadius: 12, overflow: "hidden", border: "1px solid var(--mid)" }}>
+                  <EventMap
+                    latitude={lat ?? 27.7172}
+                    longitude={lng ?? 85.324}
+                    title={name || "Venue location"}
+                    className=""
+                    onClick={(newLat: number, newLng: number) => {
+                      setLat(newLat);
+                      setLng(newLng);
+                    }}
+                  />
+                </div>
+              </Suspense>
+              {lat != null && lng != null && (
+                <div style={{ fontSize: 11, color: "var(--on-mut)", marginTop: 4, fontFamily: "'JetBrains Mono', monospace" }}>
+                  {lat.toFixed(5)}, {lng.toFixed(5)}
+                </div>
+              )}
+            </div>
+
+            {/* modal footer */}
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                justifyContent: "flex-end",
+                padding: "16px 24px 20px",
+                borderTop: "1px solid var(--outline)",
+              }}
+            >
+              <button
+                className="btn-sm"
+                onClick={closeModal}
+                style={{ border: "1px solid var(--mid)", background: "transparent" }}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn-sm"
+                onClick={() => createMutation.mutate()}
+                disabled={
+                  !name || !capacity || !address || !city || !country || createMutation.isPending
+                }
+                style={{
+                  background:
+                    !name || !capacity || !address || !city || !country || createMutation.isPending
+                      ? "var(--mid)"
+                      : "#050a26",
+                  color: "white",
+                  border: "none",
+                }}
+              >
+                {createMutation.isPending ? "Saving..." : "Create venue"}
               </button>
             </div>
           </div>

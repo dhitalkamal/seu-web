@@ -12,7 +12,7 @@ export type Venue = {
   country: string;
   capacity: number;
   description: string;
-  organization_id: string;
+  organisation_id: string;
   created_at: string;
   // optional geo coords provided by backend
   latitude: number | null;
@@ -31,7 +31,8 @@ type ApiOk<T> = { data: T };
 
 const venuesApi = {
   /** Fetch all venues for the authenticated org. */
-  list: () => client.get<ApiOk<Venue[]>>(`${BASE}/`).then((r) => r.data.data ?? []),
+  list: (orgId: string) =>
+    client.get<ApiOk<Venue[]>>(`${BASE}/?organisation_id=${orgId}`).then((r) => r.data.data ?? []),
 
   /** Create a new venue. */
   create: (payload: {
@@ -40,6 +41,9 @@ const venuesApi = {
     city: string;
     country: string;
     capacity: number;
+    organisation_id: string;
+    latitude?: number;
+    longitude?: number;
     description?: string;
     website?: string;
   }) => client.post<ApiOk<Venue>>(`${BASE}/`, payload).then((r) => r.data.data),
