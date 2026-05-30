@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import AppLayout from "@/shared/layouts/AppLayout";
 import { PH, MS, useToast } from "@/shared/components/v8";
-import { useAuthStore } from "@/shared/store/auth.store";
+import { useOrgStore } from "@/shared/store/org.store";
 import subscriptionApi, { PLAN_CATALOGUE } from "@/features/orgs/api/subscription.api";
 import { submitEsewaForm } from "@/features/payment/api/payment.api";
 import type { Gateway } from "@/features/payment/types";
@@ -22,8 +22,8 @@ const GATEWAY_LABELS: Record<Gateway, string> = {
 export default function PricingPage() {
   const navigate = useNavigate();
   const { toast, toastEl } = useToast();
-  const user = useAuthStore((s) => s.user);
-  const orgId = user?.org_id ?? "";
+  const org = useOrgStore((s) => s.org);
+  const orgId = org?.id ?? "";
   const queryClient = useQueryClient();
 
   const [selectedPlan, setSelectedPlan] = useState<PlanName | null>(null);
