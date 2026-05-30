@@ -2,6 +2,7 @@ import { useRef, useState, useEffect } from "react";
 import { GoogleLogin } from "@react-oauth/google";
 import { useAuthStore } from "@/shared/store/auth.store";
 import authApi from "@/features/auth/api/auth.api";
+import client from "@/shared/api/client";
 
 type Props = {
   onSuccess?: (isNewUser: boolean) => void;
@@ -34,20 +35,13 @@ export default function GoogleSignInButton({ onSuccess, onError }: Props) {
 
   async function handleCredential(credential: string) {
     try {
-      const res = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL || ""}/iam/api/v1/auth/social/google/`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id_token: credential }),
-        }
-      );
-      const data = (await res.json()) as {
+      const res = await client.post<{
         data: { access_token: string; refresh_token: string; is_new_user: boolean };
         error: { message: string } | null;
-      };
+      }>("/iam/api/v1/auth/social/google/", { id_token: credential });
+      const data = res.data;
 
-      if (!res.ok || data.error) {
+      if (data.error) {
         onError?.(data.error?.message ?? "Google sign-in failed.");
         return;
       }
