@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -13,7 +13,18 @@ type EventMapProps = {
   longitude: number;
   title: string;
   className?: string;
+  onClick?: (lat: number, lng: number) => void;
 };
+
+/** Captures map click events and forwards lat/lng to the parent. */
+function ClickHandler({ onClick }: { onClick?: (lat: number, lng: number) => void }) {
+  useMapEvents({
+    click(e) {
+      if (onClick) onClick(e.latlng.lat, e.latlng.lng);
+    },
+  });
+  return null;
+}
 
 /**
  * Renders a Leaflet map centered on the given coordinates with a single marker.
@@ -23,7 +34,7 @@ type EventMapProps = {
  * @param title - label shown in the popup when the marker is clicked
  * @param className - optional CSS class passed to the container div
  */
-export default function EventMap({ latitude, longitude, title, className }: EventMapProps) {
+export default function EventMap({ latitude, longitude, title, className, onClick }: EventMapProps) {
   // patch leaflet's icon paths once on mount - vite strips the default asset refs
   useEffect(() => {
     L.Icon.Default.mergeOptions({
@@ -44,6 +55,7 @@ export default function EventMap({ latitude, longitude, title, className }: Even
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         attribution="OpenStreetMap"
       />
+      <ClickHandler onClick={onClick} />
       <Marker position={[latitude, longitude]}>
         <Popup>{title}</Popup>
       </Marker>
