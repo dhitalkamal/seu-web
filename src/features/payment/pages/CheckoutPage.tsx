@@ -78,7 +78,7 @@ export default function CheckoutPage() {
     }
   }
 
-  if (!eventId || !registrationId) {
+  if (!eventId) {
     return (
       <AppLayout variant="user" title="Checkout">
         <div className="max-w-lg mx-auto px-4 py-20 text-center">
