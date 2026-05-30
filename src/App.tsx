@@ -170,7 +170,7 @@ export default function App() {
   useEffect(() => {
     function checkStatus() {
       axios
-        .get(`${import.meta.env.VITE_API_BASE_URL || ""}/iam/api/v1/platform/status/`)
+        .get(`${import.meta.env.VITE_RENDER_IAM || import.meta.env.VITE_API_BASE_URL || ""}/api/v1/platform/status/`)
         .then((res) => {
           setMaintenance(res.data?.data?.maintenance === true);
         })

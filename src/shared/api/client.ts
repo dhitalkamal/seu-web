@@ -34,9 +34,37 @@ function getRefreshToken(): string | null {
   }
 }
 
+// service prefix to render URL mapping - only used in production (when VITE_RENDER_IAM is set)
+const SERVICE_MAP: Record<string, string> = {
+  "/iam/": import.meta.env.VITE_RENDER_IAM || "",
+  "/event/": import.meta.env.VITE_RENDER_EVENT || "",
+  "/org/": import.meta.env.VITE_RENDER_MANAGEMENT || "",
+  "/venue/": import.meta.env.VITE_RENDER_MANAGEMENT || "",
+  "/volunteer/": import.meta.env.VITE_RENDER_MANAGEMENT || "",
+  "/community/": import.meta.env.VITE_RENDER_MANAGEMENT || "",
+  "/marketing/": import.meta.env.VITE_RENDER_MANAGEMENT || "",
+  "/participation/": import.meta.env.VITE_RENDER_PARTICIPATION || "",
+  "/payment/": import.meta.env.VITE_RENDER_PAYMENT || "",
+  "/notification/": import.meta.env.VITE_RENDER_NOTIFICATION || "",
+  "/intelligence/": import.meta.env.VITE_RENDER_INTELLIGENCE || "",
+};
+
 const client = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || "",
   adapter: "fetch",
+});
+
+// rewrite service prefix to render URL in production
+client.interceptors.request.use((config) => {
+  const url = config.url ?? "";
+  for (const [prefix, renderUrl] of Object.entries(SERVICE_MAP)) {
+    if (url.startsWith(prefix) && renderUrl) {
+      config.baseURL = renderUrl;
+      config.url = url.slice(prefix.length - 1);
+      break;
+    }
+  }
+  return config;
 });
 
 // set content-type to json by default, but let axios auto-detect for FormData
@@ -108,8 +136,9 @@ client.interceptors.response.use(
     original._retried = true;
 
     try {
+      const iamBase = SERVICE_MAP["/iam/"] || (import.meta.env.VITE_API_BASE_URL || "");
       const res = await axios.post<{ access: string; refresh?: string }>(
-        `${import.meta.env.VITE_API_BASE_URL || ""}/iam/api/v1/auth/token/refresh/`,
+        `${iamBase}/api/v1/auth/token/refresh/`,
         { refresh: refreshToken }
       );
 
