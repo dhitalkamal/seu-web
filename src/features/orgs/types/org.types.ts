@@ -2,8 +2,8 @@
 
 import type { ApiResponse } from "@/features/auth/types/auth.types";
 
-// * Status lifecycle: pending_review → active (approved) or suspended (rejected)
-export type OrgStatus = "pending_review" | "approved" | "active" | "suspended";
+// * Status lifecycle: pending_review → active (approved) or rejected → resubmit → pending_review
+export type OrgStatus = "pending_review" | "approved" | "active" | "rejected" | "suspended";
 
 export type OrgPlan = "free" | "starter" | "pro" | "ngo" | "enterprise";
 

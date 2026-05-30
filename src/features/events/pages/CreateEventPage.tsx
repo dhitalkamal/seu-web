@@ -8,6 +8,8 @@ import { useEventCategories, useEventMutations } from "@/features/events/hooks/u
 import { getApiError } from "@/features/auth/hooks/useAuth";
 import intelligenceApi from "@/features/intelligence/api/intelligence.api";
 import eventsApi from "@/features/events/api/events.api";
+import EventMap from "@/shared/components/EventMap";
+import { useOrgStore } from "@/shared/store/org.store";
 import type {
   Category,
   CreateEventRequest,
@@ -27,6 +29,22 @@ const STEPS = [
 
 // * --- Form State ------------------------------------------------------------
 
+type ScheduleItem = {
+  id: string;
+  time: string;
+  title: string;
+  description: string;
+  speaker: string;
+};
+
+type TicketTier = {
+  id: string;
+  name: string;
+  price: string;
+  capacity: number;
+  description: string;
+};
+
 type FormState = {
   title: string;
   description: string;
@@ -36,6 +54,8 @@ type FormState = {
   start_date: string;
   end_date: string;
   location: string;
+  latitude: number | null;
+  longitude: number | null;
   is_online: boolean;
   online_url: string;
   capacity: number;
@@ -43,6 +63,8 @@ type FormState = {
   is_free: boolean;
   price: string;
   allowed_domains: string[];
+  schedule: ScheduleItem[];
+  ticket_tiers: TicketTier[];
 };
 
 const INITIAL: FormState = {
@@ -54,6 +76,8 @@ const INITIAL: FormState = {
   start_date: "",
   end_date: "",
   location: "",
+  latitude: null,
+  longitude: null,
   is_online: false,
   online_url: "",
   capacity: 100,
@@ -61,6 +85,8 @@ const INITIAL: FormState = {
   is_free: true,
   price: "0.00",
   allowed_domains: [],
+  schedule: [],
+  ticket_tiers: [],
 };
 
 // * --- Shared Styles ---------------------------------------------------------
@@ -86,6 +112,7 @@ function isUuid(value: string): boolean {
 /** Multi-step event creation wizard  - 4 steps covering every backend field. */
 export default function CreateEventPage() {
   const navigate = useNavigate();
+  const org = useOrgStore((s) => s.org);
   const { createMutation } = useEventMutations();
   const {
     data: categoriesResponse,
@@ -129,39 +156,49 @@ export default function CreateEventPage() {
     });
   }
 
-  // * auto-save interval - fires every 30 seconds when form has unsaved changes
+  // track saved draft ID so auto-save updates instead of creating duplicates
+  const savedIdRef = useRef<string | null>(null);
+
+  // auto-save interval - creates draft on first save, updates on subsequent saves
   useEffect(() => {
     const id = setInterval(async () => {
       if (!isDirty) return;
       const current = formRef.current;
-      // only auto-save if there is at least a title to avoid persisting empty records
       if (!current.title.trim()) return;
+
+      const payload = {
+        title: current.title,
+        description: current.description,
+        location: current.location,
+        start_date: current.start_date
+          ? new Date(current.start_date).toISOString()
+          : new Date().toISOString(),
+        end_date: current.end_date
+          ? new Date(current.end_date).toISOString()
+          : new Date().toISOString(),
+        capacity: current.capacity,
+        visibility: current.visibility,
+        is_free: current.is_free,
+        price: current.is_free ? "0.00" : current.price,
+        cover_image: current.cover_image || null,
+        is_online: current.is_online,
+        online_url: current.online_url || null,
+        category_id: null,
+        organization_id: org?.id ?? null,
+      };
+
       try {
-        await eventsApi.createEvent({
-          title: current.title,
-          description: current.description,
-          location: current.location,
-          start_date: current.start_date
-            ? new Date(current.start_date).toISOString()
-            : new Date().toISOString(),
-          end_date: current.end_date
-            ? new Date(current.end_date).toISOString()
-            : new Date().toISOString(),
-          capacity: current.capacity,
-          visibility: current.visibility,
-          is_free: current.is_free,
-          price: current.is_free ? "0.00" : current.price,
-          cover_image: current.cover_image || null,
-          is_online: current.is_online,
-          online_url: current.online_url || null,
-          category_id: null,
-        });
+        if (savedIdRef.current) {
+          await eventsApi.updateEvent(savedIdRef.current, payload);
+        } else {
+          const res = await eventsApi.createEvent(payload);
+          savedIdRef.current = res.data.id;
+        }
         setIsDirty(false);
         setAutoSaved(true);
-        // hide the "Auto-saved" indicator after 4 seconds
         setTimeout(() => setAutoSaved(false), 4000);
       } catch {
-        // auto-save failure is non-critical - user can still submit manually
+        // auto-save failure is non-critical
       }
     }, 30_000);
     return () => clearInterval(id);
@@ -249,9 +286,38 @@ export default function CreateEventPage() {
       category_id: selectedCategoryId,
       tag_ids: form.tag_ids.length ? form.tag_ids : undefined,
       allowed_domains: form.allowed_domains.length ? form.allowed_domains : undefined,
+      organization_id: org?.id ?? null,
     };
+
+    async function createAndNavigate(eventId: string) {
+      // create ticket tiers if any
+      if (!form.is_free && form.ticket_tiers.length > 0) {
+        for (const tier of form.ticket_tiers) {
+          if (!tier.name.trim()) continue;
+          try {
+            const { default: apiClient } = await import("@/shared/api/client");
+            await apiClient.post(`/participation/api/v1/events/${eventId}/ticket-tiers/`, {
+              name: tier.name,
+              price: tier.price,
+              capacity: tier.capacity,
+              description: tier.description,
+            });
+          } catch {
+            // non-fatal
+          }
+        }
+      }
+      navigate(`/org/events/${eventId}`);
+    }
+
+    if (savedIdRef.current) {
+      await eventsApi.updateEvent(savedIdRef.current, payload);
+      await createAndNavigate(savedIdRef.current);
+      return;
+    }
+
     createMutation.mutate(payload, {
-      onSuccess: (res) => navigate(`/org/events/${res.data.id}`),
+      onSuccess: (res) => createAndNavigate(res.data.id),
     });
   }
 
@@ -913,18 +979,90 @@ function StepSchedule({ form, set, errors }: StepProps) {
             placeholder="e.g. Hotel Yak & Yeti, Kathmandu"
           />
           {form.is_online && (
-            <p
-              style={{
-                fontSize: 11,
-                color: "var(--on-mut)",
-                marginTop: 4,
-                fontFamily: "Manrope, sans-serif",
-              }}
-            >
+            <p style={{ fontSize: 11, color: "var(--on-mut)", marginTop: 4, fontFamily: "Manrope, sans-serif" }}>
               Optional for online-only events.
             </p>
           )}
         </Field>
+
+        {/* map venue picker */}
+        {!form.is_online && (
+          <div>
+            <label className={labelCls}>Pin location on map</label>
+            <div style={{ height: 280, borderRadius: 12, overflow: "hidden", border: "1px solid var(--mid)" }}>
+              <EventMap
+                latitude={form.latitude ?? 27.7172}
+                longitude={form.longitude ?? 85.324}
+                onClick={(lat: number, lng: number) => {
+                  set("latitude", lat);
+                  set("longitude", lng);
+                }}
+              />
+            </div>
+            {form.latitude && (
+              <p style={{ fontSize: 11, color: "var(--on-mut)", marginTop: 4, fontFamily: "'JetBrains Mono', monospace" }}>
+                {form.latitude.toFixed(5)}, {form.longitude?.toFixed(5)}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* event schedule / agenda */}
+        <div>
+          <label className={labelCls}>Event schedule (optional)</label>
+          <p style={{ fontSize: 12, color: "var(--on-mut)", marginBottom: 10, fontFamily: "Manrope, sans-serif" }}>
+            Add sessions, talks, or activities to your event agenda.
+          </p>
+          {form.schedule.map((item, idx) => (
+            <div key={item.id} style={{ display: "grid", gridTemplateColumns: "120px 1fr 1fr auto", gap: 8, marginBottom: 8, alignItems: "start" }}>
+              <input
+                type="time"
+                className={inputCls}
+                value={item.time}
+                onChange={(e) => {
+                  const updated = [...form.schedule];
+                  updated[idx] = { ...updated[idx], time: e.target.value };
+                  set("schedule", updated);
+                }}
+              />
+              <input
+                className={inputCls}
+                value={item.title}
+                onChange={(e) => {
+                  const updated = [...form.schedule];
+                  updated[idx] = { ...updated[idx], title: e.target.value };
+                  set("schedule", updated);
+                }}
+                placeholder="Session title"
+              />
+              <input
+                className={inputCls}
+                value={item.speaker}
+                onChange={(e) => {
+                  const updated = [...form.schedule];
+                  updated[idx] = { ...updated[idx], speaker: e.target.value };
+                  set("schedule", updated);
+                }}
+                placeholder="Speaker (optional)"
+              />
+              <button
+                type="button"
+                onClick={() => set("schedule", form.schedule.filter((_, i) => i !== idx))}
+                style={{ width: 32, height: 32, borderRadius: 8, border: "1px solid var(--mid)", background: "transparent", cursor: "pointer", display: "grid", placeItems: "center" }}
+              >
+                <MS n="close" size={14} style={{ color: "var(--on-mut)" }} />
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => set("schedule", [...form.schedule, { id: `s-${Date.now()}`, time: "", title: "", description: "", speaker: "" }])}
+            style={{ padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--mid)", background: "transparent", cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: "Manrope, sans-serif", color: "var(--on-var)", display: "flex", alignItems: "center", gap: 6 }}
+          >
+            <MS n="add" size={14} />
+            Add session
+          </button>
+        </div>
       </div>
     </>
   );
@@ -1016,17 +1154,93 @@ function StepTickets({
         </div>
 
         {!form.is_free && (
-          <Field label="Ticket Price (NPR)" error={errors.price}>
-            <input
-              type="number"
-              min={0}
-              step={0.01}
-              className={inputCls}
-              value={form.price}
-              onChange={(e) => set("price", e.target.value)}
-              placeholder="0.00"
-            />
-          </Field>
+          <>
+            <Field label="Default Ticket Price (NPR)" error={errors.price}>
+              <input
+                type="number"
+                min={0}
+                step={0.01}
+                className={inputCls}
+                value={form.price}
+                onChange={(e) => set("price", e.target.value)}
+                placeholder="0.00"
+              />
+            </Field>
+
+            {/* ticket tiers */}
+            <div>
+              <label className={labelCls}>Ticket tiers (optional)</label>
+              <p style={{ fontSize: 12, color: "var(--on-mut)", marginBottom: 10, fontFamily: "Manrope, sans-serif" }}>
+                Add multiple ticket types like VIP, General, Early Bird. Leave empty for a single tier.
+              </p>
+              {form.ticket_tiers.map((tier, idx) => (
+                <div key={tier.id} style={{ padding: 14, background: "var(--low)", borderRadius: 12, border: "1px solid var(--mid)", marginBottom: 8 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 120px 100px auto", gap: 8, alignItems: "start" }}>
+                    <input
+                      className={inputCls}
+                      value={tier.name}
+                      onChange={(e) => {
+                        const updated = [...form.ticket_tiers];
+                        updated[idx] = { ...updated[idx], name: e.target.value };
+                        set("ticket_tiers", updated);
+                      }}
+                      placeholder="Tier name (e.g. VIP)"
+                    />
+                    <input
+                      type="number"
+                      min={0}
+                      className={inputCls}
+                      value={tier.price}
+                      onChange={(e) => {
+                        const updated = [...form.ticket_tiers];
+                        updated[idx] = { ...updated[idx], price: e.target.value };
+                        set("ticket_tiers", updated);
+                      }}
+                      placeholder="Price"
+                    />
+                    <input
+                      type="number"
+                      min={1}
+                      className={inputCls}
+                      value={tier.capacity}
+                      onChange={(e) => {
+                        const updated = [...form.ticket_tiers];
+                        updated[idx] = { ...updated[idx], capacity: parseInt(e.target.value) || 1 };
+                        set("ticket_tiers", updated);
+                      }}
+                      placeholder="Qty"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => set("ticket_tiers", form.ticket_tiers.filter((_, i) => i !== idx))}
+                      style={{ width: 32, height: 32, borderRadius: 8, border: "1px solid var(--mid)", background: "transparent", cursor: "pointer", display: "grid", placeItems: "center" }}
+                    >
+                      <MS n="close" size={14} style={{ color: "var(--on-mut)" }} />
+                    </button>
+                  </div>
+                  <input
+                    className={inputCls}
+                    value={tier.description}
+                    onChange={(e) => {
+                      const updated = [...form.ticket_tiers];
+                      updated[idx] = { ...updated[idx], description: e.target.value };
+                      set("ticket_tiers", updated);
+                    }}
+                    placeholder="Description (e.g. Front row seating, backstage pass)"
+                    style={{ marginTop: 8 }}
+                  />
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => set("ticket_tiers", [...form.ticket_tiers, { id: `t-${Date.now()}`, name: "", price: "0.00", capacity: 50, description: "" }])}
+                style={{ padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--mid)", background: "transparent", cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: "Manrope, sans-serif", color: "var(--on-var)", display: "flex", alignItems: "center", gap: 6 }}
+              >
+                <MS n="add" size={14} />
+                Add ticket tier
+              </button>
+            </div>
+          </>
         )}
 
         {/* allowed domains  - the platform USP */}

@@ -1,13 +1,17 @@
-import type { InputHTMLAttributes } from "react";
+import { useState, type InputHTMLAttributes } from "react";
 
 type Props = InputHTMLAttributes<HTMLInputElement> & {
   label: string;
   error?: string;
+  optional?: boolean;
 };
 
-/** SEU-design ghost-border input field that snaps to primary on focus. */
-export function SeuField({ label, error, id, ...props }: Props) {
+/** SEU-design ghost-border input field with required asterisk and password eye toggle. */
+export function SeuField({ label, error, id, optional, type, ...props }: Props) {
   const fieldId = id ?? label.toLowerCase().replace(/\s+/g, "-");
+  const isPassword = type === "password";
+  const [showPassword, setShowPassword] = useState(false);
+
   return (
     <div className="flex flex-col gap-1.5">
       <label
@@ -21,30 +25,60 @@ export function SeuField({ label, error, id, ...props }: Props) {
         }}
       >
         {label}
+        {!optional && <span style={{ color: "#ef4444", marginLeft: 3 }}>*</span>}
       </label>
-      <input
-        id={fieldId}
-        {...props}
-        style={{
-          fontFamily: "Manrope, sans-serif",
-          fontSize: 14,
-          padding: "11px 14px",
-          border: error ? "1px solid var(--error)" : "1px solid var(--outline-strong)",
-          borderRadius: 10,
-          background: "white",
-          outline: "none",
-          color: "var(--on-bg)",
-          transition: "border-color 150ms",
-        }}
-        onFocus={(e) => {
-          e.currentTarget.style.borderColor = "var(--primary)";
-          props.onFocus?.(e);
-        }}
-        onBlur={(e) => {
-          e.currentTarget.style.borderColor = error ? "var(--error)" : "var(--outline-strong)";
-          props.onBlur?.(e);
-        }}
-      />
+      <div style={{ position: "relative" }}>
+        <input
+          id={fieldId}
+          type={isPassword && showPassword ? "text" : type}
+          {...props}
+          style={{
+            fontFamily: "Manrope, sans-serif",
+            fontSize: 14,
+            padding: "11px 14px",
+            paddingRight: isPassword ? 42 : 14,
+            border: error ? "1px solid var(--error)" : "1px solid var(--outline-strong)",
+            borderRadius: 10,
+            background: "white",
+            outline: "none",
+            color: "var(--on-bg)",
+            transition: "border-color 150ms",
+            width: "100%",
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.borderColor = "var(--primary)";
+            props.onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.borderColor = error ? "var(--error)" : "var(--outline-strong)";
+            props.onBlur?.(e);
+          }}
+        />
+        {isPassword && (
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            style={{
+              position: "absolute",
+              right: 10,
+              top: "50%",
+              transform: "translateY(-50%)",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: 4,
+              display: "grid",
+              placeItems: "center",
+              color: "var(--on-mut)",
+            }}
+            tabIndex={-1}
+          >
+            <span className="ms" style={{ fontSize: 18 }}>
+              {showPassword ? "visibility_off" : "visibility"}
+            </span>
+          </button>
+        )}
+      </div>
       {error && (
         <p style={{ fontSize: 12, color: "var(--error)", fontFamily: "Manrope, sans-serif" }}>
           {error}

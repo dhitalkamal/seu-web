@@ -48,6 +48,7 @@ export type RegisterRequest = {
   confirm_password: string;
   first_name: string;
   last_name: string;
+  agreed_to_terms: boolean;
 };
 
 /** POST /auth/mfa/challenge/ */

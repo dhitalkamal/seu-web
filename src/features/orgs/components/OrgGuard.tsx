@@ -13,7 +13,13 @@ export default function OrgGuard({ children }: { children: ReactNode }) {
   }
 
   if (!isOrgActive(org)) {
-    toast("Your organization is pending verification", { id: "org-guard" });
+    const msg =
+      org.status === "rejected"
+        ? "Your organization was rejected. Edit your details and resubmit."
+        : org.status === "suspended"
+          ? "Your organization has been suspended."
+          : "Your organization is pending verification.";
+    toast(msg, { id: "org-guard" });
     return <Navigate to="/profile" replace />;
   }
 

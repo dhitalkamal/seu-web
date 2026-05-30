@@ -54,7 +54,7 @@ export default function VenuesPage() {
         city,
         country,
         capacity: Number(capacity),
-        organisation_id: orgId,
+        organization_id: orgId,
         latitude: lat ?? undefined,
         longitude: lng ?? undefined,
         description: description || undefined,

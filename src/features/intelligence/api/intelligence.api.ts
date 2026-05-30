@@ -155,6 +155,10 @@ const intelligenceApi = {
   listReportJobs: () =>
     client.get<{ data: ReportJob[] }>(`${BASE}/reports/`).then((r) => r.data.data ?? []),
 
+  /** Get a presigned download URL for a completed report. */
+  getReportDownloadUrl: (jobId: string) =>
+    client.get<{ data: { download_url: string } }>(`${BASE}/reports/${jobId}/download/`).then((r) => r.data.data.download_url),
+
   /** Send a chat message with history and optional event context to the NLP chat endpoint. */
   chat: (
     message: string,

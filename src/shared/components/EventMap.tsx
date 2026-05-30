@@ -11,7 +11,7 @@ import shadowUrl from "leaflet/dist/images/marker-shadow.png";
 type EventMapProps = {
   latitude: number;
   longitude: number;
-  title: string;
+  title?: string;
   className?: string;
   onClick?: (lat: number, lng: number) => void;
 };

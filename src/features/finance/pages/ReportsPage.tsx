@@ -429,11 +429,16 @@ export default function ReportsPage() {
                       })}
                     </td>
                     <td>
-                      {job.file_url ? (
-                        <a
-                          href={job.file_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                      {job.status === "completed" ? (
+                        <button
+                          onClick={async () => {
+                            try {
+                              const url = await intelligenceApi.getReportDownloadUrl(job.id);
+                              window.open(url, "_blank");
+                            } catch {
+                              toast("Download failed");
+                            }
+                          }}
                           style={{
                             fontSize: 12,
                             color: "var(--primary)",
@@ -441,12 +446,15 @@ export default function ReportsPage() {
                             display: "flex",
                             alignItems: "center",
                             gap: 4,
-                            textDecoration: "none",
+                            background: "none",
+                            border: "none",
+                            cursor: "pointer",
+                            padding: 0,
                           }}
                         >
                           <MS n="download" size={13} />
                           Download
-                        </a>
+                        </button>
                       ) : (
                         <span
                           style={{

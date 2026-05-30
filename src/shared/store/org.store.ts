@@ -39,10 +39,16 @@ export function isOrgPending(org: Organization | null): boolean {
   return org.status === "pending_review";
 }
 
-/** True when the org was rejected or suspended. */
+/** True when the org was suspended by superadmin. */
 export function isOrgSuspended(org: Organization | null): boolean {
   if (!org) return false;
   return org.status === "suspended";
+}
+
+/** True when the org was rejected and can be edited and resubmitted. */
+export function isOrgRejected(org: Organization | null): boolean {
+  if (!org) return false;
+  return org.status === "rejected";
 }
 
 /** Persisted org store - survives page refresh via localStorage under key "sansaar-org". */

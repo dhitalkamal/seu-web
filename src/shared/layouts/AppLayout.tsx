@@ -31,9 +31,9 @@ const ORG_NAV: NavSection[] = [
     section: "Operations",
     items: [
       { to: "/org/venues", icon: "place", label: "Venues" },
-      { to: "/org/volunteer-apps", icon: "assignment_ind", label: "Volunteer Apps", badge: "12" },
+      { to: "/org/volunteer-apps", icon: "assignment_ind", label: "Volunteer Apps" },
       { to: "/org/checkin", icon: "qr_code_scanner", label: "Check-in" },
-      { to: "/org/waitlist", icon: "hourglass_top", label: "Waitlist", badge: "34" },
+      { to: "/org/waitlist", icon: "hourglass_top", label: "Waitlist" },
       { to: "/org/team", icon: "group", label: "Team" },
     ],
   },
@@ -41,7 +41,6 @@ const ORG_NAV: NavSection[] = [
     section: "Numbers",
     items: [
       { to: "/org/analytics", icon: "analytics", label: "Analytics" },
-      { to: "/org/event-health", icon: "monitor_heart", label: "Event Health" },
       { to: "/org/finance", icon: "payments", label: "Finance" },
       { to: "/org/reports", icon: "description", label: "Reports" },
       { to: "/org/pricing", icon: "workspace_premium", label: "Pricing & Plans" },
@@ -1022,11 +1021,16 @@ function NotificationBell() {
   function typeIcon(type: string): string {
     const map: Record<string, string> = {
       event_reminder: "event",
+      event_update: "update",
       registration_confirmed: "how_to_reg",
       payment_received: "payments",
+      org_submitted: "pending",
       org_approved: "verified",
+      org_rejected: "error",
       org_suspended: "block",
       ticket_cancelled: "cancel",
+      waitlist_joined: "queue",
+      waitlist_promoted: "celebration",
       announcement: "campaign",
     };
     return map[type] ?? "notifications";
@@ -1156,7 +1160,7 @@ function NotificationBell() {
               <button
                 onClick={() => {
                   setOpen(false);
-                  navigate("/profile");
+                  navigate("/settings");
                 }}
                 style={{
                   background: "none",
@@ -1325,7 +1329,7 @@ function NotificationBell() {
               <button
                 onClick={() => {
                   setOpen(false);
-                  navigate("/profile");
+                  navigate("/notifications");
                 }}
                 style={{
                   width: "100%",

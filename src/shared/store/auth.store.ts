@@ -1,8 +1,9 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
 import type { User } from "@/features/auth/types/auth.types";
 
 export const WEB_AUTH_STORAGE_KEY = "sansaar-web-auth";
+const REMEMBER_KEY = "sansaar-remember-me";
 const LEGACY_AUTH_STORAGE_KEY = "sansaar-auth";
 
 function migrateLegacyAuthStorage(): void {
@@ -17,20 +18,61 @@ function migrateLegacyAuthStorage(): void {
 
 migrateLegacyAuthStorage();
 
+/** Returns true if the user checked "remember me" on login. */
+export function isRememberMe(): boolean {
+  return localStorage.getItem(REMEMBER_KEY) === "true";
+}
+
+/** Persist the remember-me preference (always in localStorage since it must survive session close). */
+export function setRememberMe(value: boolean): void {
+  localStorage.setItem(REMEMBER_KEY, String(value));
+  if (value) {
+    // move auth from sessionStorage to localStorage if switching
+    const session = sessionStorage.getItem(WEB_AUTH_STORAGE_KEY);
+    if (session) {
+      localStorage.setItem(WEB_AUTH_STORAGE_KEY, session);
+      sessionStorage.removeItem(WEB_AUTH_STORAGE_KEY);
+    }
+  } else {
+    // move auth from localStorage to sessionStorage
+    const local = localStorage.getItem(WEB_AUTH_STORAGE_KEY);
+    if (local) {
+      sessionStorage.setItem(WEB_AUTH_STORAGE_KEY, local);
+      localStorage.removeItem(WEB_AUTH_STORAGE_KEY);
+    }
+  }
+}
+
+// pick storage based on remember-me: localStorage persists, sessionStorage clears on browser close
+const adaptiveStorage: StateStorage = {
+  getItem: (name) => {
+    return localStorage.getItem(name) ?? sessionStorage.getItem(name);
+  },
+  setItem: (name, value) => {
+    if (isRememberMe()) {
+      localStorage.setItem(name, value);
+      sessionStorage.removeItem(name);
+    } else {
+      sessionStorage.setItem(name, value);
+      localStorage.removeItem(name);
+    }
+  },
+  removeItem: (name) => {
+    localStorage.removeItem(name);
+    sessionStorage.removeItem(name);
+  },
+};
+
 type AuthState = {
   user: User | null;
   accessToken: string | null;
   refreshToken: string | null;
   isAuthenticated: boolean;
-  /** Called after a successful login. */
   setAuth: (user: User, accessToken: string, refreshToken: string) => void;
-  /** Updates only the tokens after a silent refresh, does not touch user or isAuthenticated. */
   updateTokens: (accessToken: string, refreshToken: string) => void;
-  /** Clears all auth state -- call on logout or session expiry. */
   clearAuth: () => void;
 };
 
-/** Persisted auth store -- survives page refresh via localStorage under a web-only key. */
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
@@ -41,9 +83,11 @@ export const useAuthStore = create<AuthState>()(
       setAuth: (user, accessToken, refreshToken) =>
         set({ user, accessToken, refreshToken, isAuthenticated: true }),
       updateTokens: (accessToken, refreshToken) => set({ accessToken, refreshToken }),
-      clearAuth: () =>
-        set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false }),
+      clearAuth: () => {
+        set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
+        localStorage.removeItem(REMEMBER_KEY);
+      },
     }),
-    { name: WEB_AUTH_STORAGE_KEY }
+    { name: WEB_AUTH_STORAGE_KEY, storage: createJSONStorage(() => adaptiveStorage) }
   )
 );

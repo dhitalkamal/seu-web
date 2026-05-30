@@ -8,7 +8,7 @@ const NAV_LINKS = [
   { to: "/tickets", label: "Tickets", auth: true },
 ];
 
-/** Floating frosted-glass pill navbar — fixed, scroll-aware. */
+/** floating frosted-glass pill navbar - fixed, scroll-aware */
 export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -151,7 +151,7 @@ export default function Navbar() {
               style={{
                 padding: "8px 16px",
                 borderRadius: 10,
-                background: "linear-gradient(135deg, #050a26, #121d3f)",
+                background: "var(--secondary)",
                 fontFamily: "Manrope, sans-serif",
               }}
             >
