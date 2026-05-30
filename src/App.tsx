@@ -126,10 +126,10 @@ export default function App() {
             </AuthRedirect>
           }
         />
-        <Route path="/events" element={<EventListPage />} />
+        <Route path="/events" element={<P><EventListPage /></P>} />
         <Route path="/events/:id" element={<EventDetailPage />} />
         <Route path="/orgs/:id" element={<OrgProfilePage />} />
-        <Route path="/search" element={<SearchPage />} />
+        <Route path="/search" element={<P><SearchPage /></P>} />
 
         {/* * guest-only auth */}
         <Route
