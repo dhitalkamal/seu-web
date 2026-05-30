@@ -371,25 +371,25 @@ export default function App() {
         <Route
           path="/org/settings"
           element={
-            <P><OrgGuard>
+            <P>
               <OrgSettingsPage />
-            </OrgGuard></P>
+            </P>
           }
         />
         <Route
           path="/org/new"
           element={
-            <P><OrgGuard>
+            <P>
               <OrgCreatePage />
-            </OrgGuard></P>
+            </P>
           }
         />
         <Route
           path="/org/pricing"
           element={
-            <P><OrgGuard>
+            <P>
               <PricingPage />
-            </OrgGuard></P>
+            </P>
           }
         />
 

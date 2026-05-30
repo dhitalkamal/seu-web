@@ -896,18 +896,16 @@ function OrgTab() {
             borderTop: "1px solid var(--outline)",
           }}
         >
+          <Btn label="Edit Details" icon="edit" onClick={() => navigate("/org/settings")} />
           {isOrgActive(org) ? (
-            <>
-              <Btn label="Edit Details" icon="edit" onClick={() => navigate("/org/settings")} />
-              <Btn
-                label="Go to Dashboard"
-                icon="space_dashboard"
-                onClick={() => navigate("/org/dashboard")}
-                primary
-              />
-            </>
+            <Btn
+              label="Go to Dashboard"
+              icon="space_dashboard"
+              onClick={() => navigate("/org/dashboard")}
+              primary
+            />
           ) : (
-            <Btn label="Pending Verification" icon="hourglass_top" onClick={() => {}} disabled />
+            <Btn label="Pending Verification" icon="hourglass_top" onClick={() => navigate("/org/pricing")} />
           )}
         </div>
       </SectionCard>
