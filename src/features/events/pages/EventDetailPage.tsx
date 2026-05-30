@@ -90,7 +90,7 @@ export default function EventDetailPage() {
     );
   }
 
-  const isOrganiser = user?.id === event.organiser_id;
+  const isOrganizer = user?.id === event.organizer_id;
   const start = new Date(event.start_date);
   const end = new Date(event.end_date);
   const spots = event.capacity - event.registered_count;
@@ -107,24 +107,23 @@ export default function EventDetailPage() {
     setRegistering(true);
     setRegError("");
     try {
+      // paid events go to checkout first, registration happens after payment
+      if (!event.is_free) {
+        navigate(
+          `/checkout?event_id=${event.id}&subtotal=${event.price}&title=${encodeURIComponent(event.title)}`
+        );
+        return;
+      }
+
+      // free events register immediately
       const result = await registrationApi.register({ event_id: event.id });
 
-      // ! if the user got waitlisted, don't go to checkout
       if ("waitlisted" in result && result.waitlisted) {
         navigate("/tickets");
         return;
       }
 
-      // * free events -registration is enough, no payment needed
-      if (event.is_free) {
-        navigate("/tickets");
-        return;
-      }
-
-      // * paid events -go to checkout with the real registration ID
-      navigate(
-        `/checkout?event_id=${event.id}&registration_id=${result.id}&subtotal=${event.price}`
-      );
+      navigate("/tickets");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Registration failed. Please try again.";
       setRegError(msg);
@@ -400,8 +399,8 @@ export default function EventDetailPage() {
             </div>
           )}
 
-          {/* organiser actions */}
-          {isOrganiser && (
+          {/* organizer actions */}
+          {isOrganizer && (
             <>
               <div
                 className="flex gap-3 flex-wrap pt-6"
@@ -524,7 +523,7 @@ export default function EventDetailPage() {
           ))}
 
           {/* register CTA */}
-          {!isOrganiser && (
+          {!isOrganizer && (
             <>
               {regError && (
                 <p
