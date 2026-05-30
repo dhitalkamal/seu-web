@@ -53,13 +53,13 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* organise */}
+          {/* organize */}
           <div>
             <h4
               className="text-xs font-semibold uppercase tracking-widest mb-4"
               style={{ color: "rgba(255,255,255,0.4)" }}
             >
-              Organise
+              Organize
             </h4>
             <ul className="space-y-2">
               {[

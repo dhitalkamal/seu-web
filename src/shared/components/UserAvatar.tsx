@@ -20,7 +20,7 @@ type Props = {
 };
 
 // * 8 illustrated character SVGs
-// Each is a self-contained SVG string rendered inside a coloured background.
+// Each is a self-contained SVG string rendered inside a colored background.
 // Characters: business man, woman with glasses, bearded dev, hijabi woman,
 //             young man with hoodie, woman with bun, older gentleman, punk girl
 
@@ -143,7 +143,7 @@ function buildCharacterSvg(idx: number): string {
       <rect x="56" y="72" width="8" height="12" fill="${p.accent}"/>
     </svg>`,
 
-    // 7  - Creative woman with short coloured hair
+    // 7  - Creative woman with short colored hair
     `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
       <rect width="120" height="120" fill="${p.bg}"/>
       <ellipse cx="60" cy="95" rx="36" ry="28" fill="${p.shirt}"/>
@@ -203,7 +203,8 @@ export default function UserAvatar({ src, uid = "", size = 48, radius = 16, styl
 
   // ! only show the <img> if src is a real URL  - not empty, not just whitespace
   const [imgFailed, setImgFailed] = useState(false);
-  const hasValidSrc = !imgFailed && typeof src === "string" && src.trim().length > 0 && src.startsWith("http");
+  const hasValidSrc =
+    !imgFailed && typeof src === "string" && src.trim().length > 0 && src.startsWith("http");
 
   if (hasValidSrc) {
     return (

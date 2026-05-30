@@ -110,7 +110,7 @@ export default function EventDetailPage() {
       // paid events go to checkout first, registration happens after payment
       if (!event.is_free) {
         navigate(
-          `/checkout?event_id=${event.id}&subtotal=${event.price}&title=${encodeURIComponent(event.title)}`
+          `/checkout?event_id=${event.id}&subtotal=${event.price}&title=${encodeURIComponent(event.title)}&organization_id=${event.organization_id ?? ""}`
         );
         return;
       }

@@ -31,6 +31,73 @@ type RateForm = {
   feedback: string;
 };
 
+// * shared modal styles
+
+const overlayStyle: React.CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(0,0,0,0.35)",
+  display: "grid",
+  placeItems: "center",
+  zIndex: 1000,
+};
+
+const cardStyle: React.CSSProperties = {
+  background: "var(--surface)",
+  borderRadius: 20,
+  maxWidth: 480,
+  width: "100%",
+  boxShadow: "0 16px 48px rgba(0,0,0,0.15)",
+};
+
+const modalHeaderStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  padding: "18px 24px 16px",
+  borderBottom: "1px solid var(--outline)",
+};
+
+const modalBodyStyle: React.CSSProperties = {
+  padding: "20px 24px",
+  display: "flex",
+  flexDirection: "column",
+  gap: 16,
+};
+
+const modalFooterStyle: React.CSSProperties = {
+  display: "flex",
+  gap: 10,
+  justifyContent: "flex-end",
+  padding: "16px 24px 20px",
+  borderTop: "1px solid var(--outline)",
+};
+
+const labelStyle: React.CSSProperties = {
+  fontSize: 10,
+  fontWeight: 700,
+  letterSpacing: "0.1em",
+  textTransform: "uppercase",
+  color: "var(--on-mut)",
+  marginBottom: 6,
+  fontFamily: "'JetBrains Mono', monospace",
+  display: "block",
+};
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "10px 14px",
+  borderRadius: 10,
+  border: "1px solid var(--mid)",
+  background: "var(--low)",
+  fontSize: 14,
+  fontFamily: "'Manrope', sans-serif",
+  boxSizing: "border-box",
+};
+
+// required marker
+const Req = () => <span style={{ color: "#ef4444" }}>*</span>;
+
 // * component
 
 /** Volunteers pool - volunteer management, shift coverage, and skills matrix. */
@@ -40,14 +107,15 @@ export default function VolunteerManagementPage() {
   const orgId = org?.id ?? "";
   const qc = useQueryClient();
 
-  const [showForm, setShowForm] = useState(false);
+  // role modal state
+  const [showRoleModal, setShowRoleModal] = useState(false);
   const [form, setForm] = useState<CreateRoleForm>({ title: "", description: "", slots: "1" });
 
   // which role is expanded to show shifts + applications
   const [expandedRoleId, setExpandedRoleId] = useState<string | null>(null);
 
-  // shift creation state
-  const [showShiftForm, setShowShiftForm] = useState(false);
+  // shift modal state
+  const [showShiftModal, setShowShiftModal] = useState(false);
   const [shiftForm, setShiftForm] = useState<CreateShiftForm>({
     title: "",
     start_time: "",
@@ -91,7 +159,7 @@ export default function VolunteerManagementPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["org-volunteer-roles"] });
       toast("Volunteer role created");
-      setShowForm(false);
+      setShowRoleModal(false);
       setForm({ title: "", description: "", slots: "1" });
     },
     onError: () => toast("Failed to create role"),
@@ -110,7 +178,7 @@ export default function VolunteerManagementPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["org-role-shifts", expandedRoleId] });
       toast("Shift created");
-      setShowShiftForm(false);
+      setShowShiftModal(false);
       setShiftForm({ title: "", start_time: "", end_time: "", capacity: "1", location: "" });
     },
     onError: () => toast("Failed to create shift"),
@@ -178,7 +246,7 @@ export default function VolunteerManagementPage() {
       return;
     }
     if (!orgId) {
-      toast("No organisation loaded");
+      toast("No organization loaded");
       return;
     }
     createMutation.mutate({
@@ -227,7 +295,7 @@ export default function VolunteerManagementPage() {
               <MS n="calendar_month" size={13} />
               Schedule
             </button>
-            <button className="btn-sm primary" onClick={() => setShowForm(true)}>
+            <button className="btn-sm primary" onClick={() => setShowRoleModal(true)}>
               <MS n="person_add" size={13} />
               Add volunteer role
             </button>
@@ -252,51 +320,101 @@ export default function VolunteerManagementPage() {
         />
       </div>
 
-      {/* create role form */}
-      {showForm && (
-        <div className="panel" style={{ marginBottom: 18, borderColor: "var(--primary)" }}>
-          <div className="panel-head">
-            <span className="panel-title">New volunteer role</span>
-            <button className="modal-x" onClick={() => setShowForm(false)}>
-              <MS n="close" size={14} />
-            </button>
-          </div>
-          <div className="panel-body">
-            <div
-              style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}
-            >
-              <div className="field">
-                <label className="field-lab">Title</label>
-                <input
-                  className="field-in"
-                  value={form.title}
-                  onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                  placeholder="e.g. Stage crew"
-                />
+      {/* create role modal */}
+      {showRoleModal && (
+        <div style={overlayStyle} onClick={() => setShowRoleModal(false)}>
+          <div style={cardStyle} onClick={(e) => e.stopPropagation()}>
+            {/* header */}
+            <div style={modalHeaderStyle}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <MS n="badge" size={18} style={{ color: "var(--primary)" }} />
+                <div>
+                  <p
+                    style={{
+                      fontFamily: "'Space Grotesk', sans-serif",
+                      fontWeight: 700,
+                      fontSize: 15,
+                      margin: 0,
+                    }}
+                  >
+                    New volunteer role
+                  </p>
+                  <p
+                    style={{
+                      fontSize: 11,
+                      color: "var(--on-mut)",
+                      fontFamily: "'Manrope', sans-serif",
+                      margin: 0,
+                    }}
+                  >
+                    Define a role and how many slots are available
+                  </p>
+                </div>
               </div>
-              <div className="field">
-                <label className="field-lab">Slots available</label>
-                <input
-                  className="field-in"
-                  type="number"
-                  min={1}
-                  value={form.slots}
-                  onChange={(e) => setForm((f) => ({ ...f, slots: e.target.value }))}
-                />
-              </div>
-              <div className="field" style={{ gridColumn: "span 2" }}>
-                <label className="field-lab">Description</label>
-                <textarea
-                  className="field-in"
-                  rows={3}
-                  value={form.description}
-                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                  placeholder="Describe the role and responsibilities"
-                />
+              <button
+                className="modal-x"
+                onClick={() => {
+                  setShowRoleModal(false);
+                  setForm({ title: "", description: "", slots: "1" });
+                }}
+              >
+                <MS n="close" size={14} />
+              </button>
+            </div>
+
+            {/* body */}
+            <div style={modalBodyStyle}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                {/* title */}
+                <div>
+                  <label style={labelStyle}>
+                    Title <Req />
+                  </label>
+                  <input
+                    style={inputStyle}
+                    value={form.title}
+                    onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                    placeholder="e.g. Stage crew"
+                  />
+                </div>
+
+                {/* slots */}
+                <div>
+                  <label style={labelStyle}>
+                    Slots available <Req />
+                  </label>
+                  <input
+                    style={inputStyle}
+                    type="number"
+                    min={1}
+                    value={form.slots}
+                    onChange={(e) => setForm((f) => ({ ...f, slots: e.target.value }))}
+                  />
+                </div>
+
+                {/* description spans full width */}
+                <div style={{ gridColumn: "span 2" }}>
+                  <label style={labelStyle}>Description</label>
+                  <textarea
+                    style={{ ...inputStyle, resize: "vertical" }}
+                    rows={3}
+                    value={form.description}
+                    onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                    placeholder="Describe the role and responsibilities"
+                  />
+                </div>
               </div>
             </div>
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button className="btn-sm" onClick={() => setShowForm(false)}>
+
+            {/* footer */}
+            <div style={modalFooterStyle}>
+              <button
+                className="btn-sm"
+                onClick={() => {
+                  setShowRoleModal(false);
+                  setForm({ title: "", description: "", slots: "1" });
+                }}
+              >
                 Cancel
               </button>
               <button
@@ -311,68 +429,93 @@ export default function VolunteerManagementPage() {
         </div>
       )}
 
-      {/* rating modal */}
+      {/* rate volunteer modal */}
       {ratingAppId && (
         <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.4)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
+          style={overlayStyle}
+          onClick={() => {
+            setRatingAppId(null);
+            setRateForm({ rating: "5", feedback: "" });
           }}
         >
-          <div
-            style={{
-              background: "var(--surface)",
-              border: "1px solid var(--outline)",
-              borderRadius: 14,
-              padding: 24,
-              width: 360,
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: 16,
-              }}
-            >
-              <span
-                style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 16 }}
+          <div style={cardStyle} onClick={(e) => e.stopPropagation()}>
+            {/* header */}
+            <div style={modalHeaderStyle}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <MS n="star" size={18} style={{ color: "var(--primary)" }} />
+                <div>
+                  <p
+                    style={{
+                      fontFamily: "'Space Grotesk', sans-serif",
+                      fontWeight: 700,
+                      fontSize: 15,
+                      margin: 0,
+                    }}
+                  >
+                    Rate volunteer
+                  </p>
+                  <p
+                    style={{
+                      fontSize: 11,
+                      color: "var(--on-mut)",
+                      fontFamily: "'Manrope', sans-serif",
+                      margin: 0,
+                    }}
+                  >
+                    Score this volunteer&apos;s performance
+                  </p>
+                </div>
+              </div>
+              <button
+                className="modal-x"
+                onClick={() => {
+                  setRatingAppId(null);
+                  setRateForm({ rating: "5", feedback: "" });
+                }}
               >
-                Rate volunteer
-              </span>
-              <button className="modal-x" onClick={() => setRatingAppId(null)}>
                 <MS n="close" size={14} />
               </button>
             </div>
-            <div className="field" style={{ marginBottom: 12 }}>
-              <label className="field-lab">Rating (1-5)</label>
-              <input
-                className="field-in"
-                type="number"
-                min={1}
-                max={5}
-                value={rateForm.rating}
-                onChange={(e) => setRateForm((f) => ({ ...f, rating: e.target.value }))}
-              />
+
+            {/* body */}
+            <div style={modalBodyStyle}>
+              {/* rating */}
+              <div>
+                <label style={labelStyle}>
+                  Rating 1-5 <Req />
+                </label>
+                <input
+                  style={inputStyle}
+                  type="number"
+                  min={1}
+                  max={5}
+                  value={rateForm.rating}
+                  onChange={(e) => setRateForm((f) => ({ ...f, rating: e.target.value }))}
+                />
+              </div>
+
+              {/* feedback */}
+              <div>
+                <label style={labelStyle}>Feedback</label>
+                <textarea
+                  style={{ ...inputStyle, resize: "vertical" }}
+                  rows={3}
+                  value={rateForm.feedback}
+                  onChange={(e) => setRateForm((f) => ({ ...f, feedback: e.target.value }))}
+                  placeholder="Leave a note about this volunteer's performance"
+                />
+              </div>
             </div>
-            <div className="field" style={{ marginBottom: 16 }}>
-              <label className="field-lab">Feedback (optional)</label>
-              <textarea
-                className="field-in"
-                rows={3}
-                value={rateForm.feedback}
-                onChange={(e) => setRateForm((f) => ({ ...f, feedback: e.target.value }))}
-                placeholder="Leave a note about this volunteer's performance"
-              />
-            </div>
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button className="btn-sm" onClick={() => setRatingAppId(null)}>
+
+            {/* footer */}
+            <div style={modalFooterStyle}>
+              <button
+                className="btn-sm"
+                onClick={() => {
+                  setRatingAppId(null);
+                  setRateForm({ rating: "5", feedback: "" });
+                }}
+              >
                 Cancel
               </button>
               <button
@@ -381,6 +524,151 @@ export default function VolunteerManagementPage() {
                 disabled={rateMutation.isPending}
               >
                 {rateMutation.isPending ? "Submitting..." : "Submit rating"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* create shift modal */}
+      {showShiftModal && (
+        <div style={overlayStyle} onClick={() => setShowShiftModal(false)}>
+          {/* wider card for shift - more fields */}
+          <div style={{ ...cardStyle, maxWidth: 560 }} onClick={(e) => e.stopPropagation()}>
+            {/* header */}
+            <div style={modalHeaderStyle}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <MS n="schedule" size={18} style={{ color: "var(--primary)" }} />
+                <div>
+                  <p
+                    style={{
+                      fontFamily: "'Space Grotesk', sans-serif",
+                      fontWeight: 700,
+                      fontSize: 15,
+                      margin: 0,
+                    }}
+                  >
+                    New shift
+                  </p>
+                  <p
+                    style={{
+                      fontSize: 11,
+                      color: "var(--on-mut)",
+                      fontFamily: "'Manrope', sans-serif",
+                      margin: 0,
+                    }}
+                  >
+                    Add a shift to this volunteer role
+                  </p>
+                </div>
+              </div>
+              <button
+                className="modal-x"
+                onClick={() => {
+                  setShowShiftModal(false);
+                  setShiftForm({
+                    title: "",
+                    start_time: "",
+                    end_time: "",
+                    capacity: "1",
+                    location: "",
+                  });
+                }}
+              >
+                <MS n="close" size={14} />
+              </button>
+            </div>
+
+            {/* body */}
+            <div style={modalBodyStyle}>
+              {/* title row */}
+              <div>
+                <label style={labelStyle}>
+                  Title <Req />
+                </label>
+                <input
+                  style={inputStyle}
+                  value={shiftForm.title}
+                  onChange={(e) => setShiftForm((f) => ({ ...f, title: e.target.value }))}
+                  placeholder="e.g. Morning slot"
+                />
+              </div>
+
+              {/* start + end in 2-column grid */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                <div>
+                  <label style={labelStyle}>
+                    Start time <Req />
+                  </label>
+                  <input
+                    style={inputStyle}
+                    type="datetime-local"
+                    value={shiftForm.start_time}
+                    onChange={(e) => setShiftForm((f) => ({ ...f, start_time: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>
+                    End time <Req />
+                  </label>
+                  <input
+                    style={inputStyle}
+                    type="datetime-local"
+                    value={shiftForm.end_time}
+                    onChange={(e) => setShiftForm((f) => ({ ...f, end_time: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              {/* capacity + location row */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 14 }}>
+                <div>
+                  <label style={labelStyle}>
+                    Capacity <Req />
+                  </label>
+                  <input
+                    style={inputStyle}
+                    type="number"
+                    min={1}
+                    value={shiftForm.capacity}
+                    onChange={(e) => setShiftForm((f) => ({ ...f, capacity: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>Location</label>
+                  <input
+                    style={inputStyle}
+                    value={shiftForm.location}
+                    onChange={(e) => setShiftForm((f) => ({ ...f, location: e.target.value }))}
+                    placeholder="e.g. Main stage"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* footer */}
+            <div style={modalFooterStyle}>
+              <button
+                className="btn-sm"
+                onClick={() => {
+                  setShowShiftModal(false);
+                  setShiftForm({
+                    title: "",
+                    start_time: "",
+                    end_time: "",
+                    capacity: "1",
+                    location: "",
+                  });
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn-sm primary"
+                onClick={handleCreateShift}
+                disabled={createShiftMutation.isPending}
+              >
+                {createShiftMutation.isPending ? "Creating..." : "Create shift"}
               </button>
             </div>
           </div>
@@ -490,7 +778,7 @@ export default function VolunteerManagementPage() {
                           style={{ fontSize: 11, padding: "4px 10px" }}
                           onClick={() => {
                             setExpandedRoleId(isExpanded ? null : r.id);
-                            setShowShiftForm(false);
+                            setShowShiftModal(false);
                           }}
                         >
                           <MS n={isExpanded ? "expand_less" : "expand_more"} size={13} />
@@ -533,113 +821,12 @@ export default function VolunteerManagementPage() {
                                 <button
                                   className="btn-sm"
                                   style={{ fontSize: 11, padding: "4px 10px" }}
-                                  onClick={() => setShowShiftForm((v) => !v)}
+                                  onClick={() => setShowShiftModal(true)}
                                 >
                                   <MS n="add" size={12} />
                                   Add shift
                                 </button>
                               </div>
-
-                              {/* create shift form */}
-                              {showShiftForm && (
-                                <div
-                                  style={{
-                                    background: "var(--surface)",
-                                    border: "1px solid var(--outline)",
-                                    borderRadius: 10,
-                                    padding: 14,
-                                    marginBottom: 12,
-                                  }}
-                                >
-                                  <div
-                                    style={{
-                                      display: "grid",
-                                      gridTemplateColumns: "1fr 1fr 1fr",
-                                      gap: 10,
-                                      marginBottom: 10,
-                                    }}
-                                  >
-                                    <div className="field">
-                                      <label className="field-lab">Title</label>
-                                      <input
-                                        className="field-in"
-                                        value={shiftForm.title}
-                                        onChange={(e) =>
-                                          setShiftForm((f) => ({ ...f, title: e.target.value }))
-                                        }
-                                        placeholder="e.g. Morning slot"
-                                      />
-                                    </div>
-                                    <div className="field">
-                                      <label className="field-lab">Start time</label>
-                                      <input
-                                        className="field-in"
-                                        type="datetime-local"
-                                        value={shiftForm.start_time}
-                                        onChange={(e) =>
-                                          setShiftForm((f) => ({
-                                            ...f,
-                                            start_time: e.target.value,
-                                          }))
-                                        }
-                                      />
-                                    </div>
-                                    <div className="field">
-                                      <label className="field-lab">End time</label>
-                                      <input
-                                        className="field-in"
-                                        type="datetime-local"
-                                        value={shiftForm.end_time}
-                                        onChange={(e) =>
-                                          setShiftForm((f) => ({ ...f, end_time: e.target.value }))
-                                        }
-                                      />
-                                    </div>
-                                    <div className="field">
-                                      <label className="field-lab">Capacity</label>
-                                      <input
-                                        className="field-in"
-                                        type="number"
-                                        min={1}
-                                        value={shiftForm.capacity}
-                                        onChange={(e) =>
-                                          setShiftForm((f) => ({ ...f, capacity: e.target.value }))
-                                        }
-                                      />
-                                    </div>
-                                    <div className="field" style={{ gridColumn: "span 2" }}>
-                                      <label className="field-lab">Location (optional)</label>
-                                      <input
-                                        className="field-in"
-                                        value={shiftForm.location}
-                                        onChange={(e) =>
-                                          setShiftForm((f) => ({ ...f, location: e.target.value }))
-                                        }
-                                        placeholder="e.g. Main stage"
-                                      />
-                                    </div>
-                                  </div>
-                                  <div
-                                    style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}
-                                  >
-                                    <button
-                                      className="btn-sm"
-                                      onClick={() => setShowShiftForm(false)}
-                                    >
-                                      Cancel
-                                    </button>
-                                    <button
-                                      className="btn-sm primary"
-                                      onClick={handleCreateShift}
-                                      disabled={createShiftMutation.isPending}
-                                    >
-                                      {createShiftMutation.isPending
-                                        ? "Creating..."
-                                        : "Create shift"}
-                                    </button>
-                                  </div>
-                                </div>
-                              )}
 
                               {/* shifts list */}
                               {shifts.length === 0 ? (
@@ -700,8 +887,8 @@ export default function VolunteerManagementPage() {
                                             hour: "2-digit",
                                             minute: "2-digit",
                                           })}
-                                          {sh.location ? ` · ${sh.location}` : ""}
-                                          {" · "}
+                                          {sh.location ? ` - ${sh.location}` : ""}
+                                          {" - "}
                                           {sh.capacity} cap
                                         </p>
                                       </div>
@@ -808,7 +995,7 @@ export default function VolunteerManagementPage() {
                                               fontFamily: "Manrope, sans-serif",
                                             }}
                                           >
-                                            · Rating: {app.rating}/5
+                                            Rating: {app.rating}/5
                                           </span>
                                         )}
                                       </div>

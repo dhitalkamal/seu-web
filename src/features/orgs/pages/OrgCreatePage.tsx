@@ -308,7 +308,7 @@ export default function OrgCreatePage() {
           }}
         >
           After submission your organization will be reviewed by our team. You'll get access to the
-          organiser dashboard once approved. Adding documents speeds up verification.
+          organizer dashboard once approved. Adding documents speeds up verification.
         </p>
       </div>
 
@@ -713,7 +713,7 @@ function BasicTab({
               maxLength={100}
             />
           </div>
-          <p style={hintStyle}>Auto-generated from name. Edit to customise.</p>
+          <p style={hintStyle}>Auto-generated from name. Edit to customize.</p>
         </div>
       </div>
 

@@ -39,7 +39,7 @@ function buildYearlyCounts(regs: Registration[]): { y: string; v: number }[] {
 const HIGHLIGHT_OPTS = [
   "Great speakers",
   "Good networking",
-  "Well organised",
+  "Well organized",
   "Venue was great",
   "Learned a lot",
 ];

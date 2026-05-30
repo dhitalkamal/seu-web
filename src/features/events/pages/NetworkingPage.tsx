@@ -5,7 +5,7 @@ import { PH, MS } from "@/shared/components/v8";
 import checkinApi from "@/features/checkin/api/checkin.api";
 
 /**
- * Networking landing — shows the user's registered events so they can
+ * Networking landing - shows the user's registered events so they can
  * tap through to the per-event "Who to Meet" connections page.
  */
 export default function NetworkingPage() {
@@ -90,8 +90,8 @@ export default function NetworkingPage() {
             position: "relative",
           }}
         >
-          Our AI analyses shared event history to rank who you should meet. Opt in on any event
-          below to see your personalised matches and send introductions.
+          Our AI analyzes shared event history to rank who you should meet. Opt in on any event
+          below to see your personalized matches and send introductions.
         </p>
       </div>
 

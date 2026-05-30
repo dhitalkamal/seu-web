@@ -38,14 +38,20 @@ async function fetchSavedWithDetails(): Promise<SavedWithEvent[]> {
   const results = await Promise.allSettled(
     saved.map(async (record) => {
       const res = await eventsApi.getEvent(record.event_id);
-      const ev = "data" in res ? res.data : (res as unknown as Event);
+      const raw = res as Record<string, unknown>;
+      const ev = (raw?.data ?? raw) as Event | undefined;
       return { savedRecord: record, event: ev };
     })
   );
 
   return results
     .filter((r): r is PromiseFulfilledResult<SavedWithEvent> => r.status === "fulfilled")
-    .map((r) => r.value);
+    .map((r) => r.value)
+    .filter((r): r is SavedWithEvent =>
+      r.event != null &&
+      typeof r.event.id === "string" &&
+      typeof r.event.title === "string"
+    );
 }
 
 // * --- Page -------------------------------------------------------------------
@@ -168,7 +174,9 @@ export default function SavedEventsPage() {
           className="grid"
           style={{ gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}
         >
-          {saved.map(({ savedRecord, event: ev }) => (
+          {saved.map(({ savedRecord, event: ev }) => {
+            if (!ev?.title) return null;
+            return (
             <div
               key={savedRecord.id}
               className="panel"
@@ -179,7 +187,7 @@ export default function SavedEventsPage() {
               <div
                 style={{
                   height: 140,
-                  background: ev.cover_image
+                  background: ev?.cover_image
                     ? `url(${ev.cover_image}) center/cover`
                     : "linear-gradient(135deg, #050a26, #121d3f)",
                   position: "relative",
@@ -313,7 +321,8 @@ export default function SavedEventsPage() {
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </AppLayout>

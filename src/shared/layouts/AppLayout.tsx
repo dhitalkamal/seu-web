@@ -7,6 +7,7 @@ import { useOrgStore, isOrgActive } from "@/shared/store/org.store";
 import { usePreferencesStore } from "@/shared/store/preferences.store";
 import { useOrgContext } from "@/features/orgs/hooks/useOrgContext";
 import UserAvatar from "@/shared/components/UserAvatar";
+import { useCrumbStore } from "@/shared/hooks/useCrumbs";
 import eventsApi from "@/features/events/api/events.api";
 import type { Event } from "@/features/events/types/event.types";
 import notificationsApi from "@/features/notifications/api/notifications.api";
@@ -46,6 +47,10 @@ const ORG_NAV: NavSection[] = [
       { to: "/org/pricing", icon: "workspace_premium", label: "Pricing & Plans" },
     ],
   },
+  {
+    section: "Help",
+    items: [{ to: "/org/support", icon: "support_agent", label: "Support" }],
+  },
 ];
 
 /** Nav sections for user/attendee context - discover, tickets, saved events.
@@ -72,6 +77,10 @@ const USER_NAV: NavSection[] = [
       { to: "/community", icon: "forum", label: "Community" },
       { to: "/networking", icon: "diversity_3", label: "Networking" },
     ],
+  },
+  {
+    section: "Help",
+    items: [{ to: "/support", icon: "support_agent", label: "Support" }],
   },
 ];
 
@@ -112,10 +121,12 @@ export default function AppLayout({
   title,
   subtitle,
   actions,
-  crumbs,
+  crumbs: propCrumbs,
   variant = "org",
 }: Props) {
   const navigate = useNavigate();
+  const storeCrumbs = useCrumbStore((s) => s.crumbs);
+  const crumbs = propCrumbs && propCrumbs.length > 0 ? propCrumbs : storeCrumbs;
   const location = useLocation();
   const { logoutMutation } = useAuth();
   const user = useAuthStore((s) => s.user);
@@ -137,7 +148,7 @@ export default function AppLayout({
   // ! Derive nav sections and role label from the variant
   const sections = variant === "org" ? ORG_NAV : variant === "volunteer" ? VOLUNTEER_NAV : USER_NAV;
   const roleLabel =
-    variant === "org" ? "Organiser" : variant === "volunteer" ? "Volunteer" : "Attendee";
+    variant === "org" ? "Organizer" : variant === "volunteer" ? "Volunteer" : "Attendee";
 
   // ! Build the list of dashboards available to switch TO (excludes current)
   const switchOptions: { label: string; target: string; icon: string }[] = [];
@@ -148,7 +159,7 @@ export default function AppLayout({
     switchOptions.push({ label: "Volunteer", target: "/volunteer", icon: "volunteer_activism" });
   }
   if (variant !== "org" && hasActiveOrg) {
-    switchOptions.push({ label: "Organiser", target: "/org/dashboard", icon: "domain" });
+    switchOptions.push({ label: "Organizer", target: "/org/dashboard", icon: "domain" });
   }
 
   function handleLogout() {
@@ -409,29 +420,46 @@ export default function AppLayout({
           </div>
         </header>
 
+        {/* breadcrumb bar - fixed below topbar */}
+        {crumbs && crumbs.length > 0 && (
+          <div
+            className="flex items-center gap-2 flex-shrink-0"
+            style={{
+              position: "sticky",
+              top: 56,
+              zIndex: 39,
+              background: "var(--bg)",
+              borderBottom: "1px solid var(--outline)",
+              padding: "0 32px",
+              height: 32,
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+            }}
+          >
+            {crumbs.map((c, i) => (
+              <span key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                {i > 0 && (
+                  <span style={{ opacity: 0.4, fontFamily: "Manrope, sans-serif", fontSize: 12 }}>
+                    /
+                  </span>
+                )}
+                <span
+                  style={{
+                    color: i === crumbs.length - 1 ? "var(--secondary)" : "var(--on-mut)",
+                  }}
+                >
+                  {c}
+                </span>
+              </span>
+            ))}
+          </div>
+        )}
+
         {/* page content */}
         <main className="flex-1" style={{ padding: "28px 32px 60px" }}>
-          {crumbs && crumbs.length > 0 && (
-            <div
-              className="flex items-center gap-2 mb-5"
-              style={{
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: 10.5,
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                color: "var(--on-mut)",
-              }}
-            >
-              {crumbs.map((c, i) => (
-                <span key={i} className="flex items-center gap-2">
-                  {i > 0 && <span style={{ opacity: 0.4 }}>/</span>}
-                  <span style={{ color: i === crumbs.length - 1 ? "var(--secondary)" : undefined }}>
-                    {c}
-                  </span>
-                </span>
-              ))}
-            </div>
-          )}
 
           {(title || actions) && (
             <div className="flex items-start justify-between gap-6 flex-wrap mb-7">
@@ -478,7 +506,7 @@ export default function AppLayout({
 
 // * --- Role Switcher Dropdown --------------------------------------------------
 
-/** Single-button dropdown to switch between Attendee / Volunteer / Organiser dashboards. */
+/** Single-button dropdown to switch between Attendee / Volunteer / Organizer dashboards. */
 function RoleSwitcher({
   current,
   options,

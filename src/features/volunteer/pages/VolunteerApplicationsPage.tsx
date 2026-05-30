@@ -160,7 +160,7 @@ export default function VolunteerApplicationsPage() {
             }}
           >
             {tab === "browse"
-              ? "Check back later - organisers post new volunteer roles as events approach."
+              ? "Check back later - organizers post new volunteer roles as events approach."
               : `Your ${tab} applications will appear here once you start applying for roles.`}
           </p>
         </div>

@@ -36,6 +36,7 @@ function getRefreshToken(): string | null {
 
 const client = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
+  adapter: "fetch",
 });
 
 // set content-type to json by default, but let axios auto-detect for FormData

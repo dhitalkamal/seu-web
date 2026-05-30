@@ -23,8 +23,9 @@ const GATEWAY_LABELS: Record<Gateway, string> = {
 export default function CheckoutPage() {
   const [params] = useSearchParams();
   const eventId = params.get("event_id") ?? "";
-  const registrationId = params.get("registration_id") ?? "";
+  const registrationId = params.get("registration_id") || undefined;
   const subtotal = params.get("subtotal") ?? "0.00";
+  const organizationId = params.get("organization_id") || undefined;
   const [gateway, setGateway] = useState<Gateway>("khalti");
   const [promoCode, setPromoCode] = useState("");
   const [promoResult, setPromoResult] = useState<PromoResult | null>(null);
@@ -40,6 +41,7 @@ export default function CheckoutPage() {
         gateway,
         idempotency_key: uuidv4(),
         promo_code: promoCode || undefined,
+        organization_id: organizationId,
       }),
     onSuccess: (res) => {
       // * eSewa uses a form POST instead of a simple redirect

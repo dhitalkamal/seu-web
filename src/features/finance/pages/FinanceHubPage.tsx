@@ -21,7 +21,6 @@ const TABS: TabDef[] = [
   { key: "promo", icon: "local_offer", label: "Promo Codes" },
 ];
 
-
 // * tab bar styles
 
 const tabBarStyle: React.CSSProperties = {
@@ -490,91 +489,315 @@ function PromoTab() {
         <KPI icon="trending_up" color="mnt" label="Conversion lift" value="N/A" />
       </div>
 
+      {/* new promo code modal */}
       {show && (
-        <div className="panel" style={{ marginBottom: 18, borderColor: "var(--primary)" }}>
-          <div className="panel-head">
-            <span className="panel-title">New promo code</span>
-            <button className="modal-x" onClick={() => setShow(false)}>
-              <MS n="close" size={14} />
-            </button>
-          </div>
-          <div className="panel-body">
+        <div
+          onClick={resetForm}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.35)",
+            display: "grid",
+            placeItems: "center",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "var(--surface)",
+              borderRadius: 20,
+              maxWidth: 520,
+              width: "100%",
+              boxShadow: "0 16px 48px rgba(0,0,0,0.15)",
+            }}
+          >
+            {/* modal header */}
             <div
               style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr 1fr",
-                gap: 14,
-                marginBottom: 14,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "18px 24px 16px",
+                borderBottom: "1px solid var(--outline)",
               }}
             >
-              <div className="field">
-                <label className="field-lab">Code</label>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <MS n="local_offer" size={20} style={{ color: "var(--primary)" }} />
+                <div>
+                  <div
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 700,
+                      color: "var(--on-bg)",
+                      fontFamily: "'Manrope', sans-serif",
+                    }}
+                  >
+                    New promo code
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "var(--on-mut)",
+                      fontFamily: "'Manrope', sans-serif",
+                    }}
+                  >
+                    Create a discount code for events.
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={resetForm}
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 8,
+                  border: "1px solid var(--mid)",
+                  background: "transparent",
+                  cursor: "pointer",
+                  display: "grid",
+                  placeItems: "center",
+                }}
+              >
+                <MS n="close" size={14} />
+              </button>
+            </div>
+
+            {/* modal body */}
+            <div
+              style={{
+                padding: "20px 24px",
+                display: "flex",
+                flexDirection: "column",
+                gap: 16,
+              }}
+            >
+              {/* code */}
+              <div>
+                <label
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    color: "var(--on-mut)",
+                    marginBottom: 6,
+                    display: "block",
+                    fontFamily: "'JetBrains Mono', monospace",
+                  }}
+                >
+                  Code <span style={{ color: "#ef4444" }}>*</span>
+                </label>
                 <input
-                  className="field-in"
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
                   placeholder="AUTUMN20"
-                  style={{ fontFamily: "JetBrains Mono, monospace", textTransform: "uppercase" }}
+                  style={{
+                    width: "100%",
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    border: "1px solid var(--mid)",
+                    background: "var(--low)",
+                    fontSize: 14,
+                    fontFamily: "'JetBrains Mono', monospace",
+                    textTransform: "uppercase",
+                    boxSizing: "border-box",
+                  }}
                 />
               </div>
-              <div className="field">
-                <label className="field-lab">Discount type</label>
-                <select
-                  className="field-in"
-                  value={discountType}
-                  onChange={(e) => setDiscountType(e.target.value as "percentage" | "fixed")}
+
+              {/* discount type + value */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                <div>
+                  <label
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                      color: "var(--on-mut)",
+                      marginBottom: 6,
+                      display: "block",
+                      fontFamily: "'JetBrains Mono', monospace",
+                    }}
+                  >
+                    Discount type <span style={{ color: "#ef4444" }}>*</span>
+                  </label>
+                  <select
+                    value={discountType}
+                    onChange={(e) => setDiscountType(e.target.value as "percentage" | "fixed")}
+                    style={{
+                      width: "100%",
+                      padding: "10px 14px",
+                      borderRadius: 10,
+                      border: "1px solid var(--mid)",
+                      background: "var(--low)",
+                      fontSize: 14,
+                      fontFamily: "'Manrope', sans-serif",
+                      boxSizing: "border-box",
+                    }}
+                  >
+                    <option value="percentage">Percentage</option>
+                    <option value="fixed">Fixed amount</option>
+                  </select>
+                </div>
+                <div>
+                  <label
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                      color: "var(--on-mut)",
+                      marginBottom: 6,
+                      display: "block",
+                      fontFamily: "'JetBrains Mono', monospace",
+                    }}
+                  >
+                    Value <span style={{ color: "#ef4444" }}>*</span>
+                  </label>
+                  <input
+                    type="number"
+                    value={discountValue}
+                    onChange={(e) => setDiscountValue(e.target.value)}
+                    placeholder="20"
+                    style={{
+                      width: "100%",
+                      padding: "10px 14px",
+                      borderRadius: 10,
+                      border: "1px solid var(--mid)",
+                      background: "var(--low)",
+                      fontSize: 14,
+                      fontFamily: "'Manrope', sans-serif",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* valid from + valid until (2-col) */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                <div>
+                  <label
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                      color: "var(--on-mut)",
+                      marginBottom: 6,
+                      display: "block",
+                      fontFamily: "'JetBrains Mono', monospace",
+                    }}
+                  >
+                    Valid from <span style={{ color: "#ef4444" }}>*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={validFrom}
+                    onChange={(e) => setValidFrom(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 14px",
+                      borderRadius: 10,
+                      border: "1px solid var(--mid)",
+                      background: "var(--low)",
+                      fontSize: 14,
+                      fontFamily: "'Manrope', sans-serif",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                </div>
+                <div>
+                  <label
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                      color: "var(--on-mut)",
+                      marginBottom: 6,
+                      display: "block",
+                      fontFamily: "'JetBrains Mono', monospace",
+                    }}
+                  >
+                    Valid until <span style={{ color: "#ef4444" }}>*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={validUntil}
+                    onChange={(e) => setValidUntil(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 14px",
+                      borderRadius: 10,
+                      border: "1px solid var(--mid)",
+                      background: "var(--low)",
+                      fontSize: 14,
+                      fontFamily: "'Manrope', sans-serif",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* max usage */}
+              <div>
+                <label
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    color: "var(--on-mut)",
+                    marginBottom: 6,
+                    display: "block",
+                    fontFamily: "'JetBrains Mono', monospace",
+                  }}
                 >
-                  <option value="percentage">Percentage</option>
-                  <option value="fixed">Fixed amount</option>
-                </select>
-              </div>
-              <div className="field">
-                <label className="field-lab">Value</label>
+                  Max usage
+                </label>
                 <input
-                  className="field-in"
-                  type="number"
-                  value={discountValue}
-                  onChange={(e) => setDiscountValue(e.target.value)}
-                  placeholder="20"
-                />
-              </div>
-              <div className="field">
-                <label className="field-lab">Valid from</label>
-                <input
-                  className="field-in"
-                  type="date"
-                  value={validFrom}
-                  onChange={(e) => setValidFrom(e.target.value)}
-                />
-              </div>
-              <div className="field">
-                <label className="field-lab">Valid until</label>
-                <input
-                  className="field-in"
-                  type="date"
-                  value={validUntil}
-                  onChange={(e) => setValidUntil(e.target.value)}
-                />
-              </div>
-              <div className="field">
-                <label className="field-lab">Max usage</label>
-                <input
-                  className="field-in"
                   type="number"
                   value={maxUsage}
                   onChange={(e) => setMaxUsage(e.target.value)}
                   placeholder="100"
+                  style={{
+                    width: "100%",
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    border: "1px solid var(--mid)",
+                    background: "var(--low)",
+                    fontSize: 14,
+                    fontFamily: "'Manrope', sans-serif",
+                    boxSizing: "border-box",
+                  }}
                 />
               </div>
             </div>
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button className="btn-sm" onClick={resetForm}>
+
+            {/* modal footer */}
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                justifyContent: "flex-end",
+                padding: "16px 24px 20px",
+                borderTop: "1px solid var(--outline)",
+              }}
+            >
+              <button
+                className="btn-sm"
+                onClick={resetForm}
+                style={{ border: "1px solid var(--mid)", background: "transparent" }}
+              >
                 Cancel
               </button>
               <button
-                className="btn-sm primary"
+                className="btn-sm"
                 onClick={handleCreate}
                 disabled={createMutation.isPending}
+                style={{ background: "#050a26", color: "white", border: "none" }}
               >
                 {createMutation.isPending ? "Creating..." : "Create code"}
               </button>

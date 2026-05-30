@@ -1,103 +1,47 @@
-import { Link, useSearchParams } from "react-router-dom";
-import PublicLayout from "@/shared/layouts/PublicLayout";
+import { useNavigate } from "react-router-dom";
+import { MS } from "@/shared/components/v8";
 
-/** Shown after a failed or cancelled payment. */
 export default function FailurePage() {
-  const [params] = useSearchParams();
-  const eventId = params.get("event_id") ?? "";
+  const navigate = useNavigate();
 
   return (
-    <PublicLayout>
-      <div
-        className="flex flex-col items-center text-center"
-        style={{ maxWidth: 520, margin: "0 auto", padding: "60px 24px 80px" }}
-      >
-        {/* failure icon */}
-        <div
-          className="grid place-items-center mb-6"
-          style={{ width: 72, height: 72, borderRadius: "50%", background: "rgba(232,49,81,0.1)" }}
-        >
-          <span className="ms" style={{ fontSize: 36, color: "var(--secondary)" }}>
-            cancel
-          </span>
+    <div style={{ minHeight: "100vh", background: "var(--bg)", display: "grid", placeItems: "center", padding: 32 }}>
+      <div style={{ textAlign: "center", maxWidth: 440 }}>
+        <div style={{ width: 72, height: 72, borderRadius: "50%", background: "#fee2e2", display: "grid", placeItems: "center", margin: "0 auto 20px" }}>
+          <MS n="cancel" size={40} style={{ color: "#991b1b" }} />
         </div>
-
-        <h1
-          style={{
-            fontFamily: "'Space Grotesk', sans-serif",
-            fontWeight: 600,
-            fontSize: 32,
-            letterSpacing: "-0.04em",
-            color: "var(--on-bg)",
-            marginBottom: 12,
-          }}
-        >
+        <h1 style={{ fontFamily: "Space Grotesk, sans-serif", fontWeight: 700, fontSize: 28, letterSpacing: "-0.03em", marginBottom: 8 }}>
           Payment failed
         </h1>
-
-        <p
-          style={{
-            fontFamily: "'Cormorant Garamond', serif",
-            fontStyle: "italic",
-            fontSize: 19,
-            color: "var(--on-var)",
-            lineHeight: 1.5,
-            marginBottom: 28,
-            maxWidth: "34ch",
-          }}
-        >
+        <p style={{ fontSize: 14, color: "var(--on-var)", fontFamily: "Manrope, sans-serif", lineHeight: 1.6, marginBottom: 8 }}>
           Your payment could not be processed. You have not been charged.
         </p>
-
-        <div
-          style={{
-            background: "rgba(232,49,81,0.06)",
-            border: "1px solid rgba(232,49,81,0.15)",
-            borderRadius: 12,
-            padding: "14px 20px",
-            marginBottom: 28,
-            width: "100%",
-          }}
-        >
-          <p style={{ fontSize: 13, color: "var(--secondary)", fontFamily: "Manrope, sans-serif" }}>
-            Please check your payment details and try again. If the issue persists, contact your
-            bank.
-          </p>
-        </div>
-
-        <div className="flex gap-3">
-          {eventId && (
-            <Link
-              to={`/events/${eventId}`}
-              className="no-underline font-semibold transition-colors"
-              style={{
-                padding: "11px 22px",
-                borderRadius: 10,
-                border: "1px solid var(--outline)",
-                background: "white",
-                color: "var(--on-bg)",
-                fontSize: 14,
-                fontFamily: "Manrope, sans-serif",
-              }}
-            >
-              Try again
-            </Link>
-          )}
-          <Link
-            to="/"
-            className="no-underline font-semibold text-white transition-opacity hover:opacity-90"
+        <p style={{ fontSize: 13, color: "var(--on-mut)", fontFamily: "Manrope, sans-serif", lineHeight: 1.6, marginBottom: 24 }}>
+          Please check your payment details and try again. If the issue persists, contact your bank or try a different payment method.
+        </p>
+        <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+          <button
+            onClick={() => navigate("/org/pricing")}
             style={{
-              padding: "11px 22px",
-              borderRadius: 10,
-              background: "linear-gradient(135deg, #050a26, #121d3f)",
-              fontSize: 14,
-              fontFamily: "Manrope, sans-serif",
+              padding: "12px 28px", borderRadius: 12, border: "none",
+              background: "#050a26", color: "white", fontSize: 14, fontWeight: 700,
+              fontFamily: "Manrope, sans-serif", cursor: "pointer",
+            }}
+          >
+            Try again
+          </button>
+          <button
+            onClick={() => navigate("/events")}
+            style={{
+              padding: "12px 28px", borderRadius: 12, border: "1px solid var(--mid)",
+              background: "transparent", color: "var(--on-var)", fontSize: 14, fontWeight: 600,
+              fontFamily: "Manrope, sans-serif", cursor: "pointer",
             }}
           >
             Browse events
-          </Link>
+          </button>
         </div>
       </div>
-    </PublicLayout>
+    </div>
   );
 }

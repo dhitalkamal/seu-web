@@ -7,9 +7,9 @@ import UserAvatar from "@/shared/components/UserAvatar";
 import intelligenceApi from "@/features/intelligence/api/intelligence.api";
 import type { AttendeeMatch } from "@/features/intelligence/api/intelligence.api";
 
-// * ─── Score badge colours ────────────────────────────────────────────────────
+// * Score badge colors
 
-/** Map a 0-1 score to a colour pair for the badge. */
+/** Map a 0-1 score to a color pair for the badge. */
 function scoreBadge(score: number): { bg: string; color: string } {
   if (score >= 0.7) return { bg: "#dcfce7", color: "#166534" };
   if (score >= 0.4) return { bg: "#fef9c3", color: "#854d0e" };
@@ -17,7 +17,7 @@ function scoreBadge(score: number): { bg: string; color: string } {
 }
 
 /**
- * Who to Meet networking page — shows AI-ranked attendee matches for the
+ * Who to Meet networking page - shows AI-ranked attendee matches for the
  * authenticated user at a specific event, with introduce actions and opt-in toggle.
  */
 export default function EventConnectionsPage() {
@@ -66,14 +66,14 @@ export default function EventConnectionsPage() {
     onError: () => toast("Failed to send introduction"),
   });
 
-  // * opt-in mutation — toggles the user's privacy setting so they can use Who to Meet
+  // * opt-in mutation - toggles the user's privacy setting so they can use Who to Meet
   const optInMutation = useMutation({
     mutationFn: () => intelligenceApi.updateConnectionSettings(eventId!, { enabled: true }),
     onSuccess: () => {
       setOptInError(false);
       qc.invalidateQueries({ queryKey: ["event-connections", eventId] });
       qc.invalidateQueries({ queryKey: ["connection-settings", eventId] });
-      toast("Networking enabled — finding your matches...");
+      toast("Networking enabled - finding your matches...");
     },
     onError: () => toast("Could not enable networking"),
   });
@@ -86,7 +86,7 @@ export default function EventConnectionsPage() {
           connections.reduce((s: number, c: AttendeeMatch) => s + Number(c.match_score), 0) /
           connections.length
         ).toFixed(0)
-      : "—";
+      : "-";
 
   return (
     <AppLayout variant="user">
@@ -105,7 +105,7 @@ export default function EventConnectionsPage() {
           icon="speed"
           color="mnt"
           label="Avg match %"
-          value={avgScore === "—" ? "—" : `${avgScore}%`}
+          value={avgScore === "-" ? "-" : `${avgScore}%`}
         />
         <KPI
           icon="wifi_tethering"

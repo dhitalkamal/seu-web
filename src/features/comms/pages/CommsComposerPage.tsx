@@ -62,36 +62,161 @@ export default function CommsComposerPage() {
           </div>
           <div className="panel-body">
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-              <div className="field">
-                <label className="field-lab">From identity</label>
-                <select className="field-in">
+              <div style={{ marginBottom: 0 }}>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase" as const,
+                    color: "var(--on-mut)",
+                    marginBottom: 6,
+                    fontFamily: "'JetBrains Mono', monospace",
+                  }}
+                >
+                  From identity
+                </label>
+                <select
+                  style={{
+                    width: "100%",
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    border: "1px solid var(--mid)",
+                    background: "var(--low)",
+                    color: "var(--on-bg)",
+                    fontSize: 14,
+                    outline: "none",
+                    fontFamily: "'Manrope', sans-serif",
+                    boxSizing: "border-box" as const,
+                  }}
+                >
                   <option>Select identity</option>
                 </select>
               </div>
-              <div className="field">
-                <label className="field-lab">Reply-to</label>
-                <input className="field-in" placeholder="reply@example.org" />
+              <div style={{ marginBottom: 0 }}>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase" as const,
+                    color: "var(--on-mut)",
+                    marginBottom: 6,
+                    fontFamily: "'JetBrains Mono', monospace",
+                  }}
+                >
+                  Reply-to
+                </label>
+                <input
+                  style={{
+                    width: "100%",
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    border: "1px solid var(--mid)",
+                    background: "var(--low)",
+                    color: "var(--on-bg)",
+                    fontSize: 14,
+                    outline: "none",
+                    fontFamily: "'Manrope', sans-serif",
+                    boxSizing: "border-box" as const,
+                  }}
+                  placeholder="reply@example.org"
+                />
               </div>
             </div>
-            <div className="field">
-              <label className="field-lab">Subject (email) / Title (in-app)</label>
-              <input className="field-in" placeholder="Enter subject line" />
-            </div>
-            <div className="field">
-              <label className="field-lab">Pre-header (email)</label>
+            <div style={{ marginBottom: 0 }}>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase" as const,
+                  color: "var(--on-mut)",
+                  marginBottom: 6,
+                  fontFamily: "'JetBrains Mono', monospace",
+                }}
+              >
+                Subject (email) / Title (in-app)
+              </label>
               <input
-                className="field-in"
+                style={{
+                  width: "100%",
+                  padding: "10px 14px",
+                  borderRadius: 10,
+                  border: "1px solid var(--mid)",
+                  background: "var(--low)",
+                  color: "var(--on-bg)",
+                  fontSize: 14,
+                  outline: "none",
+                  fontFamily: "'Manrope', sans-serif",
+                  boxSizing: "border-box" as const,
+                }}
+                placeholder="Enter subject line"
+              />
+            </div>
+            <div style={{ marginBottom: 0 }}>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase" as const,
+                  color: "var(--on-mut)",
+                  marginBottom: 6,
+                  fontFamily: "'JetBrains Mono', monospace",
+                }}
+              >
+                Pre-header (email)
+              </label>
+              <input
+                style={{
+                  width: "100%",
+                  padding: "10px 14px",
+                  borderRadius: 10,
+                  border: "1px solid var(--mid)",
+                  background: "var(--low)",
+                  color: "var(--on-bg)",
+                  fontSize: 14,
+                  outline: "none",
+                  fontFamily: "'Manrope', sans-serif",
+                  boxSizing: "border-box" as const,
+                }}
                 placeholder="A short preview line shown in inbox previews."
               />
             </div>
-            <div className="field">
-              <label className="field-lab">
+            <div style={{ marginBottom: 0 }}>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase" as const,
+                  color: "var(--on-mut)",
+                  marginBottom: 6,
+                  fontFamily: "'JetBrains Mono', monospace",
+                }}
+              >
                 Message · supports {"{variables}"} and **Markdown**
               </label>
               <textarea
-                className="field-in"
+                style={{
+                  width: "100%",
+                  padding: "10px 14px",
+                  borderRadius: 10,
+                  border: "1px solid var(--mid)",
+                  background: "var(--low)",
+                  color: "var(--on-bg)",
+                  fontSize: 14,
+                  outline: "none",
+                  fontFamily: "'Manrope', sans-serif",
+                  boxSizing: "border-box" as const,
+                }}
                 rows={9}
-                style={{ fontFamily: "Manrope", lineHeight: 1.6 }}
                 placeholder="Write your message here..."
               />
             </div>

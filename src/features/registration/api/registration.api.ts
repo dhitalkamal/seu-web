@@ -36,9 +36,7 @@ const registrationApi = {
   /** Get the QR token for a registration, used for check-in scanning. */
   getQrToken: (id: string) =>
     client
-      .get<{ data: { token: string; expires_at: string } }>(
-        `${BASE}/registrations/${id}/qr-token/`
-      )
+      .get<{ data: { token: string; expires_at: string } }>(`${BASE}/registrations/${id}/qr-token/`)
       .then((r) => r.data.data),
 
   /** Delete a registration record. */
@@ -47,7 +45,8 @@ const registrationApi = {
   /** List all saved events for the authenticated user. */
   listSavedEvents: async (): Promise<SavedEvent[]> => {
     const r = await client.get<{ data: SavedEvent[] }>(`${BASE}/saved-events/`);
-    return r.data?.data ?? (r.data as unknown as SavedEvent[]) ?? [];
+    const list = r.data?.data;
+    return Array.isArray(list) ? list : [];
   },
 
   /** Save an event by event ID. */

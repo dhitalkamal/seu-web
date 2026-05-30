@@ -68,7 +68,7 @@ export default function LandingTemplatesPage() {
               margin: "0 auto",
             }}
           >
-            Choose and customise pre-built visual themes for your event landing pages. This section
+            Choose and customize pre-built visual themes for your event landing pages. This section
             is under development and will be available in a future release.
           </p>
         </div>

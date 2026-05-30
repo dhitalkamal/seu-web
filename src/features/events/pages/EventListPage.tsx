@@ -109,6 +109,13 @@ export default function EventListPage() {
     if (s) setSearchTerm(s);
   }, [searchParams]);
 
+  // show toast if redirected from a failed payment
+  useEffect(() => {
+    if (searchParams.get("payment_error") === "true") {
+      toast("Payment could not be processed. Please try again.");
+    }
+  }, []);
+
   // * close filter panel when clicking outside
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -535,13 +542,15 @@ export default function EventListPage() {
       ) : featured ? (
         <div
           style={{
-            background: "linear-gradient(135deg,#050a26,#121d3f)",
+            backgroundImage: featured.cover_image
+              ? `linear-gradient(135deg,rgba(5,10,38,0.7),rgba(18,29,63,0.6)), url(${featured.cover_image})`
+              : "linear-gradient(135deg,#050a26,#121d3f)",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
             borderRadius: 16,
             marginBottom: 24,
             position: "relative",
             overflow: "hidden",
-            display: "grid",
-            gridTemplateColumns: "1.2fr 1fr",
             minHeight: 240,
             cursor: "pointer",
           }}
@@ -554,6 +563,8 @@ export default function EventListPage() {
               display: "flex",
               flexDirection: "column",
               justifyContent: "center",
+              minHeight: 240,
+              maxWidth: "60%",
             }}
           >
             <span
@@ -631,17 +642,6 @@ export default function EventListPage() {
               </button>
             </div>
           </div>
-          <div
-            style={{ background: "linear-gradient(135deg,#1a2750,#050a26)", position: "relative" }}
-          >
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                background: "linear-gradient(90deg,#121d3f,transparent 30%)",
-              }}
-            />
-          </div>
         </div>
       ) : (
         <div
@@ -690,7 +690,7 @@ export default function EventListPage() {
               title: ev.title,
               start: ev.start_date,
               end: ev.end_date,
-              // use the platform accent colours based on event status
+              // use the platform accent colors based on event status
               backgroundColor:
                 ev.status === "published"
                   ? "#050a26"
@@ -731,7 +731,11 @@ export default function EventListPage() {
                 <div key={ev.id} className="disc-card" onClick={() => navigate(`/events/${ev.id}`)}>
                   <div
                     className="disc-hero"
-                    style={{ background: "linear-gradient(135deg,#1a2750,#050a26)" }}
+                    style={{
+                      background: ev.cover_image
+                        ? `url(${ev.cover_image}) center/cover no-repeat`
+                        : "linear-gradient(135deg,#1a2750,#050a26)",
+                    }}
                   >
                     <span className="disc-date">{shortDate(ev.start_date)}</span>
                     {f > 85 && (

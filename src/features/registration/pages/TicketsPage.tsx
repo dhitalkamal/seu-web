@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import AppLayout from "@/shared/layouts/AppLayout";
@@ -267,7 +268,15 @@ function TransferModal({
 export default function TicketsPage() {
   const { toast, toastEl } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { data: registrations, isLoading } = useMyRegistrations();
+
+  // show toast when redirected from successful payment
+  useEffect(() => {
+    if (searchParams.get("payment") === "success") {
+      toast("Payment successful! Your ticket is ready.");
+    }
+  }, []);
   const [qrFor, setQrFor] = useState<string | null>(null);
   // transfer modal - holds the registration ID currently being transferred
   const [transferFor, setTransferFor] = useState<string | null>(null);

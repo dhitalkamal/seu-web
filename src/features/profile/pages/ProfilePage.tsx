@@ -11,7 +11,10 @@ import { useOrgStore, isOrgActive, isOrgPending, isOrgSuspended } from "@/shared
 import { usePreferencesStore } from "@/shared/store/preferences.store";
 import { useOrgContext } from "@/features/orgs/hooks/useOrgContext"; // only used inside OrgTab
 import notificationsApi from "@/features/notifications/api/notifications.api";
-import type { Notification, NotificationPreference } from "@/features/notifications/api/notifications.api";
+import type {
+  Notification,
+  NotificationPreference,
+} from "@/features/notifications/api/notifications.api";
 import paymentApi from "@/features/payment/api/payment.api";
 import type { PaymentOrder } from "@/features/payment/types";
 import authApi from "@/features/auth/api/auth.api";
@@ -791,7 +794,7 @@ function OrgTab() {
             margin: "0 auto 28px",
           }}
         >
-          Create an organization to start hosting events and access the organiser dashboard.
+          Create an organization to start hosting events and access the organizer dashboard.
         </p>
         <Btn label="Create Organization" onClick={() => navigate("/org/new")} primary icon="add" />
       </div>
@@ -905,7 +908,11 @@ function OrgTab() {
               primary
             />
           ) : (
-            <Btn label="Pending Verification" icon="hourglass_top" onClick={() => navigate("/org/pricing")} />
+            <Btn
+              label="Pending Verification"
+              icon="hourglass_top"
+              onClick={() => navigate("/org/pricing")}
+            />
           )}
         </div>
       </SectionCard>
@@ -931,7 +938,7 @@ function gatewayIcon(gw: string): string {
   return map[gw] ?? "payments";
 }
 
-/** Map order status to colour + icon. */
+/** Map order status to color + icon. */
 function statusStyle(status: string): { bg: string; color: string; icon: string } {
   switch (status) {
     case "completed":
@@ -2830,7 +2837,11 @@ function NotificationPrefsSection() {
   });
 
   return (
-    <SectionCard title="Notification Preferences" icon="notifications_active" style={{ marginTop: 20 }}>
+    <SectionCard
+      title="Notification Preferences"
+      icon="notifications_active"
+      style={{ marginTop: 20 }}
+    >
       {PREF_TYPES.map((pt) => (
         <NotifPrefRow
           key={pt.type}

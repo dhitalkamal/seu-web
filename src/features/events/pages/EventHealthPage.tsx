@@ -20,7 +20,11 @@ export default function EventHealthPage() {
   const { id: eventId } = useParams<{ id: string }>();
 
   // fetch health score for this event from the intelligence service
-  const { data: health, isLoading, refetch } = useQuery<EventHealthScore>({
+  const {
+    data: health,
+    isLoading,
+    refetch,
+  } = useQuery<EventHealthScore>({
     queryKey: ["event-health", eventId],
     queryFn: () => intelligenceApi.getEventHealth(eventId!),
     enabled: !!eventId,

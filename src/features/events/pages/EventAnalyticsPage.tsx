@@ -81,14 +81,9 @@ export default function EventAnalyticsPage() {
       ? "..."
       : totalRegistrations.toLocaleString();
 
-  const kpiConversion = eventId
-    ? `${eventFillPct}%`
-    : isLoading
-      ? "..."
-      : `${conversionPct}%`;
+  const kpiConversion = eventId ? `${eventFillPct}%` : isLoading ? "..." : `${conversionPct}%`;
 
-  const kpiHealthScore =
-    health != null ? health.health_score.toFixed(0) : isLoading ? "..." : "-";
+  const kpiHealthScore = health != null ? health.health_score.toFixed(0) : isLoading ? "..." : "-";
 
   /** Export analytics data as CSV. */
   function handleExport(): void {

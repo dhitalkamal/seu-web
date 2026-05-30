@@ -18,7 +18,7 @@ function fmtDate(dateStr: string): string {
   });
 }
 
-/** Role pill colours. */
+/** Role pill colors. */
 const ROLE_CLASS: Record<string, string> = {
   attendee: "active",
   volunteer: "lav",
@@ -35,13 +35,7 @@ const STATUS_LABEL: Record<string, string> = {
  * @param entry - passport entry.
  * @param isLast - whether this is the last entry in the list.
  */
-function TimelineEntry({
-  entry,
-  isLast,
-}: {
-  entry: PassportEntry;
-  isLast: boolean;
-}) {
+function TimelineEntry({ entry, isLast }: { entry: PassportEntry; isLast: boolean }) {
   const navigate = useNavigate();
 
   return (
@@ -156,7 +150,11 @@ function TimelineEntry({
 
 /** Verified Event Passport: timeline view of all attended and volunteered events. */
 export default function PassportPage() {
-  const { data: passport, isLoading, isError } = useQuery({
+  const {
+    data: passport,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["passport"],
     queryFn: participationApi.getPassport,
   });
@@ -179,9 +177,24 @@ export default function PassportPage() {
       />
 
       <div className="kpi-grid">
-        <KPI icon="event_available" color="lav" label="Events attended" value={isLoading ? "…" : String(attendedCount)} />
-        <KPI icon="volunteer_activism" color="mnt" label="Events volunteered" value={isLoading ? "…" : String(volunteeredCount)} />
-        <KPI icon="verified" color="crl" label="Certificates issued" value={isLoading ? "…" : String(certCount)} />
+        <KPI
+          icon="event_available"
+          color="lav"
+          label="Events attended"
+          value={isLoading ? "…" : String(attendedCount)}
+        />
+        <KPI
+          icon="volunteer_activism"
+          color="mnt"
+          label="Events volunteered"
+          value={isLoading ? "…" : String(volunteeredCount)}
+        />
+        <KPI
+          icon="verified"
+          color="crl"
+          label="Certificates issued"
+          value={isLoading ? "…" : String(certCount)}
+        />
         <KPI
           icon="fingerprint"
           color="pch"
@@ -252,7 +265,11 @@ export default function PassportPage() {
       {/* * empty state */}
       {!isLoading && !isError && sorted.length === 0 && (
         <div className="panel" style={{ padding: 48, textAlign: "center" }}>
-          <MS n="travel_explore" size={36} style={{ opacity: 0.2, display: "block", margin: "0 auto 12px" }} />
+          <MS
+            n="travel_explore"
+            size={36}
+            style={{ opacity: 0.2, display: "block", margin: "0 auto 12px" }}
+          />
           <div style={{ fontWeight: 600, fontSize: 16, fontFamily: "Space Grotesk" }}>
             No entries yet
           </div>
@@ -279,7 +296,11 @@ export default function PassportPage() {
           </div>
           <div className="panel-body" style={{ paddingTop: 20 }}>
             {sorted.map((entry, i) => (
-              <TimelineEntry key={`${entry.event_id}-${entry.attended_at}`} entry={entry} isLast={i === sorted.length - 1} />
+              <TimelineEntry
+                key={`${entry.event_id}-${entry.attended_at}`}
+                entry={entry}
+                isLast={i === sorted.length - 1}
+              />
             ))}
           </div>
         </div>

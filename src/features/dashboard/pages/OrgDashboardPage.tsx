@@ -54,7 +54,7 @@ export default function OrgDashboardPage() {
   const currentPlan = currentSub?.plan ?? "free";
   const planLabel = PLAN_CATALOGUE.find((p) => p.name === currentPlan)?.label ?? "Free";
 
-  // fetch events owned by this organiser
+  // fetch events owned by this organizer
   const { data: eventsPage, isLoading: eventsLoading } = useQuery({
     queryKey: ["events", "mine"],
     queryFn: () => eventsApi.listMyEvents(),
