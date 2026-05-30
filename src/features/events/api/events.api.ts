@@ -16,19 +16,28 @@ type ApiResponse<T> = { data: T; error: unknown; meta: unknown };
 /** Fetch paginated list of public published events with optional filters. */
 async function listPublicEvents(filters?: EventListFilters): Promise<PaginatedEvents> {
   const params = new URLSearchParams();
-  if (filters?.organiser_id) params.set("organiser_id", filters.organiser_id);
+  if (filters?.organizer_id) params.set("organizer_id", filters.organizer_id);
   if (filters?.is_free !== undefined) params.set("is_free", String(filters.is_free));
   if (filters?.search) params.set("search", filters.search);
   if (filters?.category) params.set("category_id", filters.category);
-  // geo radius search params
   if (filters?.lat !== undefined) params.set("lat", String(filters.lat));
   if (filters?.lng !== undefined) params.set("lng", String(filters.lng));
   if (filters?.radius_km !== undefined) params.set("radius_km", String(filters.radius_km));
-  const res = await client.get<PaginatedEvents>(`${EVENTS_BASE}/?${params}`);
-  return res.data;
+  const res = await client.get(`${EVENTS_BASE}/?${params}`);
+  const body = res.data as Record<string, unknown>;
+  // backend returns {data: [...], meta: {pagination: {total}}}
+  // transform to PaginatedEvents shape {results, count, next, previous}
+  const events = (body.data ?? []) as Event[];
+  const pagination = (body.meta as Record<string, unknown>)?.pagination as Record<string, unknown> | undefined;
+  return {
+    results: events,
+    count: (pagination?.total as number) ?? events.length,
+    next: pagination?.has_next ? "next" : null,
+    previous: pagination?.has_prev ? "prev" : null,
+  };
 }
 
-/** Fetch all events owned by the authenticated organiser. */
+/** Fetch all events owned by the authenticated organizer. */
 async function listMyEvents(): Promise<PaginatedEvents> {
   const res = await client.get<PaginatedEvents>(`${EVENTS_BASE}/my/`);
   return res.data;
