@@ -152,9 +152,10 @@ export default function VolunteerManagementPage() {
   const createMutation = useMutation({
     mutationFn: (payload: {
       event_id: string;
-      title: string;
+      organization_id: string;
+      name: string;
       description: string;
-      slots: number;
+      capacity: number;
     }) => volunteerRolesApi.createRole(payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["org-volunteer-roles"] });
@@ -169,11 +170,12 @@ export default function VolunteerManagementPage() {
   const createShiftMutation = useMutation({
     mutationFn: (data: { roleId: string; payload: CreateShiftForm }) =>
       volunteerRolesApi.createShift(data.roleId, {
-        title: data.payload.title,
-        start_time: data.payload.start_time,
-        end_time: data.payload.end_time,
+        event_id: orgId,
+        starts_at: data.payload.start_time ? new Date(data.payload.start_time).toISOString() : "",
+        ends_at: data.payload.end_time ? new Date(data.payload.end_time).toISOString() : "",
         capacity: Math.max(1, Number(data.payload.capacity) || 1),
         location: data.payload.location || undefined,
+        description: data.payload.title || undefined,
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["org-role-shifts", expandedRoleId] });
@@ -251,9 +253,10 @@ export default function VolunteerManagementPage() {
     }
     createMutation.mutate({
       event_id: orgId,
-      title: form.title.trim(),
+      organization_id: orgId,
+      name: form.title.trim(),
       description: form.description.trim(),
-      slots: Math.max(1, Number(form.slots) || 1),
+      capacity: Math.max(1, Number(form.slots) || 1),
     });
   }
 

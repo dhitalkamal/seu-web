@@ -23,11 +23,18 @@ export default function VolunteerApplicationsPage() {
     queryFn: () => volunteerRolesApi.listRoles(),
   });
 
+  // fetch my applications
+  const { data: myApps = [] } = useQuery({
+    queryKey: ["my-volunteer-apps"],
+    queryFn: () => volunteerRolesApi.myApplications(),
+  });
+
   // apply mutation - fires apply() then invalidates the roles query so status re-renders
   const applyMutation = useMutation({
     mutationFn: (roleId: string) => volunteerRolesApi.apply(roleId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["volunteer-roles"] });
+      qc.invalidateQueries({ queryKey: ["my-volunteer-apps"] });
       setApplying(null);
     },
     onError: () => setApplying(null),
@@ -46,6 +53,11 @@ export default function VolunteerApplicationsPage() {
   // filter by tab - "browse" shows all open roles, other tabs need a /my-applications endpoint
   const filtered: VolunteerRole[] =
     tab === "browse" ? roles.filter((r) => roleStatus(r) === "open") : [];
+
+  const filteredApps = tab === "applied" ? myApps.filter((a) => a.status === "pending")
+    : tab === "accepted" ? myApps.filter((a) => a.status === "approved" || a.status === "confirmed")
+    : tab === "rejected" ? myApps.filter((a) => a.status === "rejected")
+    : [];
 
   const tabs: { key: Tab; label: string; icon: string }[] = [
     { key: "browse", label: "Browse Roles", icon: "search" },
@@ -109,8 +121,33 @@ export default function VolunteerApplicationsPage() {
         </div>
       )}
 
+      {/* my applications list for non-browse tabs */}
+      {!isLoading && tab !== "browse" && filteredApps.length > 0 && (
+        <div className="panel">
+          <div className="panel-head">
+            <span className="panel-title" style={{ textTransform: "capitalize" }}>{tab} applications</span>
+            <span style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 10.5, color: "var(--on-mut)" }}>{filteredApps.length}</span>
+          </div>
+          <div className="panel-body flush">
+            <table className="tbl">
+              <thead><tr><th>Role</th><th>Event</th><th>Status</th><th>Applied</th></tr></thead>
+              <tbody>
+                {filteredApps.map((app) => (
+                  <tr key={app.id}>
+                    <td style={{ fontWeight: 600 }}>{app.volunteer_role_id?.slice(0, 8) ?? app.role_id?.slice(0, 8)}</td>
+                    <td style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11 }}>{app.event_id?.slice(0, 8) ?? "-"}</td>
+                    <td><span className={`pill ${app.status === "approved" || app.status === "confirmed" ? "active" : app.status === "rejected" ? "suspended" : "pending"}`}>{app.status}</span></td>
+                    <td style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: "var(--on-mut)" }}>{new Date(app.created_at).toLocaleDateString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* empty state */}
-      {!isLoading && filtered.length === 0 && (
+      {!isLoading && filtered.length === 0 && filteredApps.length === 0 && (
         <div
           style={{
             background: "var(--surface)",

@@ -33,7 +33,7 @@ const TYPE_STYLES: Record<string, { bg: string; color: string; icon: string }> =
  * @returns list of Certificate records
  */
 async function fetchCertificates(): Promise<Certificate[]> {
-  const res = await client.get<ApiOk<Certificate[]>>("/org/api/v1/volunteers/certificates/");
+  const res = await client.get<ApiOk<Certificate[]>>("/org/api/v1/volunteers/my/certificates/");
   return res.data.data ?? [];
 }
 

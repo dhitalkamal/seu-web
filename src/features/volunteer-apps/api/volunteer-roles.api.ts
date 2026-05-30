@@ -7,24 +7,33 @@ const BASE = "/org/api/v1/volunteers";
 export type VolunteerRole = {
   id: string;
   event_id: string;
+  organization_id: string;
+  name: string;
   title: string;
   description: string;
+  capacity: number;
   slots: number;
   filled: number;
+  is_active: boolean;
   created_at: string;
 };
 
 export type VolunteerApplication = {
   id: string;
+  volunteer_role_id: string;
   role_id: string;
   user_id: string;
-  status: "pending" | "approved" | "rejected" | "cancelled" | "completed";
+  event_id: string;
+  status: "pending" | "approved" | "rejected" | "cancelled" | "confirmed" | "completed";
   message: string;
   created_at: string;
+  check_in_at?: string;
   checked_in_at?: string;
+  check_out_at?: string;
   checked_out_at?: string;
   rating?: number;
   feedback?: string;
+  certificate_issued?: boolean;
 };
 
 export type VolunteerShift = {
@@ -65,8 +74,16 @@ const volunteerRolesApi = {
       .then((r) => r.data.data ?? []),
 
   /** Create a new volunteer role for an event. */
-  createRole: (payload: { event_id: string; title: string; description: string; slots: number }) =>
+  createRole: (payload: { event_id: string; organization_id: string; name: string; description: string; capacity: number }) =>
     client.post<ApiOk<VolunteerRole>>(`${BASE}/roles/`, payload).then((r) => r.data.data),
+
+  /** List the authenticated user's applications across all roles. */
+  myApplications: () =>
+    client.get<ApiOk<VolunteerApplication[]>>(`${BASE}/my/applications/`).then((r) => r.data.data ?? []),
+
+  /** List the authenticated user's certificates. */
+  myCertificates: () =>
+    client.get<ApiOk<VolunteerCertificate[]>>(`${BASE}/my/certificates/`).then((r) => r.data.data ?? []),
 
   /** Apply for a volunteer role. */
   apply: (roleId: string, message?: string) =>
@@ -112,11 +129,12 @@ const volunteerRolesApi = {
   createShift: (
     roleId: string,
     data: {
-      title: string;
-      start_time: string;
-      end_time: string;
+      event_id: string;
+      starts_at: string;
+      ends_at: string;
       capacity: number;
       location?: string;
+      description?: string;
     }
   ) =>
     client
