@@ -3,8 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import AppLayout from "@/shared/layouts/AppLayout";
 import { PH, KPI, MS, useToast } from "@/shared/components/v8";
 import { useOrgStore, isOrgActive } from "@/shared/store/org.store";
+import { useAuthStore } from "@/shared/store/auth.store";
 import { useOrgContext } from "@/features/orgs/hooks/useOrgContext";
 import eventsApi from "@/features/events/api/events.api";
+import subscriptionApi, { PLAN_CATALOGUE } from "@/features/orgs/api/subscription.api";
 import type { Event } from "@/features/events/types/event.types";
 
 /** Build a CSV blob from an array of row objects and trigger a download. */
@@ -39,6 +41,18 @@ export default function OrgDashboardPage() {
   useOrgContext();
   const org = useOrgStore((s) => s.org);
   const loaded = useOrgStore((s) => s.loaded);
+  const user = useAuthStore((s) => s.user);
+  const orgId = user?.org_id ?? "";
+
+  // fetch current subscription to show plan badge / upgrade CTA
+  const { data: currentSub } = useQuery({
+    queryKey: ["subscription", orgId],
+    queryFn: () => subscriptionApi.getCurrent(orgId).catch(() => null),
+    enabled: !!orgId,
+  });
+
+  const currentPlan = currentSub?.plan ?? "free";
+  const planLabel = PLAN_CATALOGUE.find((p) => p.name === currentPlan)?.label ?? "Free";
 
   // fetch events owned by this organiser
   const { data: eventsPage, isLoading: eventsLoading } = useQuery({
@@ -109,6 +123,114 @@ export default function OrgDashboardPage() {
   return (
     <AppLayout variant="org">
       {toastEl}
+
+      {/* plan indicator - free plan shows upgrade CTA, paid plan shows badge */}
+      {currentPlan === "free" ? (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 16,
+            padding: "12px 18px",
+            background: "rgba(5,10,38,0.04)",
+            border: "1px solid rgba(5,10,38,0.12)",
+            borderRadius: 12,
+            marginBottom: 18,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <MS n="workspace_premium" size={18} style={{ color: "#050a26" }} />
+            <p
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: "var(--on-bg)",
+                fontFamily: "Manrope, sans-serif",
+              }}
+            >
+              You are on the <strong>Free plan</strong>. Upgrade to unlock more registrations, lower
+              fees, and advanced analytics.
+            </p>
+          </div>
+          <button
+            onClick={() => navigate("/org/pricing")}
+            style={{
+              flexShrink: 0,
+              padding: "8px 18px",
+              borderRadius: 9,
+              border: "none",
+              background: "#050a26",
+              color: "white",
+              fontSize: 12.5,
+              fontWeight: 700,
+              fontFamily: "Manrope, sans-serif",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <MS n="rocket_launch" size={13} style={{ color: "white" }} />
+            Upgrade your plan
+          </button>
+        </div>
+      ) : (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            padding: "10px 16px",
+            background: "var(--low)",
+            border: "1px solid var(--mid)",
+            borderRadius: 12,
+            marginBottom: 18,
+            width: "fit-content",
+          }}
+        >
+          <MS n="workspace_premium" size={16} style={{ color: "#16a34a" }} />
+          <span
+            style={{
+              fontSize: 12.5,
+              fontWeight: 600,
+              color: "var(--on-var)",
+              fontFamily: "Manrope, sans-serif",
+            }}
+          >
+            {planLabel} plan
+          </span>
+          <span
+            style={{
+              padding: "2px 8px",
+              borderRadius: 999,
+              fontSize: 10.5,
+              fontWeight: 700,
+              background: "#dcfce7",
+              color: "#166534",
+            }}
+          >
+            Active
+          </span>
+          <button
+            onClick={() => navigate("/org/pricing")}
+            style={{
+              marginLeft: 4,
+              background: "none",
+              border: "none",
+              fontSize: 11.5,
+              fontWeight: 600,
+              color: "var(--primary)",
+              cursor: "pointer",
+              fontFamily: "Manrope, sans-serif",
+              padding: 0,
+            }}
+          >
+            Manage
+          </button>
+        </div>
+      )}
+
       <PH
         crumbs={["Workspace", "Overview"]}
         title="Organization overview"

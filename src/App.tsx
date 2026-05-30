@@ -41,6 +41,7 @@ import ReportsPage from "@/features/finance/pages/ReportsPage";
 import AuditLogPage from "@/features/finance/pages/AuditLogPage";
 import OrgSettingsPage from "@/features/orgs/pages/OrgSettingsPage";
 import OrgCreatePage from "@/features/orgs/pages/OrgCreatePage";
+import PricingPage from "@/features/orgs/pages/PricingPage";
 
 // attendee / user
 import TicketsPage from "@/features/registration/pages/TicketsPage";
@@ -377,6 +378,14 @@ export default function App() {
           element={
             <P>
               <OrgCreatePage />
+            </P>
+          }
+        />
+        <Route
+          path="/org/pricing"
+          element={
+            <P>
+              <PricingPage />
             </P>
           }
         />

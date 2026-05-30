@@ -123,6 +123,18 @@ export default function OrgCreatePage() {
   const [slugTouched, setSlugTouched] = useState(false);
   const [docs, setDocs] = useState<DocFile[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [visited, setVisited] = useState<Set<Tab>>(new Set(["basic"]));
+
+  /** Mark a tab as visited when navigated to. */
+  function goToTab(t: Tab) {
+    setTab(t);
+    setVisited((prev) => {
+      if (prev.has(t)) return prev;
+      const next = new Set(prev);
+      next.add(t);
+      return next;
+    });
+  }
 
   /** Keep slug in sync with name until the user manually edits it. */
   function handleNameChange(value: string) {
@@ -146,7 +158,7 @@ export default function OrgCreatePage() {
       case "address":
         return !!(form.city.trim() && form.country.trim());
       case "social":
-        return true; // all optional
+        return visited.has("social");
       case "documents":
         return docs.length > 0;
       default:
@@ -204,8 +216,8 @@ export default function OrgCreatePage() {
       }
 
       setOrg(org);
-      toast.success("Organization created! It's pending admin review.");
-      navigate("/profile");
+      toast.success("Organization created! Explore subscription plans below.");
+      navigate("/org/pricing");
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error
@@ -325,7 +337,7 @@ export default function OrgCreatePage() {
             return (
               <button
                 key={t.key}
-                onClick={() => setTab(t.key)}
+                onClick={() => goToTab(t.key)}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -525,7 +537,7 @@ export default function OrgCreatePage() {
               {!isFirst && (
                 <button
                   type="button"
-                  onClick={() => setTab(TABS[tabIdx - 1].key)}
+                  onClick={() => goToTab(TABS[tabIdx - 1].key)}
                   style={{
                     padding: "10px 20px",
                     borderRadius: 10,
@@ -551,7 +563,7 @@ export default function OrgCreatePage() {
               {!isLast && (
                 <button
                   type="button"
-                  onClick={() => setTab(TABS[tabIdx + 1].key)}
+                  onClick={() => goToTab(TABS[tabIdx + 1].key)}
                   style={{
                     padding: "10px 24px",
                     borderRadius: 10,
@@ -657,9 +669,12 @@ function BasicTab({
       {/* name + slug row */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         <div>
-          <label style={labelStyle}>Organization Name *</label>
+          <label style={labelStyle}>
+            Organization Name <span style={{ color: "#ef4444" }}>*</span>
+          </label>
           <input
             type="text"
+            required
             value={form.name}
             onChange={(e) => onNameChange(e.target.value)}
             placeholder="Acme Events Co."
@@ -668,7 +683,9 @@ function BasicTab({
           />
         </div>
         <div>
-          <label style={labelStyle}>Slug *</label>
+          <label style={labelStyle}>
+            Slug <span style={{ color: "#ef4444" }}>*</span>
+          </label>
           <div style={{ position: "relative" }}>
             <span
               style={{
@@ -685,6 +702,7 @@ function BasicTab({
             </span>
             <input
               type="text"
+              required
               value={form.slug}
               onChange={(e) => {
                 onSlugTouch();
@@ -702,9 +720,12 @@ function BasicTab({
       {/* contact email + phone */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         <div>
-          <label style={labelStyle}>Contact Email *</label>
+          <label style={labelStyle}>
+            Contact Email <span style={{ color: "#ef4444" }}>*</span>
+          </label>
           <input
             type="email"
+            required
             value={form.contact_email}
             onChange={(e) => onChange("contact_email", e.target.value)}
             placeholder="hello@acme-events.com"
@@ -824,9 +845,12 @@ function AddressTab({ form, onChange }: AddressProps) {
       {/* city + country */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         <div>
-          <label style={labelStyle}>City</label>
+          <label style={labelStyle}>
+            City <span style={{ color: "#ef4444" }}>*</span>
+          </label>
           <input
             type="text"
+            required
             value={form.city}
             onChange={(e) => onChange("city", e.target.value)}
             placeholder="Kathmandu"
@@ -834,9 +858,12 @@ function AddressTab({ form, onChange }: AddressProps) {
           />
         </div>
         <div>
-          <label style={labelStyle}>Country</label>
+          <label style={labelStyle}>
+            Country <span style={{ color: "#ef4444" }}>*</span>
+          </label>
           <input
             type="text"
+            required
             value={form.country}
             onChange={(e) => onChange("country", e.target.value)}
             placeholder="Nepal"

@@ -43,6 +43,7 @@ const ORG_NAV: NavSection[] = [
       { to: "/org/event-health", icon: "monitor_heart", label: "Event Health" },
       { to: "/org/finance", icon: "payments", label: "Finance" },
       { to: "/org/reports", icon: "description", label: "Reports" },
+      { to: "/org/pricing", icon: "workspace_premium", label: "Pricing & Plans" },
     ],
   },
 ];
