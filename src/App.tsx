@@ -1,6 +1,7 @@
 import { Toaster } from "react-hot-toast";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { GuestRoute, ProtectedRoute } from "@/features/auth/components";
+import OrgGuard from "@/features/orgs/components/OrgGuard";
 import { useAuthStore } from "@/shared/store/auth.store";
 
 // auth
@@ -188,205 +189,207 @@ export default function App() {
           }
         />
 
-        {/* * org workspace - all under /org prefix */}
+        {/* * org workspace - all under /org prefix, guarded by OrgGuard */}
         <Route
           path="/org/dashboard"
           element={
-            <P>
-              <OrgDashboardPage />
-            </P>
+            <P><OrgGuard>
+              <OrgGuard>
+                <OrgDashboardPage />
+              </OrgGuard>
+            </OrgGuard></P>
           }
         />
         <Route
           path="/org/events"
           element={
-            <P>
+            <P><OrgGuard>
               <OrgEventsPage />
-            </P>
+            </OrgGuard></P>
           }
         />
         <Route
           path="/org/events/create"
           element={
-            <P>
+            <P><OrgGuard>
               <CreateEventPage />
-            </P>
+            </OrgGuard></P>
           }
         />
         <Route
           path="/org/events/:id"
           element={
-            <P>
+            <P><OrgGuard>
               <EventDetailPage />
-            </P>
+            </OrgGuard></P>
           }
         />
         <Route
           path="/org/events/:id/edit"
           element={
-            <P>
+            <P><OrgGuard>
               <EditEventPage />
-            </P>
+            </OrgGuard></P>
           }
         />
         <Route
           path="/org/events/:id/registrations"
           element={
-            <P>
+            <P><OrgGuard>
               <EventRegistrationsPage />
-            </P>
+            </OrgGuard></P>
           }
         />
         <Route
           path="/org/events/:id/analytics"
           element={
-            <P>
+            <P><OrgGuard>
               <EventAnalyticsPage />
-            </P>
+            </OrgGuard></P>
           }
         />
         <Route
           path="/org/events/:id/volunteers"
           element={
-            <P>
+            <P><OrgGuard>
               <VolunteerManagementPage />
-            </P>
+            </OrgGuard></P>
           }
         />
         <Route
           path="/org/participation"
           element={
-            <P>
+            <P><OrgGuard>
               <ParticipationPage />
-            </P>
+            </OrgGuard></P>
           }
         />
         <Route
           path="/org/sponsors"
           element={
-            <P>
+            <P><OrgGuard>
               <SponsorsPage />
-            </P>
+            </OrgGuard></P>
           }
         />
         <Route
           path="/org/templates"
           element={
-            <P>
+            <P><OrgGuard>
               <LandingTemplatesPage />
-            </P>
+            </OrgGuard></P>
           }
         />
         <Route
           path="/org/taxonomy"
           element={
-            <P>
+            <P><OrgGuard>
               <TaxonomyPage />
-            </P>
+            </OrgGuard></P>
           }
         />
         <Route
           path="/org/venues"
           element={
-            <P>
+            <P><OrgGuard>
               <VenuesPage />
-            </P>
+            </OrgGuard></P>
           }
         />
         <Route
           path="/org/volunteer-apps"
           element={
-            <P>
+            <P><OrgGuard>
               <VolAppsPage />
-            </P>
+            </OrgGuard></P>
           }
         />
         <Route
           path="/org/checkin"
           element={
-            <P>
+            <P><OrgGuard>
               <CheckinConsolePage />
-            </P>
+            </OrgGuard></P>
           }
         />
         <Route
           path="/org/waitlist"
           element={
-            <P>
+            <P><OrgGuard>
               <WaitlistPage />
-            </P>
+            </OrgGuard></P>
           }
         />
         <Route
           path="/org/team"
           element={
-            <P>
+            <P><OrgGuard>
               <TeamPage />
-            </P>
+            </OrgGuard></P>
           }
         />
         <Route
           path="/org/events/:id/health"
           element={
-            <P>
+            <P><OrgGuard>
               <EventHealthPage />
-            </P>
+            </OrgGuard></P>
           }
         />
         <Route
           path="/org/finance"
           element={
-            <P>
+            <P><OrgGuard>
               <FinanceHubPage />
-            </P>
+            </OrgGuard></P>
           }
         />
         <Route
           path="/org/reports"
           element={
-            <P>
+            <P><OrgGuard>
               <ReportsPage />
-            </P>
+            </OrgGuard></P>
           }
         />
         <Route
           path="/org/audit-log"
           element={
-            <P>
+            <P><OrgGuard>
               <AuditLogPage />
-            </P>
+            </OrgGuard></P>
           }
         />
         <Route
           path="/org/analytics"
           element={
-            <P>
+            <P><OrgGuard>
               <EventAnalyticsPage />
-            </P>
+            </OrgGuard></P>
           }
         />
         <Route
           path="/org/settings"
           element={
-            <P>
+            <P><OrgGuard>
               <OrgSettingsPage />
-            </P>
+            </OrgGuard></P>
           }
         />
         <Route
           path="/org/new"
           element={
-            <P>
+            <P><OrgGuard>
               <OrgCreatePage />
-            </P>
+            </OrgGuard></P>
           }
         />
         <Route
           path="/org/pricing"
           element={
-            <P>
+            <P><OrgGuard>
               <PricingPage />
-            </P>
+            </OrgGuard></P>
           }
         />
 
@@ -520,9 +523,9 @@ export default function App() {
         <Route
           path="/org/campaigns"
           element={
-            <P>
+            <P><OrgGuard>
               <CampaignsPage />
-            </P>
+            </OrgGuard></P>
           }
         />
         <Route
