@@ -8,7 +8,12 @@ import orgApi from "@/features/orgs/api/org.api";
 import type { OrgInvite } from "@/features/orgs/api/org.api";
 import { useOrgStore, isOrgActive } from "@/shared/store/org.store";
 import { useOrgContext } from "@/features/orgs/hooks/useOrgContext";
-import type { OrgType, OrgDocType, OrgDocument, OrgMemberRole } from "@/features/orgs/types/org.types";
+import type {
+  OrgType,
+  OrgDocType,
+  OrgDocument,
+  OrgMemberRole,
+} from "@/features/orgs/types/org.types";
 
 // * Types
 

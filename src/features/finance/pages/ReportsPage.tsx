@@ -14,16 +14,13 @@ import type {
 const REPORT_TYPES = [
   { value: "registrations", label: "Registrations" },
   { value: "revenue", label: "Revenue" },
-  { value: "volunteers", label: "Volunteers" },
-  { value: "attendance", label: "Attendance" },
-  { value: "events", label: "Events summary" },
+  { value: "attendee_list", label: "Attendee list" },
 ];
 
 const FORMATS: { value: ReportFormat; label: string }[] = [
   { value: "csv", label: "CSV" },
   { value: "pdf", label: "PDF" },
   { value: "excel", label: "Excel" },
-  { value: "json", label: "JSON" },
 ];
 
 const STATUS_STYLES: Record<string, { bg: string; color: string }> = {
@@ -58,9 +55,9 @@ export default function ReportsPage() {
   const generateMutation = useMutation({
     mutationFn: (payload: GenerateReportPayload) => intelligenceApi.generateReport(payload),
     onSuccess: (job) => {
-      toast(`Report queued: ${job.job_id.slice(0, 8)}`);
+      toast(`Report queued: ${job.id.slice(0, 8)}`);
       qc.invalidateQueries({ queryKey: ["report-jobs"] });
-      setPollingJobId(job.job_id);
+      setPollingJobId(job.id);
       setShowForm(false);
     },
     onError: () => toast("Failed to start report generation"),
@@ -80,7 +77,7 @@ export default function ReportsPage() {
           if (updated.status === "completed") {
             toast("Report ready for download");
           } else {
-            toast(`Report failed: ${updated.error ?? "unknown error"}`);
+            toast("Report failed");
           }
         }
       } catch {
@@ -136,25 +133,103 @@ export default function ReportsPage() {
         <KPI icon="storage" color="crl" label="Archive size" value="N/A" />
       </div>
 
-      {/* generate report form */}
+      {/* generate report modal */}
       {showForm && (
-        <div className="panel" style={{ marginBottom: 18, borderColor: "var(--primary)" }}>
-          <div className="panel-head">
-            <span className="panel-title">Generate report</span>
-            <button className="modal-x" onClick={() => setShowForm(false)}>
-              <MS n="close" size={14} />
-            </button>
-          </div>
-          <div className="panel-body">
+        <div
+          onClick={() => setShowForm(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.35)",
+            display: "grid",
+            placeItems: "center",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "var(--surface)",
+              borderRadius: 20,
+              maxWidth: 440,
+              width: "100%",
+              boxShadow: "0 16px 48px rgba(0,0,0,0.15)",
+            }}
+          >
+            {/* modal header */}
             <div
-              style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "20px 24px 16px",
+                borderBottom: "1px solid var(--outline)",
+              }}
             >
-              <div className="field">
-                <label className="field-lab">Report type</label>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <MS n="summarize" size={20} />
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 15 }}>Generate report</div>
+                  <div style={{ fontSize: 12, color: "var(--on-mut)", marginTop: 1 }}>
+                    Choose a type and export format
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowForm(false)}
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 8,
+                  border: "1px solid var(--mid)",
+                  background: "transparent",
+                  cursor: "pointer",
+                  display: "grid",
+                  placeItems: "center",
+                }}
+              >
+                <MS n="close" size={14} />
+              </button>
+            </div>
+
+            {/* modal body */}
+            <div
+              style={{
+                padding: "20px 24px",
+                display: "flex",
+                flexDirection: "column",
+                gap: 16,
+              }}
+            >
+              {/* report type field */}
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    color: "var(--on-mut)",
+                    marginBottom: 6,
+                    fontFamily: "'JetBrains Mono', monospace",
+                  }}
+                >
+                  Report type <span style={{ color: "#ef4444" }}>*</span>
+                </label>
                 <select
-                  className="field-in"
                   value={reportType}
                   onChange={(e) => setReportType(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    border: "1px solid var(--mid)",
+                    background: "var(--low)",
+                    fontSize: 14,
+                    fontFamily: "'Manrope', sans-serif",
+                    boxSizing: "border-box",
+                  }}
                 >
                   {REPORT_TYPES.map((rt) => (
                     <option key={rt.value} value={rt.value}>
@@ -163,12 +238,36 @@ export default function ReportsPage() {
                   ))}
                 </select>
               </div>
-              <div className="field">
-                <label className="field-lab">Format</label>
+
+              {/* format field */}
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    color: "var(--on-mut)",
+                    marginBottom: 6,
+                    fontFamily: "'JetBrains Mono', monospace",
+                  }}
+                >
+                  Format <span style={{ color: "#ef4444" }}>*</span>
+                </label>
                 <select
-                  className="field-in"
                   value={format}
                   onChange={(e) => setFormat(e.target.value as ReportFormat)}
+                  style={{
+                    width: "100%",
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    border: "1px solid var(--mid)",
+                    background: "var(--low)",
+                    fontSize: 14,
+                    fontFamily: "'Manrope', sans-serif",
+                    boxSizing: "border-box",
+                  }}
                 >
                   {FORMATS.map((f) => (
                     <option key={f.value} value={f.value}>
@@ -178,14 +277,47 @@ export default function ReportsPage() {
                 </select>
               </div>
             </div>
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button className="btn-sm" onClick={() => setShowForm(false)}>
+
+            {/* modal footer */}
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                justifyContent: "flex-end",
+                padding: "16px 24px 20px",
+                borderTop: "1px solid var(--outline)",
+              }}
+            >
+              <button
+                onClick={() => setShowForm(false)}
+                style={{
+                  border: "1px solid var(--mid)",
+                  background: "transparent",
+                  borderRadius: 8,
+                  padding: "8px 16px",
+                  fontSize: 13,
+                  cursor: "pointer",
+                  fontFamily: "'Manrope', sans-serif",
+                }}
+              >
                 Cancel
               </button>
               <button
-                className="btn-sm primary"
                 onClick={handleGenerate}
                 disabled={generateMutation.isPending}
+                style={{
+                  background: generateMutation.isPending ? "var(--mid)" : "#050a26",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 8,
+                  padding: "8px 16px",
+                  fontSize: 13,
+                  cursor: generateMutation.isPending ? "not-allowed" : "pointer",
+                  fontFamily: "'Manrope', sans-serif",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
               >
                 <MS n="play_arrow" size={13} />
                 {generateMutation.isPending ? "Queuing..." : "Generate"}
@@ -261,9 +393,9 @@ export default function ReportsPage() {
               {jobs.map((job: ReportJob) => {
                 const st = STATUS_STYLES[job.status] ?? STATUS_STYLES.pending;
                 return (
-                  <tr key={job.job_id}>
+                  <tr key={job.id}>
                     <td style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 10.5 }}>
-                      {job.job_id.slice(0, 8)}...
+                      {job.id.slice(0, 8)}...
                     </td>
                     <td style={{ textTransform: "capitalize" }}>report</td>
                     <td
@@ -297,9 +429,9 @@ export default function ReportsPage() {
                       })}
                     </td>
                     <td>
-                      {job.download_url ? (
+                      {job.file_url ? (
                         <a
-                          href={job.download_url}
+                          href={job.file_url}
                           target="_blank"
                           rel="noopener noreferrer"
                           style={{

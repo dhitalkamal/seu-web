@@ -15,7 +15,7 @@ const STATUS_COLORS: Record<string, string> = {
 export default function CampaignsPage() {
   const { toast, toastEl } = useToast();
   const qc = useQueryClient();
-  const [showForm, setShowForm] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const [name, setName] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
@@ -37,7 +37,7 @@ export default function CampaignsPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["campaigns"] });
       toast("Campaign created");
-      setShowForm(false);
+      setShowModal(false);
       setName("");
       setSubject("");
       setBody("");
@@ -66,9 +66,9 @@ export default function CampaignsPage() {
         title="Campaigns"
         sub="Create and send targeted email and in-app campaigns to your audience."
         actions={
-          <button className="btn-sm primary" onClick={() => setShowForm((p) => !p)}>
+          <button className="btn-sm primary" onClick={() => setShowModal(true)}>
             <MS n="add" size={13} />
-            {showForm ? "Cancel" : "New campaign"}
+            New campaign
           </button>
         }
       />
@@ -86,49 +86,242 @@ export default function CampaignsPage() {
         <KPI icon="send" color="nav" label="Total sent" value={totalSent.toLocaleString()} />
       </div>
 
-      {/* create form */}
-      {showForm && (
-        <div className="panel" style={{ marginBottom: 18 }}>
-          <div className="panel-head">
-            <span className="panel-title">Create campaign</span>
-          </div>
-          <div className="panel-body" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div className="field">
-              <label className="field-lab">Name</label>
-              <input
-                className="field-in"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Spring launch"
-              />
-            </div>
-            <div className="field">
-              <label className="field-lab">Subject</label>
-              <input
-                className="field-in"
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                placeholder="Email subject line"
-              />
-            </div>
-            <div className="field">
-              <label className="field-lab">Body</label>
-              <textarea
-                className="field-in"
-                rows={4}
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                placeholder="Campaign message..."
-              />
-            </div>
-            <button
-              className="btn-sm primary"
-              onClick={() => createMutation.mutate()}
-              disabled={!name || createMutation.isPending}
-              style={{ justifyContent: "center" }}
+      {/* create campaign modal */}
+      {showModal && (
+        <div
+          onClick={() => {
+            setShowModal(false);
+            setName("");
+            setSubject("");
+            setBody("");
+          }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.35)",
+            display: "grid",
+            placeItems: "center",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "var(--surface)",
+              borderRadius: 20,
+              maxWidth: 480,
+              width: "100%",
+              boxShadow: "0 16px 48px rgba(0,0,0,0.15)",
+            }}
+          >
+            {/* modal header */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "20px 24px 16px",
+                borderBottom: "1px solid var(--outline)",
+              }}
             >
-              Create
-            </button>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <MS n="campaign" size={20} />
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 15 }}>New campaign</div>
+                  <div style={{ fontSize: 12, color: "var(--on-mut)", marginTop: 1 }}>
+                    Create a new email or in-app campaign
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowModal(false);
+                  setName("");
+                  setSubject("");
+                  setBody("");
+                }}
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 8,
+                  border: "1px solid var(--mid)",
+                  background: "transparent",
+                  cursor: "pointer",
+                  display: "grid",
+                  placeItems: "center",
+                }}
+              >
+                <MS n="close" size={14} />
+              </button>
+            </div>
+
+            {/* modal body */}
+            <div
+              style={{
+                padding: "20px 24px",
+                display: "flex",
+                flexDirection: "column",
+                gap: 16,
+              }}
+            >
+              {/* name field */}
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    color: "var(--on-mut)",
+                    marginBottom: 6,
+                    fontFamily: "'JetBrains Mono', monospace",
+                  }}
+                >
+                  Name <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Spring launch"
+                  style={{
+                    width: "100%",
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    border: "1px solid var(--mid)",
+                    background: "var(--low)",
+                    fontSize: 14,
+                    fontFamily: "'Manrope', sans-serif",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+
+              {/* subject field */}
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    color: "var(--on-mut)",
+                    marginBottom: 6,
+                    fontFamily: "'JetBrains Mono', monospace",
+                  }}
+                >
+                  Subject <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <input
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  placeholder="Email subject line"
+                  style={{
+                    width: "100%",
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    border: "1px solid var(--mid)",
+                    background: "var(--low)",
+                    fontSize: 14,
+                    fontFamily: "'Manrope', sans-serif",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+
+              {/* body field */}
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    color: "var(--on-mut)",
+                    marginBottom: 6,
+                    fontFamily: "'JetBrains Mono', monospace",
+                  }}
+                >
+                  Body <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <textarea
+                  rows={4}
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  placeholder="Campaign message..."
+                  style={{
+                    width: "100%",
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    border: "1px solid var(--mid)",
+                    background: "var(--low)",
+                    fontSize: 14,
+                    fontFamily: "'Manrope', sans-serif",
+                    boxSizing: "border-box",
+                    resize: "vertical",
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* modal footer */}
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                justifyContent: "flex-end",
+                padding: "16px 24px 20px",
+                borderTop: "1px solid var(--outline)",
+              }}
+            >
+              <button
+                onClick={() => {
+                  setShowModal(false);
+                  setName("");
+                  setSubject("");
+                  setBody("");
+                }}
+                style={{
+                  border: "1px solid var(--mid)",
+                  background: "transparent",
+                  borderRadius: 8,
+                  padding: "8px 16px",
+                  fontSize: 13,
+                  cursor: "pointer",
+                  fontFamily: "'Manrope', sans-serif",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => createMutation.mutate()}
+                disabled={!name || !subject || !body || createMutation.isPending}
+                style={{
+                  background:
+                    !name || !subject || !body || createMutation.isPending
+                      ? "var(--mid)"
+                      : "#050a26",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 8,
+                  padding: "8px 16px",
+                  fontSize: 13,
+                  cursor:
+                    !name || !subject || !body || createMutation.isPending
+                      ? "not-allowed"
+                      : "pointer",
+                  fontFamily: "'Manrope', sans-serif",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                <MS n="add" size={13} />
+                {createMutation.isPending ? "Creating..." : "Create campaign"}
+              </button>
+            </div>
           </div>
         </div>
       )}

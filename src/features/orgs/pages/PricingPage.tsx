@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import AppLayout from "@/shared/layouts/AppLayout";
 import { PH, MS, useToast } from "@/shared/components/v8";
@@ -26,8 +26,18 @@ export default function PricingPage() {
   const orgId = org?.id ?? "";
   const queryClient = useQueryClient();
 
+  const [searchParams] = useSearchParams();
   const [selectedPlan, setSelectedPlan] = useState<PlanName | null>(null);
   const [gateway, setGateway] = useState<Gateway>("khalti");
+
+  useEffect(() => {
+    if (searchParams.get("payment_error") === "true") {
+      toast("Subscription payment failed. Please try again.");
+    }
+    if (searchParams.get("cancelled") === "true") {
+      toast("Payment was cancelled.");
+    }
+  }, []);
 
   // fetch current subscription - 404 means free plan
   const { data: currentSub } = useQuery({
@@ -370,7 +380,12 @@ export default function PricingPage() {
               className="btn-sm primary"
               onClick={() => subscribeMutation.mutate(selectedPlan)}
               disabled={subscribeMutation.isPending}
-              style={{ width: "100%", justifyContent: "center", padding: "14px 0", borderRadius: 12 }}
+              style={{
+                width: "100%",
+                justifyContent: "center",
+                padding: "14px 0",
+                borderRadius: 12,
+              }}
             >
               <MS n="rocket_launch" size={14} />
               {subscribeMutation.isPending

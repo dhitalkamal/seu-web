@@ -113,19 +113,67 @@ export default function CheckinConsolePage() {
             <span className="panel-title">Manual entry</span>
           </div>
           <div className="panel-body" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div className="field">
-              <label className="field-lab">Event ID</label>
+            <div style={{ marginBottom: 0 }}>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase" as const,
+                  color: "var(--on-mut)",
+                  marginBottom: 6,
+                  fontFamily: "'JetBrains Mono', monospace",
+                }}
+              >
+                Event ID
+              </label>
               <input
-                className="field-in"
+                style={{
+                  width: "100%",
+                  padding: "10px 14px",
+                  borderRadius: 10,
+                  border: "1px solid var(--mid)",
+                  background: "var(--low)",
+                  color: "var(--on-bg)",
+                  fontSize: 14,
+                  outline: "none",
+                  fontFamily: "'Manrope', sans-serif",
+                  boxSizing: "border-box" as const,
+                }}
                 value={eventId}
                 onChange={(e) => setEventId(e.target.value)}
                 placeholder="Paste event UUID"
               />
             </div>
-            <div className="field">
-              <label className="field-lab">Registration ID or QR code</label>
+            <div style={{ marginBottom: 0 }}>
+              <label
+                style={{
+                  display: "block",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase" as const,
+                  color: "var(--on-mut)",
+                  marginBottom: 6,
+                  fontFamily: "'JetBrains Mono', monospace",
+                }}
+              >
+                Registration ID or QR code
+              </label>
               <input
-                className="field-in"
+                style={{
+                  width: "100%",
+                  padding: "10px 14px",
+                  borderRadius: 10,
+                  border: "1px solid var(--mid)",
+                  background: "var(--low)",
+                  color: "var(--on-bg)",
+                  fontSize: 14,
+                  outline: "none",
+                  fontFamily: "'Manrope', sans-serif",
+                  boxSizing: "border-box" as const,
+                }}
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSubmit()}

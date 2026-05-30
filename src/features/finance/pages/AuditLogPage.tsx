@@ -40,7 +40,7 @@ export default function AuditLogPage() {
           <strong>Audit logging available in the superadmin dashboard</strong>
           <span>
             Full workspace audit logs, actor drill-downs, and CSV exports are available to
-            superadmins at the platform level. Organisation-scoped audit history will be available
+            superadmins at the platform level. Organization-scoped audit history will be available
             in a future release.
           </span>
         </div>
@@ -84,7 +84,7 @@ export default function AuditLogPage() {
                     padding: "48px 0",
                   }}
                 >
-                  Organisation-scoped audit logs are not yet available. See the superadmin dashboard
+                  Organization-scoped audit logs are not yet available. See the superadmin dashboard
                   for the full audit trail.
                 </td>
               </tr>

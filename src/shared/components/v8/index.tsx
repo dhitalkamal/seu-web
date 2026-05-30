@@ -1,8 +1,9 @@
 import type { CSSProperties, ReactNode } from "react";
 import { useState, useEffect } from "react";
+import { useCrumbStore } from "@/shared/hooks/useCrumbs";
 
 type MSProps = { n: string; size?: number; style?: CSSProperties; className?: string };
-/** Material Symbol icon -matches v8 MS component exactly. */
+/** Material Symbol icon - matches v8 MS component exactly. */
 export function MS({ n, size = 18, style = {}, className = "" }: MSProps) {
   return (
     <span className={`ms ${className}`} style={{ fontSize: size, ...style }}>
@@ -19,26 +20,21 @@ type PHProps = {
 };
 /** Page header with breadcrumbs, title, subtitle, and action buttons. */
 export function PH({ crumbs, title, sub, actions }: PHProps) {
+  const setCrumbs = useCrumbStore((s) => s.setCrumbs);
+
+  useEffect(() => {
+    if (crumbs) setCrumbs(crumbs);
+    return () => setCrumbs([]);
+  }, [crumbs, setCrumbs]);
+
   return (
-    <>
-      {crumbs && (
-        <div className="crumbs">
-          {crumbs.map((c, i) => (
-            <span key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              {i > 0 && <span style={{ opacity: 0.4 }}>/</span>}
-              <span className={i === crumbs.length - 1 ? "cur" : ""}>{c}</span>
-            </span>
-          ))}
-        </div>
-      )}
-      <div className="ph">
-        <div>
-          <h1 className="app-title">{title}</h1>
-          {sub && <p className="app-sub">{sub}</p>}
-        </div>
-        {actions && <div className="ph-actions">{actions}</div>}
+    <div className="ph">
+      <div>
+        <h1 className="app-title">{title}</h1>
+        {sub && <p className="app-sub">{sub}</p>}
       </div>
-    </>
+      {actions && <div className="ph-actions">{actions}</div>}
+    </div>
   );
 }
 

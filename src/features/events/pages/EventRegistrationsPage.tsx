@@ -4,7 +4,7 @@ import AppLayout from "@/shared/layouts/AppLayout";
 import { useEvent } from "@/features/events/hooks/useEvents";
 import checkinApi from "@/features/checkin/api/checkin.api";
 
-/** Organiser view of registrations for a specific event - SEU v8 design. */
+/** Organizer view of registrations for a specific event - SEU v8 design. */
 export default function EventRegistrationsPage() {
   const { id } = useParams<{ id: string }>();
   const { data: event, isLoading: eventLoading } = useEvent(id ?? "");
@@ -21,8 +21,7 @@ export default function EventRegistrationsPage() {
   // use checkin stats when available, fall back to event.registered_count
   const totalRegistered = stats?.total ?? event?.registered_count ?? 0;
   const checkedIn = stats?.checked_in ?? 0;
-  const checkinRate =
-    totalRegistered > 0 ? Math.round((checkedIn / totalRegistered) * 100) : 0;
+  const checkinRate = totalRegistered > 0 ? Math.round((checkedIn / totalRegistered) * 100) : 0;
 
   const spotsLeft = event ? event.capacity - totalRegistered : 0;
   const isLoading = eventLoading || statsLoading;

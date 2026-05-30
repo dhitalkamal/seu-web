@@ -41,7 +41,7 @@ type EventStatsRow = {
 export default function ParticipationPage() {
   const { toast, toastEl } = useToast();
 
-  // fetch all events owned by this organiser
+  // fetch all events owned by this organizer
   const { data: eventsPage, isLoading: eventsLoading } = useQuery({
     queryKey: ["events", "mine"],
     queryFn: () => eventsApi.listMyEvents(),
@@ -53,9 +53,7 @@ export default function ParticipationPage() {
   const { data: statsResults, isLoading: statsLoading } = useQuery({
     queryKey: ["checkin", "stats", "all", events.map((e) => e.id)],
     queryFn: async () => {
-      const settled = await Promise.allSettled(
-        events.map((e) => checkinApi.getEventStats(e.id))
-      );
+      const settled = await Promise.allSettled(events.map((e) => checkinApi.getEventStats(e.id)));
       return settled;
     },
     enabled: events.length > 0,
@@ -98,8 +96,7 @@ export default function ParticipationPage() {
       registered: r.total,
       checked_in: r.checkedIn,
       remaining: r.remaining,
-      checkin_rate_pct:
-        r.total > 0 ? Math.round((r.checkedIn / r.total) * 100) : 0,
+      checkin_rate_pct: r.total > 0 ? Math.round((r.checkedIn / r.total) * 100) : 0,
     }));
     downloadCsv("participation.csv", csvRows);
     toast("Export downloaded");
@@ -190,15 +187,11 @@ export default function ParticipationPage() {
               >
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
                   <span style={{ color: "var(--on-var)" }}>Free events</span>
-                  <span style={{ fontWeight: 600 }}>
-                    {events.filter((e) => e.is_free).length}
-                  </span>
+                  <span style={{ fontWeight: 600 }}>{events.filter((e) => e.is_free).length}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
                   <span style={{ color: "var(--on-var)" }}>Paid events</span>
-                  <span style={{ fontWeight: 600 }}>
-                    {events.filter((e) => !e.is_free).length}
-                  </span>
+                  <span style={{ fontWeight: 600 }}>{events.filter((e) => !e.is_free).length}</span>
                 </div>
               </div>
             )}

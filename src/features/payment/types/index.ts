@@ -25,11 +25,12 @@ export interface PaymentOrder {
 
 export interface CreateOrderPayload {
   event_id: string;
-  registration_id: string;
+  registration_id?: string;
   subtotal: string;
   gateway: Gateway;
   idempotency_key: string;
   promo_code?: string;
+  organization_id?: string;
 }
 
 /**

@@ -1,8 +1,10 @@
+import { useState, useEffect } from "react";
 import { Toaster } from "react-hot-toast";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { GuestRoute, ProtectedRoute } from "@/features/auth/components";
 import OrgGuard from "@/features/orgs/components/OrgGuard";
 import { useAuthStore } from "@/shared/store/auth.store";
+import axios from "axios";
 
 // auth
 import ForgotPasswordPage from "@/features/auth/pages/ForgotPasswordPage";
@@ -54,6 +56,7 @@ import FailurePage from "@/features/payment/pages/FailurePage";
 import ProfilePage from "@/features/profile/pages/ProfilePage";
 import SettingsPage from "@/features/profile/pages/SettingsPage";
 import SearchPage from "@/features/search/pages/SearchPage";
+import SupportPage from "@/features/support/pages/SupportPage";
 
 // volunteer
 import VolunteerHomePage from "@/features/volunteer/pages/VolunteerHomePage";
@@ -99,7 +102,96 @@ function AppInner() {
   return null;
 }
 
+/** Full-screen maintenance page shown when the platform is in maintenance mode. */
+function MaintenancePage() {
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "linear-gradient(135deg, #050a26, #121d3f)",
+        color: "white",
+        fontFamily: "'Manrope', sans-serif",
+        textAlign: "center",
+        padding: 32,
+      }}
+    >
+      <div style={{ fontSize: 64, marginBottom: 24 }}>
+        <span className="ms" style={{ fontSize: 64, color: "#dba13d" }}>construction</span>
+      </div>
+      <h1
+        style={{
+          fontFamily: "'Space Grotesk', sans-serif",
+          fontSize: 36,
+          fontWeight: 700,
+          letterSpacing: "-0.03em",
+          marginBottom: 12,
+        }}
+      >
+        We'll be right back
+      </h1>
+      <p
+        style={{
+          fontSize: 16,
+          color: "rgba(255,255,255,0.7)",
+          maxWidth: 480,
+          lineHeight: 1.6,
+          marginBottom: 32,
+        }}
+      >
+        Sansaar is currently undergoing scheduled maintenance. We're working hard to improve your experience. Please check back shortly.
+      </p>
+      <div
+        style={{
+          padding: "12px 24px",
+          background: "rgba(255,255,255,0.1)",
+          borderRadius: 12,
+          border: "1px solid rgba(255,255,255,0.15)",
+          fontSize: 13,
+          color: "rgba(255,255,255,0.6)",
+        }}
+      >
+        If this persists, contact support at{" "}
+        <a href="mailto:support@sansaar.events" style={{ color: "#dba13d" }}>
+          support@sansaar.events
+        </a>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
+  const [maintenance, setMaintenance] = useState(false);
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    function checkStatus() {
+      axios
+        .get("/iam/api/v1/platform/status/")
+        .then((res) => {
+          setMaintenance(res.data?.data?.maintenance === true);
+        })
+        .catch(() => {
+          setMaintenance(false);
+        })
+        .finally(() => setChecked(true));
+    }
+
+    checkStatus();
+    const interval = setInterval(checkStatus, 30_000);
+    window.addEventListener("focus", checkStatus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", checkStatus);
+    };
+  }, []);
+
+  if (!checked) return null;
+  if (maintenance) return <MaintenancePage />;
+
   return (
     <BrowserRouter>
       <Toaster
@@ -126,10 +218,24 @@ export default function App() {
             </AuthRedirect>
           }
         />
-        <Route path="/events" element={<P><EventListPage /></P>} />
-        <Route path="/events/:id" element={<EventDetailPage />} />
-        <Route path="/orgs/:id" element={<OrgProfilePage />} />
-        <Route path="/search" element={<P><SearchPage /></P>} />
+        <Route
+          path="/events"
+          element={
+            <P>
+              <EventListPage />
+            </P>
+          }
+        />
+        <Route path="/events/:id" element={<P><EventDetailPage /></P>} />
+        <Route path="/orgs/:id" element={<P><OrgProfilePage /></P>} />
+        <Route
+          path="/search"
+          element={
+            <P>
+              <SearchPage />
+            </P>
+          }
+        />
 
         {/* * guest-only auth */}
         <Route
@@ -193,179 +299,223 @@ export default function App() {
         <Route
           path="/org/dashboard"
           element={
-            <P><OrgGuard>
+            <P>
               <OrgGuard>
-                <OrgDashboardPage />
+                <OrgGuard>
+                  <OrgDashboardPage />
+                </OrgGuard>
               </OrgGuard>
-            </OrgGuard></P>
+            </P>
           }
         />
         <Route
           path="/org/events"
           element={
-            <P><OrgGuard>
-              <OrgEventsPage />
-            </OrgGuard></P>
+            <P>
+              <OrgGuard>
+                <OrgEventsPage />
+              </OrgGuard>
+            </P>
           }
         />
         <Route
           path="/org/events/create"
           element={
-            <P><OrgGuard>
-              <CreateEventPage />
-            </OrgGuard></P>
+            <P>
+              <OrgGuard>
+                <CreateEventPage />
+              </OrgGuard>
+            </P>
           }
         />
         <Route
           path="/org/events/:id"
           element={
-            <P><OrgGuard>
-              <EventDetailPage />
-            </OrgGuard></P>
+            <P>
+              <OrgGuard>
+                <EventDetailPage />
+              </OrgGuard>
+            </P>
           }
         />
         <Route
           path="/org/events/:id/edit"
           element={
-            <P><OrgGuard>
-              <EditEventPage />
-            </OrgGuard></P>
+            <P>
+              <OrgGuard>
+                <EditEventPage />
+              </OrgGuard>
+            </P>
           }
         />
         <Route
           path="/org/events/:id/registrations"
           element={
-            <P><OrgGuard>
-              <EventRegistrationsPage />
-            </OrgGuard></P>
+            <P>
+              <OrgGuard>
+                <EventRegistrationsPage />
+              </OrgGuard>
+            </P>
           }
         />
         <Route
           path="/org/events/:id/analytics"
           element={
-            <P><OrgGuard>
-              <EventAnalyticsPage />
-            </OrgGuard></P>
+            <P>
+              <OrgGuard>
+                <EventAnalyticsPage />
+              </OrgGuard>
+            </P>
           }
         />
         <Route
           path="/org/events/:id/volunteers"
           element={
-            <P><OrgGuard>
-              <VolunteerManagementPage />
-            </OrgGuard></P>
+            <P>
+              <OrgGuard>
+                <VolunteerManagementPage />
+              </OrgGuard>
+            </P>
           }
         />
         <Route
           path="/org/participation"
           element={
-            <P><OrgGuard>
-              <ParticipationPage />
-            </OrgGuard></P>
+            <P>
+              <OrgGuard>
+                <ParticipationPage />
+              </OrgGuard>
+            </P>
           }
         />
         <Route
           path="/org/sponsors"
           element={
-            <P><OrgGuard>
-              <SponsorsPage />
-            </OrgGuard></P>
+            <P>
+              <OrgGuard>
+                <SponsorsPage />
+              </OrgGuard>
+            </P>
           }
         />
         <Route
           path="/org/templates"
           element={
-            <P><OrgGuard>
-              <LandingTemplatesPage />
-            </OrgGuard></P>
+            <P>
+              <OrgGuard>
+                <LandingTemplatesPage />
+              </OrgGuard>
+            </P>
           }
         />
         <Route
           path="/org/taxonomy"
           element={
-            <P><OrgGuard>
-              <TaxonomyPage />
-            </OrgGuard></P>
+            <P>
+              <OrgGuard>
+                <TaxonomyPage />
+              </OrgGuard>
+            </P>
           }
         />
         <Route
           path="/org/venues"
           element={
-            <P><OrgGuard>
-              <VenuesPage />
-            </OrgGuard></P>
+            <P>
+              <OrgGuard>
+                <VenuesPage />
+              </OrgGuard>
+            </P>
           }
         />
         <Route
           path="/org/volunteer-apps"
           element={
-            <P><OrgGuard>
-              <VolAppsPage />
-            </OrgGuard></P>
+            <P>
+              <OrgGuard>
+                <VolAppsPage />
+              </OrgGuard>
+            </P>
           }
         />
         <Route
           path="/org/checkin"
           element={
-            <P><OrgGuard>
-              <CheckinConsolePage />
-            </OrgGuard></P>
+            <P>
+              <OrgGuard>
+                <CheckinConsolePage />
+              </OrgGuard>
+            </P>
           }
         />
         <Route
           path="/org/waitlist"
           element={
-            <P><OrgGuard>
-              <WaitlistPage />
-            </OrgGuard></P>
+            <P>
+              <OrgGuard>
+                <WaitlistPage />
+              </OrgGuard>
+            </P>
           }
         />
         <Route
           path="/org/team"
           element={
-            <P><OrgGuard>
-              <TeamPage />
-            </OrgGuard></P>
+            <P>
+              <OrgGuard>
+                <TeamPage />
+              </OrgGuard>
+            </P>
           }
         />
         <Route
           path="/org/events/:id/health"
           element={
-            <P><OrgGuard>
-              <EventHealthPage />
-            </OrgGuard></P>
+            <P>
+              <OrgGuard>
+                <EventHealthPage />
+              </OrgGuard>
+            </P>
           }
         />
         <Route
           path="/org/finance"
           element={
-            <P><OrgGuard>
-              <FinanceHubPage />
-            </OrgGuard></P>
+            <P>
+              <OrgGuard>
+                <FinanceHubPage />
+              </OrgGuard>
+            </P>
           }
         />
         <Route
           path="/org/reports"
           element={
-            <P><OrgGuard>
-              <ReportsPage />
-            </OrgGuard></P>
+            <P>
+              <OrgGuard>
+                <ReportsPage />
+              </OrgGuard>
+            </P>
           }
         />
         <Route
           path="/org/audit-log"
           element={
-            <P><OrgGuard>
-              <AuditLogPage />
-            </OrgGuard></P>
+            <P>
+              <OrgGuard>
+                <AuditLogPage />
+              </OrgGuard>
+            </P>
           }
         />
         <Route
           path="/org/analytics"
           element={
-            <P><OrgGuard>
-              <EventAnalyticsPage />
-            </OrgGuard></P>
+            <P>
+              <OrgGuard>
+                <EventAnalyticsPage />
+              </OrgGuard>
+            </P>
           }
         />
         <Route
@@ -389,6 +539,15 @@ export default function App() {
           element={
             <P>
               <PricingPage />
+            </P>
+          }
+        />
+
+        <Route
+          path="/org/support"
+          element={
+            <P>
+              <SupportPage />
             </P>
           }
         />
@@ -523,9 +682,11 @@ export default function App() {
         <Route
           path="/org/campaigns"
           element={
-            <P><OrgGuard>
-              <CampaignsPage />
-            </OrgGuard></P>
+            <P>
+              <OrgGuard>
+                <CampaignsPage />
+              </OrgGuard>
+            </P>
           }
         />
         <Route
@@ -533,6 +694,14 @@ export default function App() {
           element={
             <P>
               <NetworkingPage />
+            </P>
+          }
+        />
+        <Route
+          path="/support"
+          element={
+            <P>
+              <SupportPage />
             </P>
           }
         />

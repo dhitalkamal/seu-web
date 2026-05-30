@@ -264,19 +264,67 @@ function EventMediaPanel({ eventId }: { eventId: string }) {
           alignItems: "flex-end",
         }}
       >
-        <div className="field" style={{ margin: 0 }}>
-          <label className="field-lab">Image URL</label>
+        <div style={{ marginBottom: 0 }}>
+          <label
+            style={{
+              display: "block",
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase" as const,
+              color: "var(--on-mut)",
+              marginBottom: 6,
+              fontFamily: "'JetBrains Mono', monospace",
+            }}
+          >
+            Image URL
+          </label>
           <input
-            className="field-in"
+            style={{
+              width: "100%",
+              padding: "10px 14px",
+              borderRadius: 10,
+              border: "1px solid var(--mid)",
+              background: "var(--low)",
+              color: "var(--on-bg)",
+              fontSize: 14,
+              outline: "none",
+              fontFamily: "'Manrope', sans-serif",
+              boxSizing: "border-box" as const,
+            }}
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://..."
           />
         </div>
-        <div className="field" style={{ margin: 0 }}>
-          <label className="field-lab">Caption</label>
+        <div style={{ marginBottom: 0 }}>
+          <label
+            style={{
+              display: "block",
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: "0.1em",
+              textTransform: "uppercase" as const,
+              color: "var(--on-mut)",
+              marginBottom: 6,
+              fontFamily: "'JetBrains Mono', monospace",
+            }}
+          >
+            Caption
+          </label>
           <input
-            className="field-in"
+            style={{
+              width: "100%",
+              padding: "10px 14px",
+              borderRadius: 10,
+              border: "1px solid var(--mid)",
+              background: "var(--low)",
+              color: "var(--on-bg)",
+              fontSize: 14,
+              outline: "none",
+              fontFamily: "'Manrope', sans-serif",
+              boxSizing: "border-box" as const,
+            }}
             value={caption}
             onChange={(e) => setCaption(e.target.value)}
             placeholder="Optional caption"

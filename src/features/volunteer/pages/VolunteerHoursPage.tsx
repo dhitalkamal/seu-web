@@ -264,7 +264,7 @@ export default function VolunteerHoursPage() {
               margin: "0 auto",
             }}
           >
-            Your volunteered hours will appear here once organisers confirm your shift attendance.
+            Your volunteered hours will appear here once organizers confirm your shift attendance.
           </p>
         </div>
       )}

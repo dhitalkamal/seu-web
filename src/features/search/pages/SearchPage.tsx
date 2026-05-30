@@ -1,45 +1,60 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import AppLayout from "@/shared/layouts/AppLayout";
-import { PH, MS, useToast } from "@/shared/components/v8";
-import intelligenceApi from "@/features/intelligence/api/intelligence.api";
+import { PH, MS } from "@/shared/components/v8";
+import eventsApi from "@/features/events/api/events.api";
+import type { Event } from "@/features/events/types/event.types";
 
 /** Pre-written suggestions shown before the user types anything. */
 const SUGGESTIONS = [
-  "Free networking events",
-  "Tech conferences Kathmandu",
-  "Volunteer opportunities",
+  "Tech",
+  "Music",
+  "Workshop",
+  "Networking",
+  "Leadership",
+  "Kathmandu",
 ];
 
-/** NLP-powered search page - sends a natural-language query and renders ranked results. */
-export default function SearchPage() {
-  const { toastEl } = useToast();
-  const navigate = useNavigate();
-  const [q, setQ] = useState("");
+/** Formats an ISO date string into a short label like "Jun 15, 2026". */
+function fmtDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 
-  const searchMutation = useMutation({
-    mutationFn: (query: string) => intelligenceApi.nlpSearch(query),
+/** Search page - queries the event-service and renders matching event cards. */
+export default function SearchPage() {
+  const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const initial = params.get("q") ?? "";
+  const [input, setInput] = useState(initial);
+  const [q, setQ] = useState(initial);
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["event-search", q],
+    queryFn: () => eventsApi.listPublicEvents({ search: q }),
+    enabled: q.trim().length > 0,
   });
 
-  /** Fires the mutation if the input is non-empty. */
-  function handleSearch() {
-    if (!q.trim()) return;
-    searchMutation.mutate(q.trim());
-  }
+  const results: Event[] = data?.results ?? [];
 
-  // the backend returns tokenised keywords + language; no ranked results yet
-  const tokens = searchMutation.data?.keywords ?? searchMutation.data?.query_tokens ?? [];
-  const filters = searchMutation.data?.filters ?? searchMutation.data?.filters_applied ?? {};
-  const results = searchMutation.data?.results ?? [];
+  /** Commit the current input as the active search query. */
+  function handleSearch() {
+    const trimmed = input.trim();
+    if (!trimmed) return;
+    setQ(trimmed);
+    setParams({ q: trimmed });
+  }
 
   return (
     <AppLayout variant="user">
-      {toastEl}
       <PH
         crumbs={["Discover", "Search"]}
-        title="Search"
-        sub="Natural-language query is tokenised and turned into filters. Toggle any chip to refine."
+        title="Search events"
+        sub="Find events by name, location, or keyword."
       />
 
       {/* search box */}
@@ -57,133 +72,185 @@ export default function SearchPage() {
                 background: "transparent",
                 padding: 0,
               }}
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              placeholder="e.g. free tech events in Kathmandu this month"
+              placeholder="Search by event name, location, keyword..."
             />
             <button
               className="btn-sm primary"
               onClick={handleSearch}
-              disabled={!q.trim() || searchMutation.isPending}
+              disabled={!input.trim() || isLoading}
               style={{ flexShrink: 0 }}
             >
-              {searchMutation.isPending ? "Searching..." : "Search"}
+              {isLoading ? "Searching..." : "Search"}
             </button>
           </div>
         </div>
       </div>
 
-      {/* token chips */}
-      {tokens.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 18 }}>
-          {tokens.map((t) => (
-            <span
-              key={t}
-              style={{
-                padding: "4px 12px",
-                borderRadius: 20,
-                background: "var(--low)",
-                fontSize: 12,
-                fontFamily: "JetBrains Mono, monospace",
-                color: "var(--on-var)",
-              }}
-            >
-              {t}
-            </span>
-          ))}
-          {Object.entries(filters).map(([k, v]) => (
-            <span
-              key={k}
-              style={{
-                padding: "4px 12px",
-                borderRadius: 20,
-                background: "linear-gradient(135deg,#050a26,#3b3a72)",
-                fontSize: 12,
-                fontFamily: "JetBrains Mono, monospace",
-                color: "white",
-              }}
-            >
-              {k}: {v}
-            </span>
-          ))}
+      {/* active query indicator */}
+      {q && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            marginBottom: 16,
+            fontSize: 13,
+            color: "var(--on-var)",
+            fontFamily: "Manrope, sans-serif",
+          }}
+        >
+          <span>
+            Showing results for: <strong>{q}</strong>
+          </span>
+          <button
+            onClick={() => {
+              setInput("");
+              setQ("");
+              setParams({});
+            }}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              color: "var(--on-mut)",
+              padding: 0,
+            }}
+          >
+            <MS n="close" size={16} />
+          </button>
         </div>
       )}
 
       {/* error state */}
-      {searchMutation.isError && (
+      {isError && (
         <div className="panel">
           <div
             className="panel-body"
             style={{ textAlign: "center", color: "var(--error)", padding: "32px 0" }}
           >
-            Search service unavailable. Please try again.
+            Something went wrong. Please try again.
           </div>
         </div>
       )}
 
-      {/* show extracted keywords as a "browse with these filters" panel */}
-      {searchMutation.isSuccess && tokens.length > 0 && (
-        <div className="panel">
-          <div className="panel-head">
-            <span className="panel-title">Browse matching events</span>
-            <span
-              style={{
-                fontFamily: "JetBrains Mono, monospace",
-                fontSize: 10,
-                color: "var(--on-mut)",
-                textTransform: "uppercase",
-                letterSpacing: "0.08em",
-              }}
-            >
-              {searchMutation.data?.language === "ne" ? "Nepali query" : "English query"}
-            </span>
+      {/* results grid */}
+      {q && !isLoading && !isError && results.length > 0 && (
+        <>
+          <div
+            style={{
+              marginBottom: 12,
+              fontSize: 12,
+              fontFamily: "JetBrains Mono, monospace",
+              color: "var(--on-mut)",
+              letterSpacing: "0.06em",
+            }}
+          >
+            {results.length} event{results.length !== 1 ? "s" : ""} found
           </div>
-          <div className="panel-body">
-            <p
-              style={{
-                fontSize: 13,
-                color: "var(--on-var)",
-                marginBottom: 16,
-                fontFamily: "Manrope, sans-serif",
-              }}
-            >
-              Your query was tokenised into {tokens.length} keyword{tokens.length !== 1 ? "s" : ""}.
-              Click any keyword to search events, or browse all events with your full query applied.
-            </p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
-              {tokens.map((t) => (
-                <button
-                  key={t}
-                  onClick={() => navigate(`/events?search=${encodeURIComponent(t)}`)}
+          <div
+            className="grid"
+            style={{ gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}
+          >
+            {results.map((ev) => (
+              <div
+                key={ev.id}
+                className="panel"
+                style={{ padding: 0, overflow: "hidden", cursor: "pointer" }}
+                onClick={() => navigate(`/events/${ev.id}`)}
+              >
+                <div
                   style={{
-                    padding: "6px 14px",
-                    borderRadius: 20,
-                    border: "1px solid var(--outline)",
-                    background: "var(--low)",
-                    cursor: "pointer",
-                    fontSize: 13,
-                    fontFamily: "JetBrains Mono, monospace",
-                    color: "var(--on-bg)",
+                    height: 140,
+                    background: ev.cover_image
+                      ? `url(${ev.cover_image}) center/cover`
+                      : "linear-gradient(135deg, #050a26, #121d3f)",
+                    position: "relative",
                   }}
                 >
-                  {t}
-                </button>
-              ))}
-            </div>
-            <button
-              className="btn-sm primary"
-              onClick={() => navigate(`/events?search=${encodeURIComponent(q)}`)}
-              style={{ justifyContent: "center" }}
-            >
-              <MS n="travel_explore" size={14} />
-              Browse events for &quot;{q}&quot;
-            </button>
+                  <span
+                    style={{
+                      position: "absolute",
+                      bottom: 10,
+                      left: 10,
+                      padding: "4px 10px",
+                      borderRadius: 6,
+                      background: ev.is_free ? "rgba(34,197,94,0.9)" : "rgba(5,10,38,0.85)",
+                      color: "white",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      fontFamily: "'JetBrains Mono', monospace",
+                    }}
+                  >
+                    {ev.is_free ? "FREE" : `NPR ${parseFloat(ev.price).toLocaleString()}`}
+                  </span>
+                </div>
+                <div style={{ padding: 16 }}>
+                  <p
+                    style={{
+                      fontFamily: "'Space Grotesk', sans-serif",
+                      fontWeight: 700,
+                      fontSize: 15,
+                      letterSpacing: "-0.02em",
+                      color: "var(--on-bg)",
+                      marginBottom: 6,
+                      lineHeight: 1.25,
+                    }}
+                  >
+                    {ev.title}
+                  </p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <span
+                      style={{
+                        fontSize: 12,
+                        color: "var(--on-var)",
+                        fontFamily: "Manrope, sans-serif",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <MS n="calendar_today" size={14} style={{ color: "var(--on-mut)" }} />
+                      {fmtDate(ev.start_date)}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 12,
+                        color: "var(--on-var)",
+                        fontFamily: "Manrope, sans-serif",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <MS n="location_on" size={14} style={{ color: "var(--on-mut)" }} />
+                      {ev.location}
+                    </span>
+                  </div>
+                  <div
+                    style={{ marginTop: 10, paddingTop: 8, borderTop: "1px solid var(--outline)" }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 10.5,
+                        color: "var(--on-mut)",
+                        fontFamily: "'JetBrains Mono', monospace",
+                      }}
+                    >
+                      {ev.registered_count}/{ev.capacity} attending
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
+        </>
       )}
 
-      {searchMutation.isSuccess && tokens.length === 0 && (
+      {/* no results */}
+      {q && !isLoading && !isError && results.length === 0 && (
         <div className="panel">
           <div
             className="panel-body"
@@ -194,107 +261,68 @@ export default function SearchPage() {
               size={32}
               style={{ display: "block", margin: "0 auto 12px", opacity: 0.3 }}
             />
-            No keywords extracted. Try a more descriptive query.
+            <p
+              style={{
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontWeight: 700,
+                fontSize: 16,
+                color: "var(--on-bg)",
+                marginBottom: 6,
+              }}
+            >
+              No events found
+            </p>
+            <p style={{ fontSize: 13, fontFamily: "Manrope, sans-serif" }}>
+              Try a different keyword or browse all events.
+            </p>
+            <button
+              className="btn-sm primary"
+              onClick={() => navigate("/events")}
+              style={{ marginTop: 16 }}
+            >
+              <MS n="explore" size={14} />
+              Browse all events
+            </button>
           </div>
         </div>
       )}
 
-      {/* results list */}
-      {results.length > 0 && (
+      {/* suggestion chips shown before first search */}
+      {!q && (
         <div className="panel">
           <div className="panel-head">
-            <span className="panel-title">Results</span>
-            <span
-              style={{
-                fontFamily: "JetBrains Mono, monospace",
-                fontSize: 10.5,
-                color: "var(--on-mut)",
-              }}
-            >
-              {results.length} found
-            </span>
+            <span className="panel-title">Popular searches</span>
           </div>
-          <div className="panel-body flush">
-            {results.map((r, i) => (
-              <div
-                key={r.event_id}
-                onClick={() => navigate(`/events/${r.event_id}`)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "14px 20px",
-                  borderBottom: i < results.length - 1 ? "1px solid var(--outline)" : undefined,
-                  cursor: "pointer",
-                }}
-              >
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>
-                    Event {r.event_id.slice(0, 8)}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 12,
-                      color: "var(--on-mut)",
-                      fontFamily: "Manrope, sans-serif",
-                    }}
-                  >
-                    {r.reason}
-                  </div>
-                </div>
-                <div
+          <div className="panel-body">
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+              {SUGGESTIONS.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => {
+                    setInput(s);
+                    setQ(s);
+                    setParams({ q: s });
+                  }}
                   style={{
-                    flexShrink: 0,
-                    marginLeft: 16,
-                    display: "flex",
+                    padding: "8px 18px",
+                    borderRadius: 20,
+                    border: "1px solid var(--outline)",
+                    background: "var(--surface)",
+                    cursor: "pointer",
+                    fontFamily: "Manrope, sans-serif",
+                    fontSize: 13,
+                    color: "var(--on-var)",
+                    display: "inline-flex",
                     alignItems: "center",
-                    gap: 8,
+                    gap: 6,
                   }}
                 >
-                  <div
-                    style={{
-                      fontFamily: "Space Grotesk, sans-serif",
-                      fontWeight: 700,
-                      fontSize: 18,
-                      color: "#16a34a",
-                    }}
-                  >
-                    {Math.round(r.score * 100)}%
-                  </div>
-                  <MS n="chevron_right" size={18} style={{ color: "var(--on-mut)" }} />
-                </div>
-              </div>
-            ))}
+                  <MS n="search" size={14} style={{ color: "var(--on-mut)" }} />
+                  {s}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
-
-      {/* suggestion cards shown before first search */}
-      {!searchMutation.isSuccess && !searchMutation.isPending && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
-          {SUGGESTIONS.map((suggestion) => (
-            <button
-              key={suggestion}
-              onClick={() => {
-                setQ(suggestion);
-                searchMutation.mutate(suggestion);
-              }}
-              style={{
-                padding: "14px 16px",
-                borderRadius: 12,
-                border: "1px solid var(--outline)",
-                background: "var(--surface)",
-                cursor: "pointer",
-                textAlign: "left",
-                fontFamily: "Manrope, sans-serif",
-                fontSize: 13,
-                color: "var(--on-var)",
-              }}
-            >
-              <MS n="lightbulb" size={14} style={{ marginRight: 8, color: "var(--on-mut)" }} />
-              {suggestion}
-            </button>
-          ))}
         </div>
       )}
     </AppLayout>

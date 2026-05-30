@@ -13,7 +13,8 @@ export type Category = {
 
 export type Event = {
   id: string;
-  organiser_id: string;
+  organizer_id: string;
+  organization_id: string | null;
   title: string;
   description: string;
   location: string;
@@ -60,7 +61,7 @@ export type CreateEventRequest = {
 export type UpdateEventRequest = Partial<CreateEventRequest>;
 
 export type EventListFilters = {
-  organiser_id?: string;
+  organizer_id?: string;
   is_free?: boolean;
   search?: string;
   category?: string;

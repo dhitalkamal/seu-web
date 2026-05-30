@@ -14,7 +14,7 @@ export function usePublicEvents(filters?: EventListFilters) {
   });
 }
 
-/** All events owned by the authenticated organiser. */
+/** All events owned by the authenticated organizer. */
 export function useMyEvents() {
   return useQuery({
     queryKey: ["events", "mine"],
