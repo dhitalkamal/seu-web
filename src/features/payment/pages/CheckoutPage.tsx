@@ -102,8 +102,7 @@ export default function CheckoutPage() {
     }
   }
   const discountedSubtotal = Math.max(0, subtotalNum - discountAmount);
-  const platformFee = (discountedSubtotal * 0.05).toFixed(2);
-  const total = (discountedSubtotal + parseFloat(platformFee)).toFixed(2);
+  const total = discountedSubtotal.toFixed(2);
 
   return (
     <AppLayout variant="user" title="Checkout">
@@ -129,10 +128,6 @@ export default function CheckoutPage() {
                 <span>- NPR {discountAmount.toFixed(2)}</span>
               </div>
             )}
-            <div className="flex justify-between text-sm font-['Manrope'] text-[#6b6c75]">
-              <span>Platform fee (5%)</span>
-              <span>NPR {platformFee}</span>
-            </div>
             <div className="h-px bg-[#e0dfd8]" />
             <div className="flex justify-between text-base font-bold font-['Manrope'] text-[#19191e]">
               <span>Total</span>
