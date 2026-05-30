@@ -10,8 +10,10 @@ function getAuthBlob(): string | null {
   );
 }
 
-/** Read access token from the Zustand persisted store in localStorage. */
+/** Read access token from Zustand in-memory state first, then localStorage fallback. */
 function getAccessToken(): string | null {
+  const inMemory = useAuthStore.getState().accessToken;
+  if (inMemory) return inMemory;
   try {
     const raw = getAuthBlob();
     if (!raw) return null;
@@ -22,8 +24,10 @@ function getAccessToken(): string | null {
   }
 }
 
-/** Read refresh token from the Zustand persisted store in localStorage. */
+/** Read refresh token from Zustand in-memory state first, then localStorage fallback. */
 function getRefreshToken(): string | null {
+  const inMemory = useAuthStore.getState().refreshToken;
+  if (inMemory) return inMemory;
   try {
     const raw = getAuthBlob();
     if (!raw) return null;
