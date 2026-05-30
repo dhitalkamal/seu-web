@@ -65,6 +65,8 @@ type FormState = {
   allowed_domains: string[];
   schedule: ScheduleItem[];
   ticket_tiers: TicketTier[];
+  volunteers_enabled: boolean;
+  volunteer_roles: { name: string; description: string; capacity: number }[];
 };
 
 const INITIAL: FormState = {
@@ -87,6 +89,8 @@ const INITIAL: FormState = {
   allowed_domains: [],
   schedule: [],
   ticket_tiers: [],
+  volunteers_enabled: false,
+  volunteer_roles: [],
 };
 
 // * --- Shared Styles ---------------------------------------------------------
@@ -290,23 +294,36 @@ export default function CreateEventPage() {
     };
 
     async function createAndNavigate(eventId: string) {
+      const { default: apiClient } = await import("@/shared/api/client");
+
       // create ticket tiers if any
       if (!form.is_free && form.ticket_tiers.length > 0) {
         for (const tier of form.ticket_tiers) {
           if (!tier.name.trim()) continue;
           try {
-            const { default: apiClient } = await import("@/shared/api/client");
             await apiClient.post(`/participation/api/v1/events/${eventId}/ticket-tiers/`, {
-              name: tier.name,
-              price: tier.price,
-              capacity: tier.capacity,
-              description: tier.description,
+              name: tier.name, price: tier.price, capacity: tier.capacity, description: tier.description,
             });
-          } catch {
-            // non-fatal
-          }
+          } catch { /* non-fatal */ }
         }
       }
+
+      // create volunteer roles if enabled
+      if (form.volunteers_enabled && form.volunteer_roles.length > 0) {
+        for (const role of form.volunteer_roles) {
+          if (!role.name.trim()) continue;
+          try {
+            await apiClient.post("/org/api/v1/volunteers/roles/", {
+              event_id: eventId,
+              organization_id: org?.id,
+              name: role.name,
+              description: role.description,
+              capacity: role.capacity,
+            });
+          } catch { /* non-fatal */ }
+        }
+      }
+
       navigate(`/org/events/${eventId}`);
     }
 
@@ -1243,6 +1260,74 @@ function StepTickets({
           </>
         )}
 
+        {/* volunteer toggle */}
+        <div style={{ padding: "14px 16px", background: "var(--low)", borderRadius: 12, border: "1px solid var(--mid)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: 13.5, fontWeight: 600, fontFamily: "Manrope, sans-serif", color: "var(--on-bg)", marginBottom: 2 }}>
+                Enable Volunteering
+              </p>
+              <p style={{ fontSize: 12, color: "var(--on-mut)", fontFamily: "Manrope, sans-serif" }}>
+                Allow people to apply as volunteers for this event
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => set("volunteers_enabled", !form.volunteers_enabled)}
+              style={{ width: 44, height: 24, borderRadius: 12, border: "none", background: form.volunteers_enabled ? "#4338ca" : "var(--mid)", cursor: "pointer", position: "relative", flexShrink: 0 }}
+            >
+              <div style={{ width: 18, height: 18, borderRadius: 9, background: "white", position: "absolute", top: 3, left: form.volunteers_enabled ? 23 : 3, transition: "left 200ms", boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }} />
+            </button>
+          </div>
+        </div>
+
+        {form.volunteers_enabled && (
+          <div>
+            <label className={labelCls}>Volunteer Roles</label>
+            <p style={{ fontSize: 12, color: "var(--on-mut)", marginBottom: 10, fontFamily: "Manrope, sans-serif" }}>
+              Define roles volunteers can apply for (e.g. Registration Desk, Stage Crew, Photography).
+            </p>
+            {form.volunteer_roles.map((role, idx) => (
+              <div key={idx} style={{ padding: 12, background: "var(--low)", borderRadius: 10, border: "1px solid var(--mid)", marginBottom: 8 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 80px auto", gap: 8 }}>
+                  <input
+                    className={inputCls}
+                    value={role.name}
+                    onChange={(e) => { const u = [...form.volunteer_roles]; u[idx] = { ...u[idx], name: e.target.value }; set("volunteer_roles", u); }}
+                    placeholder="Role name (e.g. Stage Crew)"
+                  />
+                  <input
+                    type="number"
+                    min={1}
+                    className={inputCls}
+                    value={role.capacity}
+                    onChange={(e) => { const u = [...form.volunteer_roles]; u[idx] = { ...u[idx], capacity: parseInt(e.target.value) || 1 }; set("volunteer_roles", u); }}
+                    placeholder="Slots"
+                  />
+                  <button type="button" onClick={() => set("volunteer_roles", form.volunteer_roles.filter((_, i) => i !== idx))} style={{ width: 32, height: 32, borderRadius: 8, border: "1px solid var(--mid)", background: "transparent", cursor: "pointer", display: "grid", placeItems: "center" }}>
+                    <MS n="close" size={14} style={{ color: "var(--on-mut)" }} />
+                  </button>
+                </div>
+                <input
+                  className={inputCls}
+                  value={role.description}
+                  onChange={(e) => { const u = [...form.volunteer_roles]; u[idx] = { ...u[idx], description: e.target.value }; set("volunteer_roles", u); }}
+                  placeholder="Role description"
+                  style={{ marginTop: 8 }}
+                />
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => set("volunteer_roles", [...form.volunteer_roles, { name: "", description: "", capacity: 5 }])}
+              style={{ padding: "8px 14px", borderRadius: 8, border: "1px dashed var(--mid)", background: "transparent", cursor: "pointer", fontSize: 12, fontWeight: 600, fontFamily: "Manrope, sans-serif", color: "var(--on-var)", display: "flex", alignItems: "center", gap: 6 }}
+            >
+              <MS n="add" size={14} />
+              Add role
+            </button>
+          </div>
+        )}
+
         {/* allowed domains  - the platform USP */}
         <div
           style={{
@@ -1411,6 +1496,13 @@ function StepReview({ form, categoryLabel }: { form: FormState; categoryLabel: s
             value={form.visibility.charAt(0).toUpperCase() + form.visibility.slice(1)}
           />
           <ReviewRow label="Price" value={priceDisplay} />
+          {form.ticket_tiers.length > 0 && (
+            <ReviewRow label="Ticket Tiers" value={form.ticket_tiers.map((t) => `${t.name} (NPR ${t.price})`).join(", ")} />
+          )}
+          <ReviewRow label="Volunteering" value={form.volunteers_enabled ? `Yes (${form.volunteer_roles.length} roles)` : "No"} />
+          {form.volunteer_roles.length > 0 && (
+            <ReviewRow label="Volunteer Roles" value={form.volunteer_roles.map((r) => `${r.name} (${r.capacity} slots)`).join(", ")} />
+          )}
           <ReviewRow
             label="Domain Restrictions"
             value={

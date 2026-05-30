@@ -35,7 +35,7 @@ function getRefreshToken(): string | null {
 }
 
 const client = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
+  baseURL: import.meta.env.VITE_API_BASE_URL || "",
   adapter: "fetch",
 });
 
@@ -109,7 +109,7 @@ client.interceptors.response.use(
 
     try {
       const res = await axios.post<{ access: string; refresh?: string }>(
-        `${import.meta.env.VITE_API_BASE_URL}/iam/api/v1/auth/token/refresh/`,
+        `${import.meta.env.VITE_API_BASE_URL || ""}/iam/api/v1/auth/token/refresh/`,
         { refresh: refreshToken }
       );
 
