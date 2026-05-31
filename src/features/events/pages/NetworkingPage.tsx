@@ -2,26 +2,49 @@ import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import AppLayout from "@/shared/layouts/AppLayout";
 import { PH, MS } from "@/shared/components/v8";
-import checkinApi from "@/features/checkin/api/checkin.api";
+import registrationApi from "@/features/registration/api/registration.api";
+import eventsApi from "@/features/events/api/events.api";
+import type { Event } from "@/features/events/types/event.types";
+
+/** format a date string to short label */
+function fmtDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 
 /**
- * Networking landing - shows the user's registered events so they can
- * tap through to the per-event "Who to Meet" connections page.
+ * Networking landing page. Shows events where the user registered with
+ * networking enabled. Clicking an event card opens the Who to Meet page.
  */
 export default function NetworkingPage() {
-  const { data: passport, isLoading } = useQuery({
-    queryKey: ["passport"],
-    queryFn: checkinApi.getPassport,
+  // all user registrations
+  const { data: registrations = [], isLoading: regsLoading } = useQuery({
+    queryKey: ["my-registrations"],
+    queryFn: () => registrationApi.listMine(),
   });
 
-  // passport.registrations is the list of event registrations the user has
-  const active = (passport?.registrations ?? []) as {
-    id: string;
-    event_id: string;
-    event_title?: string;
-    event_start_date?: string;
-    status: string;
-  }[];
+  // only confirmed/checked-in registrations with networking on
+  const networkingRegs = registrations.filter(
+    (r) => r.networking_opt_in === true && (r.status === "confirmed" || r.status === "checked_in")
+  );
+
+  // all confirmed registrations (for the "all events" fallback section)
+  const allActiveRegs = registrations.filter(
+    (r) => r.status === "confirmed" || r.status === "checked_in"
+  );
+  const nonNetworkingRegs = allActiveRegs.filter((r) => !r.networking_opt_in);
+
+  // fetch public events to get titles and dates
+  const { data: eventsData } = useQuery({
+    queryKey: ["events", "public"],
+    queryFn: () => eventsApi.listPublicEvents(),
+  });
+  const eventsMap = new Map<string, Event>((eventsData?.results ?? []).map((e) => [e.id, e]));
+
+  const isLoading = regsLoading;
 
   return (
     <AppLayout variant="user">
@@ -31,7 +54,7 @@ export default function NetworkingPage() {
         sub="AI-powered attendee matching for your registered events."
       />
 
-      {/* hero CTA */}
+      {/* hero */}
       <div
         style={{
           background: "linear-gradient(135deg, #312e81, #4338ca)",
@@ -90,15 +113,15 @@ export default function NetworkingPage() {
             position: "relative",
           }}
         >
-          Our AI analyzes shared event history to rank who you should meet. Opt in on any event
-          below to see your personalized matches and send introductions.
+          Our AI analyzes shared event history to rank who you should meet. Enable networking when
+          registering for an event, then click below to see your matches.
         </p>
       </div>
 
-      {/* events grid */}
-      <div className="panel">
+      {/* networking-enabled events */}
+      <div className="panel" style={{ marginBottom: 20 }}>
         <div className="panel-head">
-          <span className="panel-title">Your events</span>
+          <span className="panel-title">Networking enabled</span>
           <span
             style={{
               fontFamily: "JetBrains Mono, monospace",
@@ -106,7 +129,7 @@ export default function NetworkingPage() {
               color: "var(--on-mut)",
             }}
           >
-            {active.length} registered
+            {networkingRegs.length} event{networkingRegs.length !== 1 ? "s" : ""}
           </span>
         </div>
         <div className="panel-body flush">
@@ -119,12 +142,12 @@ export default function NetworkingPage() {
                 fontFamily: "Manrope, sans-serif",
               }}
             >
-              Loading your events...
+              Loading...
             </div>
-          ) : active.length === 0 ? (
+          ) : networkingRegs.length === 0 ? (
             <div style={{ padding: "48px 0", textAlign: "center" }}>
               <MS
-                n="event_busy"
+                n="diversity_3"
                 size={32}
                 style={{ display: "block", margin: "0 auto 12px", opacity: 0.25 }}
               />
@@ -136,7 +159,7 @@ export default function NetworkingPage() {
                   marginBottom: 6,
                 }}
               >
-                No registered events
+                No networking events yet
               </p>
               <p
                 style={{
@@ -146,7 +169,7 @@ export default function NetworkingPage() {
                   marginBottom: 16,
                 }}
               >
-                Register for an event to start networking with other attendees.
+                Enable networking when registering for an event to get matched with attendees.
               </p>
               <Link
                 to="/events"
@@ -177,87 +200,190 @@ export default function NetworkingPage() {
                 padding: 16,
               }}
             >
-              {active.map(
-                (reg: {
-                  id: string;
-                  event_id: string;
-                  event_title?: string;
-                  event_start_date?: string;
-                }) => (
-                  <Link
+              {networkingRegs.map((reg) => {
+                const ev = eventsMap.get(reg.event_id);
+                return (
+                  <_EventCard
                     key={reg.id}
-                    to={`/events/${reg.event_id}/connections`}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 14,
-                      padding: "16px 18px",
-                      borderRadius: 14,
-                      border: "1px solid var(--outline)",
-                      background: "var(--surface)",
-                      textDecoration: "none",
-                      color: "var(--on-bg)",
-                      transition: "border-color 0.15s",
-                    }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLElement).style.borderColor = "var(--primary)";
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLElement).style.borderColor = "var(--outline)";
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: 42,
-                        height: 42,
-                        borderRadius: 11,
-                        background: "#ede9fe",
-                        display: "grid",
-                        placeItems: "center",
-                        flexShrink: 0,
-                      }}
-                    >
-                      <MS n="diversity_3" size={22} style={{ color: "#4338ca" }} />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p
-                        style={{
-                          fontFamily: "'Space Grotesk', sans-serif",
-                          fontWeight: 600,
-                          fontSize: 14,
-                          letterSpacing: "-0.02em",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {reg.event_title ?? `Event ${reg.event_id.slice(0, 8)}`}
-                      </p>
-                      {reg.event_start_date && (
-                        <p
-                          style={{
-                            fontSize: 12,
-                            color: "var(--on-mut)",
-                            fontFamily: "Manrope, sans-serif",
-                            marginTop: 2,
-                          }}
-                        >
-                          {new Date(reg.event_start_date).toLocaleDateString()}
-                        </p>
-                      )}
-                    </div>
-                    <MS
-                      n="arrow_forward"
-                      size={18}
-                      style={{ color: "var(--on-mut)", flexShrink: 0 }}
-                    />
-                  </Link>
-                )
-              )}
+                    eventId={reg.event_id}
+                    title={ev?.title}
+                    date={ev?.start_date}
+                    location={ev?.location}
+                    networkingOn
+                  />
+                );
+              })}
             </div>
           )}
         </div>
       </div>
+
+      {/* other registered events without networking */}
+      {nonNetworkingRegs.length > 0 && (
+        <div className="panel">
+          <div className="panel-head">
+            <span className="panel-title">Other registered events</span>
+            <span
+              style={{
+                fontFamily: "JetBrains Mono, monospace",
+                fontSize: 10.5,
+                color: "var(--on-mut)",
+              }}
+            >
+              networking off
+            </span>
+          </div>
+          <div className="panel-body flush">
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+                gap: 14,
+                padding: 16,
+              }}
+            >
+              {nonNetworkingRegs.map((reg) => {
+                const ev = eventsMap.get(reg.event_id);
+                return (
+                  <_EventCard
+                    key={reg.id}
+                    eventId={reg.event_id}
+                    title={ev?.title}
+                    date={ev?.start_date}
+                    location={ev?.location}
+                    networkingOn={false}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
+  );
+}
+
+/** clickable event card that links to the connections page */
+function _EventCard({
+  eventId,
+  title,
+  date,
+  location,
+  networkingOn,
+}: {
+  eventId: string;
+  title?: string;
+  date?: string;
+  location?: string;
+  networkingOn: boolean;
+}) {
+  return (
+    <Link
+      to={`/events/${eventId}/connections`}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 14,
+        padding: "16px 18px",
+        borderRadius: 14,
+        border: `1px solid ${networkingOn ? "#c7d2fe" : "var(--outline)"}`,
+        background: networkingOn ? "rgba(99,102,241,0.04)" : "var(--surface)",
+        textDecoration: "none",
+        color: "var(--on-bg)",
+        transition: "border-color 0.15s, box-shadow 0.15s",
+      }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLElement).style.borderColor = "#4338ca";
+        (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 16px rgba(67,56,202,0.1)";
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLElement).style.borderColor = networkingOn
+          ? "#c7d2fe"
+          : "var(--outline)";
+        (e.currentTarget as HTMLElement).style.boxShadow = "none";
+      }}
+    >
+      <div
+        style={{
+          width: 42,
+          height: 42,
+          borderRadius: 11,
+          background: networkingOn ? "#ede9fe" : "var(--low)",
+          display: "grid",
+          placeItems: "center",
+          flexShrink: 0,
+        }}
+      >
+        <MS
+          n={networkingOn ? "diversity_3" : "event"}
+          size={22}
+          style={{ color: networkingOn ? "#4338ca" : "var(--on-mut)" }}
+        />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p
+          style={{
+            fontFamily: "'Space Grotesk', sans-serif",
+            fontWeight: 600,
+            fontSize: 14,
+            letterSpacing: "-0.02em",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {title ?? `Event ${eventId.slice(0, 8)}`}
+        </p>
+        <div style={{ display: "flex", gap: 10, marginTop: 3 }}>
+          {date && (
+            <span
+              style={{
+                fontSize: 11.5,
+                color: "var(--on-mut)",
+                fontFamily: "Manrope, sans-serif",
+                display: "flex",
+                alignItems: "center",
+                gap: 3,
+              }}
+            >
+              <MS n="calendar_today" size={11} />
+              {fmtDate(date)}
+            </span>
+          )}
+          {location && (
+            <span
+              style={{
+                fontSize: 11.5,
+                color: "var(--on-mut)",
+                fontFamily: "Manrope, sans-serif",
+                display: "flex",
+                alignItems: "center",
+                gap: 3,
+              }}
+            >
+              <MS n="location_on" size={11} />
+              {location}
+            </span>
+          )}
+        </div>
+      </div>
+      {networkingOn && (
+        <span
+          style={{
+            padding: "3px 8px",
+            borderRadius: 6,
+            background: "#dcfce7",
+            color: "#166534",
+            fontSize: 10,
+            fontWeight: 700,
+            fontFamily: "JetBrains Mono, monospace",
+            flexShrink: 0,
+          }}
+        >
+          ON
+        </span>
+      )}
+      <MS n="arrow_forward" size={18} style={{ color: "var(--on-mut)", flexShrink: 0 }} />
+    </Link>
   );
 }
