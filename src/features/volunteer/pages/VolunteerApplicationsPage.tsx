@@ -31,7 +31,7 @@ export default function VolunteerApplicationsPage() {
 
   // apply mutation - fires apply() then invalidates the roles query so status re-renders
   const applyMutation = useMutation({
-    mutationFn: (roleId: string) => volunteerRolesApi.apply(roleId),
+    mutationFn: ({ roleId, eventId }: { roleId: string; eventId: string }) => volunteerRolesApi.apply(roleId, eventId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["volunteer-roles"] });
       qc.invalidateQueries({ queryKey: ["my-volunteer-apps"] });
@@ -47,7 +47,9 @@ export default function VolunteerApplicationsPage() {
    * @returns "open" when slots remain, "full" when all slots are taken
    */
   function roleStatus(r: VolunteerRole): "open" | "full" {
-    return r.filled < r.slots ? "open" : "full";
+    const cap = r.capacity ?? r.slots ?? 0;
+    const filled = r.filled ?? 0;
+    return filled < cap ? "open" : "full";
   }
 
   // filter by tab - "browse" shows all open roles, other tabs need a /my-applications endpoint
@@ -243,7 +245,10 @@ export default function VolunteerApplicationsPage() {
                       marginBottom: 4,
                     }}
                   >
-                    {role.title}
+                    {role.name || role.title}
+                  </p>
+                  <p style={{ fontSize: 11, color: "var(--on-mut)", fontFamily: "'JetBrains Mono', monospace", marginBottom: 4 }}>
+                    Event: {role.event_id?.slice(0, 8)}
                   </p>
                   <p
                     style={{
@@ -287,7 +292,7 @@ export default function VolunteerApplicationsPage() {
                       <span className="ms" style={{ fontSize: 14 }}>
                         group
                       </span>
-                      {role.slots - role.filled}/{role.slots} spots left
+                      {(role.capacity ?? role.slots ?? 0) - (role.filled ?? 0)}/{role.capacity ?? role.slots ?? 0} spots left
                     </span>
                   </div>
                 </div>
@@ -298,7 +303,7 @@ export default function VolunteerApplicationsPage() {
                     disabled={isApplying}
                     onClick={() => {
                       setApplying(role.id);
-                      applyMutation.mutate(role.id);
+                      applyMutation.mutate({ roleId: role.id, eventId: role.event_id });
                     }}
                     style={{
                       padding: "9px 20px",

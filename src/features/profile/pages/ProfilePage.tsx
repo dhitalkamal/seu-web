@@ -2832,7 +2832,7 @@ function NotificationPrefsSection() {
       await Promise.all(
         PREF_TYPES.map(async (pt) => {
           try {
-            const r = await notificationsApi.updatePreference(pt.type, {});
+            const r = await notificationsApi.getPreference(pt.type);
             if (r) results[pt.type] = r;
           } catch {
             // pref not saved yet for this type - leave undefined so row disables its toggles

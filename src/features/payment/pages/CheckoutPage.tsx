@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { useMutation } from "@tanstack/react-query";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { v4 as uuidv4 } from "uuid";
 import AppLayout from "@/shared/layouts/AppLayout";
 import paymentApi, { submitEsewaForm } from "../api/payment.api";
+import registrationApi from "@/features/registration/api/registration.api";
 import type { Gateway } from "../types";
 
 type PromoResult = {
@@ -22,6 +23,7 @@ const GATEWAY_LABELS: Record<Gateway, string> = {
 /** Checkout page: build the order, then redirect to the payment gateway. */
 export default function CheckoutPage() {
   const [params] = useSearchParams();
+  const navigate = useNavigate();
   const eventId = params.get("event_id") ?? "";
   const registrationId = params.get("registration_id") || undefined;
   const subtotal = params.get("subtotal") ?? "0.00";
@@ -31,6 +33,15 @@ export default function CheckoutPage() {
   const [promoResult, setPromoResult] = useState<PromoResult | null>(null);
   const [promoError, setPromoError] = useState("");
   const [promoLoading, setPromoLoading] = useState(false);
+
+  // check if user already has a registration for this event
+  const { data: myRegistrations = [] } = useQuery({
+    queryKey: ["my-registrations"],
+    queryFn: () => registrationApi.listMine(),
+  });
+  const alreadyRegistered = myRegistrations.some(
+    (r) => r.event_id === eventId && (r.status === "confirmed" || r.status === "checked_in")
+  );
 
   const orderMutation = useMutation({
     mutationFn: () =>
@@ -87,6 +98,27 @@ export default function CheckoutPage() {
           <p className="text-sm text-red-600 font-['Manrope']">
             Invalid checkout link. Please go back and try again.
           </p>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (alreadyRegistered) {
+    return (
+      <AppLayout variant="user" title="Checkout">
+        <div className="max-w-lg mx-auto px-4 py-20 text-center">
+          <p className="text-lg font-bold text-[#16a34a] font-['Manrope'] mb-2">
+            You are already registered for this event.
+          </p>
+          <p className="text-sm text-[#6b7280] font-['Manrope'] mb-6">
+            Check your tickets to view your registration details.
+          </p>
+          <button
+            onClick={() => navigate("/tickets")}
+            className="bg-[#19191e] text-white text-sm font-bold font-['Manrope'] rounded-2xl px-8 py-3 hover:opacity-90"
+          >
+            View My Tickets
+          </button>
         </div>
       </AppLayout>
     );
@@ -199,7 +231,14 @@ export default function CheckoutPage() {
 
           {orderMutation.isError && (
             <p className="text-sm text-red-600 font-['Manrope']">
-              Payment failed. Please try again.
+              {(() => {
+                const err = orderMutation.error;
+                const msg =
+                  (err as { response?: { data?: { error?: { message?: string } } } })?.response
+                    ?.data?.error?.message ?? "";
+                if (msg.toLowerCase().includes("already")) return msg;
+                return "Payment failed. Please try again.";
+              })()}
             </p>
           )}
 

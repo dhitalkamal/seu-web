@@ -59,6 +59,8 @@ export type VolunteerProfile = {
   id: string;
   user_id: string;
   total_hours: number;
+  average_rating: number | null;
+  certificate_count: number;
   skills: string[];
   availability: string;
   bio?: string;
@@ -74,22 +76,31 @@ const volunteerRolesApi = {
       .then((r) => r.data.data ?? []),
 
   /** Create a new volunteer role for an event. */
-  createRole: (payload: { event_id: string; organization_id: string; name: string; description: string; capacity: number }) =>
-    client.post<ApiOk<VolunteerRole>>(`${BASE}/roles/`, payload).then((r) => r.data.data),
+  createRole: (payload: {
+    event_id: string;
+    organization_id: string;
+    name: string;
+    description: string;
+    capacity: number;
+  }) => client.post<ApiOk<VolunteerRole>>(`${BASE}/roles/`, payload).then((r) => r.data.data),
 
   /** List the authenticated user's applications across all roles. */
   myApplications: () =>
-    client.get<ApiOk<VolunteerApplication[]>>(`${BASE}/my/applications/`).then((r) => r.data.data ?? []),
+    client
+      .get<ApiOk<VolunteerApplication[]>>(`${BASE}/my/applications/`)
+      .then((r) => r.data.data ?? []),
 
   /** List the authenticated user's certificates. */
   myCertificates: () =>
-    client.get<ApiOk<VolunteerCertificate[]>>(`${BASE}/my/certificates/`).then((r) => r.data.data ?? []),
+    client
+      .get<ApiOk<VolunteerCertificate[]>>(`${BASE}/my/certificates/`)
+      .then((r) => r.data.data ?? []),
 
   /** Apply for a volunteer role. */
-  apply: (roleId: string, message?: string) =>
+  apply: (roleId: string, eventId: string) =>
     client
       .post<ApiOk<VolunteerApplication>>(`${BASE}/roles/${roleId}/apply/`, {
-        message: message ?? "",
+        event_id: eventId,
       })
       .then((r) => r.data.data),
 

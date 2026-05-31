@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState } from "react";
 import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Helmet } from "react-helmet-async";
 import { Button } from "@/shared/components/ui";
 import PublicLayout from "@/shared/layouts/PublicLayout";
@@ -47,6 +48,16 @@ export default function EventDetailPage() {
   const [regError, setRegError] = useState("");
 
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
+  // check if user already has an active registration for this event
+  const { data: myRegistrations = [] } = useQuery({
+    queryKey: ["my-registrations"],
+    queryFn: () => registrationApi.listMine(),
+    enabled: isAuthenticated,
+  });
+  const alreadyRegistered = myRegistrations.some(
+    (r) => r.event_id === id && r.status !== "cancelled"
+  );
 
   // when accessed via /org/events/:id use the org shell + org navigation targets
   const isOrgContext = location.pathname.startsWith("/org/");
@@ -104,6 +115,10 @@ export default function EventDetailPage() {
       navigate("/login");
       return;
     }
+    if (alreadyRegistered) {
+      setRegError("You are already registered for this event.");
+      return;
+    }
     setRegistering(true);
     setRegError("");
     try {
@@ -125,7 +140,11 @@ export default function EventDetailPage() {
 
       navigate("/tickets");
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Registration failed. Please try again.";
+      const axiosMsg =
+        (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error
+          ?.message ?? "";
+      const msg =
+        axiosMsg || (err instanceof Error ? err.message : "Registration failed. Please try again.");
       setRegError(msg);
     } finally {
       setRegistering(false);
@@ -542,31 +561,36 @@ export default function EventDetailPage() {
               )}
               <button
                 onClick={handleRegister}
-                disabled={spots === 0 || registering}
+                disabled={spots === 0 || registering || alreadyRegistered}
                 className="flex items-center justify-center gap-2 font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
                 style={{
                   padding: "14px",
                   borderRadius: 12,
                   border: "none",
-                  cursor: spots === 0 ? "not-allowed" : "pointer",
-                  background:
-                    spots > 0 ? "linear-gradient(135deg, #050a26, #121d3f)" : "var(--high)",
+                  cursor: spots === 0 || alreadyRegistered ? "not-allowed" : "pointer",
+                  background: alreadyRegistered
+                    ? "#16a34a"
+                    : spots > 0
+                      ? "linear-gradient(135deg, #050a26, #121d3f)"
+                      : "var(--high)",
                   fontSize: 14.5,
                   fontFamily: "Manrope, sans-serif",
-                  color: spots > 0 ? "white" : "var(--on-mut)",
+                  color: alreadyRegistered ? "white" : spots > 0 ? "white" : "var(--on-mut)",
                   width: "100%",
                 }}
               >
                 <span className="ms" style={{ fontSize: 18 }}>
-                  confirmation_number
+                  {alreadyRegistered ? "check_circle" : "confirmation_number"}
                 </span>
-                {spots === 0
-                  ? "Sold out"
-                  : registering
-                    ? "Registering..."
-                    : event.is_free
-                      ? "Register (Free)"
-                      : "Register & Pay"}
+                {alreadyRegistered
+                  ? "Already Registered"
+                  : spots === 0
+                    ? "Sold out"
+                    : registering
+                      ? "Registering..."
+                      : event.is_free
+                        ? "Register (Free)"
+                        : "Register & Pay"}
               </button>
             </>
           )}

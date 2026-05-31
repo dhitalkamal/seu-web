@@ -50,12 +50,6 @@ export type EventHealthScore = {
 };
 
 const intelligenceApi = {
-  /** Tokenise a natural-language query via GET ?q= and return keywords + filters. */
-  nlpSearch: (query: string) =>
-    client
-      .get<{ data: NlpSearchResult }>(`${BASE}/nlp/search/`, { params: { q: query } })
-      .then((r) => r.data.data),
-
   /** Get the computed health score for a single event. */
   getEventHealth: (eventId: string) =>
     client
@@ -67,14 +61,6 @@ const intelligenceApi = {
     client
       .get<{ data: AttendeeMatch[] }>(`${BASE}/events/${eventId}/connections/`)
       .then((r) => r.data.data ?? []),
-
-  /** Analyze the sentiment of a free-text string. */
-  analyzeSentiment: (text: string) =>
-    client
-      .post<{
-        data: { sentiment: string; score: number };
-      }>(`${BASE}/nlp/sentiment/analyze`, { text })
-      .then((r) => r.data.data),
 
   /** Send a connection introduction between two attendees at an event. */
   introduceConnection: (eventId: string, userId: string) =>
@@ -99,48 +85,12 @@ const intelligenceApi = {
       .patch<{ data: unknown }>(`${BASE}/events/${eventId}/connections/settings/`, settings)
       .then((r) => r.data.data),
 
-  /** Classify a piece of text into a category with a confidence score. */
-  classifyContent: (text: string) =>
-    client
-      .post<{
-        data: { category: string; confidence: number };
-      }>(`${BASE}/nlp/classification/analyze`, { text })
-      .then((r) => r.data.data),
-
   /** Check text for policy violations, returning flagged categories and a score. */
   moderateContent: (text: string) =>
     client
       .post<{
         data: { flagged: boolean; categories: string[]; score: number };
       }>(`${BASE}/nlp/moderation/analyze`, { text })
-      .then((r) => r.data.data),
-
-  /** Extract named entities (people, places, orgs, etc.) from text. */
-  extractEntities: (text: string) =>
-    client
-      .post<{
-        data: { entities: { text: string; type: string }[] };
-      }>(`${BASE}/nlp/entities/extract`, { text })
-      .then((r) => r.data.data),
-
-  /** Pull the most significant keywords out of a text string. */
-  extractKeywords: (text: string) =>
-    client
-      .post<{ data: { keywords: string[] } }>(`${BASE}/nlp/keywords/extract`, { text })
-      .then((r) => r.data.data),
-
-  /** Identify the language a text string is written in. */
-  detectLanguage: (text: string) =>
-    client
-      .post<{
-        data: { language: string; confidence: number };
-      }>(`${BASE}/nlp/language/detect`, { text })
-      .then((r) => r.data.data),
-
-  /** Compute a semantic similarity score between two strings. */
-  scoreSimilarity: (text1: string, text2: string) =>
-    client
-      .post<{ data: { score: number } }>(`${BASE}/nlp/similarity/score`, { text1, text2 })
       .then((r) => r.data.data),
 
   /** Kick off an async report generation job. */
@@ -157,7 +107,9 @@ const intelligenceApi = {
 
   /** Get a presigned download URL for a completed report. */
   getReportDownloadUrl: (jobId: string) =>
-    client.get<{ data: { download_url: string } }>(`${BASE}/reports/${jobId}/download/`).then((r) => r.data.data.download_url),
+    client
+      .get<{ data: { download_url: string } }>(`${BASE}/reports/${jobId}/download/`)
+      .then((r) => r.data.data.download_url),
 
   /** Send a chat message with history and optional event context to the NLP chat endpoint. */
   chat: (

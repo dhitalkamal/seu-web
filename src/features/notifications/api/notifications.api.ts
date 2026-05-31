@@ -56,6 +56,12 @@ const notificationsApi = {
       .post<ApiOk<{ updated: number }>>(`${BASE}/notifications/mark-all-read/`)
       .then((r) => r.data.data),
 
+  /** Get channel preferences for a notification type. */
+  getPreference: (notificationType: string) =>
+    client
+      .get<ApiOk<NotificationPreference>>(`${BASE}/preferences/${notificationType}/`)
+      .then((r) => r.data.data),
+
   /** Update channel preferences for a notification type. */
   updatePreference: (
     notificationType: string,

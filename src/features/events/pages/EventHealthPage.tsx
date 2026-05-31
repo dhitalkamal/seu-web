@@ -16,7 +16,7 @@ function scoreLevel(score: number): { label: string; color: string } {
 
 /** Event health page: weighted score combining fill rate, conversion, velocity, and revenue progress. */
 export default function EventHealthPage() {
-  const { toast, toastEl } = useToast();
+  const { toastEl } = useToast();
   const { id: eventId } = useParams<{ id: string }>();
 
   // fetch health score for this event from the intelligence service
@@ -40,16 +40,10 @@ export default function EventHealthPage() {
         title="Event health"
         sub="Weighted score combining fill rate, conversion, velocity, and revenue progress. Updated hourly."
         actions={
-          <>
-            <button className="btn-sm" onClick={() => refetch()}>
-              <MS n="refresh" size={13} />
-              Recalculate
-            </button>
-            <button className="btn-sm primary" onClick={() => toast("Report scheduled")}>
-              <MS n="schedule_send" size={13} />
-              Weekly digest
-            </button>
-          </>
+          <button className="btn-sm" onClick={() => refetch()}>
+            <MS n="refresh" size={13} />
+            Recalculate
+          </button>
         }
       />
 

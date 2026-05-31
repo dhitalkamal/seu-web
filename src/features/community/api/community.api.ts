@@ -2,14 +2,16 @@ import client from "@/shared/api/client";
 
 const BASE = "/org/api/v1/communities";
 
-// * types
-
 export type Community = {
   id: string;
   name: string;
+  slug: string;
   description: string;
+  privacy: string;
   member_count: number;
   is_member: boolean;
+  created_by: string;
+  organization_id: string | null;
   created_at: string;
 };
 
@@ -17,57 +19,87 @@ export type CommunityPost = {
   id: string;
   community_id: string;
   author_id: string;
+  author_name: string;
+  author_avatar: string;
   content: string;
-  created_at: string;
-  // * extended backend fields
-  /** One of: text, image, video, link, poll. */
   post_type: "text" | "image" | "video" | "link" | "poll";
-  /** Lifecycle status of the post. */
   status: "draft" | "published" | "hidden" | "removed";
-  /** Attached media URLs (images, video thumbnails, etc.). */
   media_urls: string[];
-  /** Cumulative like count. */
   like_count: number;
-  /** Total comment count. */
   comment_count: number;
-  /** Number of user reports on this post. */
   report_count: number;
-  /** Whether the post is pinned at the top of the feed. */
   is_pinned: boolean;
-  /** ISO timestamp set when the post is soft-deleted; null while active. */
+  is_liked: boolean;
+  repost_count: number;
+  created_at: string;
   deleted_at: string | null;
+};
+
+export type PostComment = {
+  id: string;
+  post_id: string;
+  author_id: string;
+  author_name: string;
+  author_avatar: string;
+  content: string;
+  parent_id: string | null;
+  like_count: number;
+  reply_count: number;
+  created_at: string;
+  replies: PostComment[];
+};
+
+export type Hashtag = {
+  id: string;
+  name: string;
+  post_count: number;
 };
 
 type ApiOk<T> = { data: T };
 
-// * api client
-
-/** Community service API calls. */
 const communityApi = {
-  /** Fetch all communities. */
   list: () => client.get<ApiOk<Community[]>>(`${BASE}/`).then((r) => r.data.data ?? []),
 
-  /** Create a new community. */
-  create: (payload: { name: string; description: string }) =>
-    client.post<ApiOk<Community>>(`${BASE}/`, payload).then((r) => r.data.data),
+  create: (payload: {
+    name: string;
+    slug: string;
+    description?: string;
+    privacy?: string;
+    organization_id?: string;
+  }) => client.post<ApiOk<Community>>(`${BASE}/`, payload).then((r) => r.data.data),
 
-  /** Fetch a single community by id. */
-  get: (id: string) => client.get<ApiOk<Community>>(`${BASE}/${id}/`).then((r) => r.data.data),
-
-  /** Join a community by id. */
   join: (id: string) =>
     client.post<ApiOk<Community>>(`${BASE}/${id}/join/`).then((r) => r.data.data),
 
-  /** List posts for a community. */
   listPosts: (id: string) =>
     client.get<ApiOk<CommunityPost[]>>(`${BASE}/${id}/posts/`).then((r) => r.data.data ?? []),
 
-  /** Publish a post to a community. */
-  createPost: (id: string, content: string) =>
-    client.post<ApiOk<CommunityPost>>(`${BASE}/${id}/posts/`, { content }).then((r) => r.data.data),
+  createPost: (
+    id: string,
+    payload: { content: string; media_urls?: string[]; post_type?: string }
+  ) => client.post<ApiOk<CommunityPost>>(`${BASE}/${id}/posts/`, payload).then((r) => r.data.data),
 
-  /** Soft-delete a post by its id. Returns 204 with no body on success. */
   deletePost: (postId: string) => client.delete(`${BASE}/posts/${postId}/`),
+
+  likePost: (postId: string) => client.post(`${BASE}/posts/${postId}/like/`),
+
+  unlikePost: (postId: string) => client.delete(`${BASE}/posts/${postId}/like/`),
+
+  listComments: (postId: string) =>
+    client
+      .get<ApiOk<PostComment[]>>(`${BASE}/posts/${postId}/comments/`)
+      .then((r) => r.data.data ?? []),
+
+  createComment: (postId: string, content: string, parentId?: string) =>
+    client
+      .post<ApiOk<PostComment>>(`${BASE}/posts/${postId}/comments/`, {
+        content,
+        parent_id: parentId ?? null,
+      })
+      .then((r) => r.data.data),
+
+  listHashtags: () =>
+    client.get<ApiOk<Hashtag[]>>(`${BASE}/hashtags/`).then((r) => r.data.data ?? []),
 };
 
 export default communityApi;

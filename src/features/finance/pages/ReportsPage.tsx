@@ -81,6 +81,7 @@ export default function ReportsPage() {
           }
         }
       } catch {
+        toast("Report generation failed");
         clearInterval(pollRef.current!);
         setPollingJobId(null);
       }
