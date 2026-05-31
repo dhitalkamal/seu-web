@@ -7,6 +7,8 @@ import { useAuthStore } from "@/shared/store/auth.store";
 import { useOrgContext } from "@/features/orgs/hooks/useOrgContext";
 import eventsApi from "@/features/events/api/events.api";
 import subscriptionApi, { PLAN_CATALOGUE } from "@/features/orgs/api/subscription.api";
+import orgApi from "@/features/orgs/api/org.api";
+import volunteerRolesApi from "@/features/volunteer-apps/api/volunteer-roles.api";
 import type { Event } from "@/features/events/types/event.types";
 
 /** Build a CSV blob from an array of row objects and trigger a download. */
@@ -51,8 +53,8 @@ export default function OrgDashboardPage() {
     enabled: !!orgId,
   });
 
-  const currentPlan = currentSub?.plan ?? "free";
-  const planLabel = PLAN_CATALOGUE.find((p) => p.name === currentPlan)?.label ?? "Free";
+  const currentPlan = org?.plan ?? currentSub?.plan ?? "free";
+  const planLabel = PLAN_CATALOGUE.find((p) => p.name === currentPlan)?.label ?? currentPlan;
 
   // fetch events owned by this organizer
   const { data: eventsPage, isLoading: eventsLoading } = useQuery({
@@ -62,6 +64,21 @@ export default function OrgDashboardPage() {
   });
 
   const events: Event[] = eventsPage?.results ?? [];
+
+  // fetch volunteer roles to count approved volunteers
+  const { data: volunteerRoles = [] } = useQuery({
+    queryKey: ["volunteer-roles"],
+    queryFn: () => volunteerRolesApi.listRoles(),
+    enabled: !!org,
+  });
+  const volunteerCount = volunteerRoles.reduce((sum, r) => sum + (r.filled ?? 0), 0);
+
+  // fetch team members for health panel
+  const { data: teamMembers = [] } = useQuery({
+    queryKey: ["org-members", orgId],
+    queryFn: () => orgApi.listMembers(orgId),
+    enabled: !!orgId,
+  });
 
   // compute KPIs from event data
   const totalRegistrations = events.reduce((sum, e) => sum + (e.registered_count ?? 0), 0);
@@ -115,10 +132,7 @@ export default function OrgDashboardPage() {
     return null;
   }
 
-  const revenueDisplay =
-    totalRevenue > 0
-      ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(totalRevenue)
-      : "-";
+  const revenueDisplay = totalRevenue > 0 ? `NPR ${totalRevenue.toLocaleString()}` : "-";
 
   return (
     <AppLayout variant="org">
@@ -269,7 +283,12 @@ export default function OrgDashboardPage() {
           label="Active Events"
           value={eventsLoading ? "..." : activeEvents.length.toString()}
         />
-        <KPI icon="group_add" color="nav" label="Volunteers" value="0" />
+        <KPI
+          icon="group_add"
+          color="nav"
+          label="Volunteers"
+          value={eventsLoading ? "..." : String(volunteerCount)}
+        />
       </div>
 
       {/* Revenue chart + workspace integrity */}
@@ -288,18 +307,61 @@ export default function OrgDashboardPage() {
               {eventsLoading ? "..." : revenueDisplay}
             </span>
           </div>
-          <div
-            className="panel-body"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              minHeight: 220,
-              color: "var(--on-mut)",
-              fontSize: 13,
-            }}
-          >
-            {eventsLoading ? "Loading..." : "Chart coming soon"}
+          <div className="panel-body" style={{ padding: "16px 20px", minHeight: 220 }}>
+            {eventsLoading ? (
+              <p style={{ color: "var(--on-mut)", fontSize: 13 }}>Loading...</p>
+            ) : events.length === 0 ? (
+              <p
+                style={{
+                  color: "var(--on-mut)",
+                  fontSize: 13,
+                  textAlign: "center",
+                  paddingTop: 60,
+                }}
+              >
+                No revenue data yet
+              </p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                  <span style={{ color: "var(--on-var)", fontFamily: "Manrope, sans-serif" }}>
+                    Total events
+                  </span>
+                  <span style={{ fontWeight: 600 }}>{events.length}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                  <span style={{ color: "var(--on-var)", fontFamily: "Manrope, sans-serif" }}>
+                    Paid events
+                  </span>
+                  <span style={{ fontWeight: 600 }}>{events.filter((e) => !e.is_free).length}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                  <span style={{ color: "var(--on-var)", fontFamily: "Manrope, sans-serif" }}>
+                    Total registrations
+                  </span>
+                  <span style={{ fontWeight: 600 }}>{totalRegistrations.toLocaleString()}</span>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: 14,
+                    fontWeight: 700,
+                    paddingTop: 8,
+                    borderTop: "1px solid var(--outline)",
+                  }}
+                >
+                  <span style={{ color: "var(--on-bg)", fontFamily: "Manrope, sans-serif" }}>
+                    Revenue YTD
+                  </span>
+                  <span
+                    style={{ color: "var(--primary)", fontFamily: "'Space Grotesk', sans-serif" }}
+                  >
+                    {revenueDisplay}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
         <div className="depth">
@@ -589,12 +651,7 @@ export default function OrgDashboardPage() {
                         <tr key={e.id}>
                           <td style={{ fontWeight: 500 }}>{e.title}</td>
                           <td>{e.registered_count}</td>
-                          <td>
-                            {new Intl.NumberFormat("en-US", {
-                              style: "currency",
-                              currency: "USD",
-                            }).format(rev)}
-                          </td>
+                          <td>NPR {rev.toLocaleString()}</td>
                         </tr>
                       );
                     })}
@@ -608,18 +665,40 @@ export default function OrgDashboardPage() {
           <div className="panel-head">
             <span className="panel-title">Team &amp; volunteer health</span>
           </div>
-          <div
-            className="panel-body"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              minHeight: 140,
-              color: "var(--on-mut)",
-              fontSize: 13,
-            }}
-          >
-            No data yet
+          <div className="panel-body" style={{ padding: "16px 20px", minHeight: 140 }}>
+            {teamMembers.length === 0 ? (
+              <p
+                style={{
+                  color: "var(--on-mut)",
+                  fontSize: 13,
+                  textAlign: "center",
+                  paddingTop: 40,
+                }}
+              >
+                No data yet
+              </p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                  <span style={{ color: "var(--on-var)" }}>Team members</span>
+                  <span style={{ fontWeight: 600 }}>{teamMembers.length}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                  <span style={{ color: "var(--on-var)" }}>Active members</span>
+                  <span style={{ fontWeight: 600 }}>
+                    {teamMembers.filter((m) => m.is_active).length}
+                  </span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                  <span style={{ color: "var(--on-var)" }}>Volunteer roles</span>
+                  <span style={{ fontWeight: 600 }}>{volunteerRoles.length}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                  <span style={{ color: "var(--on-var)" }}>Filled positions</span>
+                  <span style={{ fontWeight: 600 }}>{volunteerCount}</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

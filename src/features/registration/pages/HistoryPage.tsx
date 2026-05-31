@@ -190,7 +190,7 @@ function ReviewModal({ eventId, onClose }: { eventId: string; onClose: () => voi
 
 /** Past events page - shows completed/cancelled registrations with bar chart and history table. */
 export default function HistoryPage() {
-  const { toast, toastEl } = useToast();
+  const { toastEl } = useToast();
   const { data: registrations, isLoading } = useMyRegistrations();
   const [reviewFor, setReviewFor] = useState<string | null>(null);
 
@@ -237,12 +237,7 @@ export default function HistoryPage() {
         crumbs={["Past Events"]}
         title="Past events"
         sub="Every programme you've attended."
-        actions={
-          <button className="btn-sm" onClick={() => toast("Year in review coming soon")}>
-            <MS n="auto_awesome" size={13} />
-            Year in review
-          </button>
-        }
+        actions={undefined}
       />
 
       <div className="kpi-grid">

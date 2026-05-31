@@ -5,22 +5,16 @@ import checkinApi from "@/features/checkin/api/checkin.api";
 
 // * types
 
-/** Shape expected from the shifts endpoint. */
+/** Shape returned by the volunteer shifts endpoint. */
 type Shift = {
   id: string;
-  event_name?: string;
-  role?: string;
-  start_time?: string;
-  end_time?: string;
-  status?: string;
-  notes?: string;
-};
-
-/** Status badge colors. */
-const STATUS_STYLES: Record<string, { bg: string; color: string }> = {
-  approved: { bg: "#dcfce7", color: "#166534" },
-  pending: { bg: "#dbeafe", color: "#1e40af" },
-  rejected: { bg: "#fee2e2", color: "#991b1b" },
+  role_id?: string;
+  event_id?: string;
+  starts_at?: string;
+  ends_at?: string;
+  capacity?: number;
+  location?: string | null;
+  description?: string | null;
 };
 
 /**
@@ -51,17 +45,10 @@ export default function VolunteerHoursPage() {
   // cast unknown[] from API to local Shift type
   const shifts = raw as Shift[];
 
-  const approvedShifts = shifts.filter((s) => s.status === "approved");
-  const pendingShifts = shifts.filter((s) => s.status === "pending");
-
-  const totalHours = approvedShifts.reduce(
-    (sum, s) => sum + computeHours(s.start_time, s.end_time),
-    0
-  );
-  const pendingHours = pendingShifts.reduce(
-    (sum, s) => sum + computeHours(s.start_time, s.end_time),
-    0
-  );
+  // backend shift endpoint does not include status - compute hours from all shifts
+  const totalHours = shifts.reduce((sum, s) => sum + computeHours(s.starts_at, s.ends_at), 0);
+  // pending hours placeholder - no status field on shifts, so use 0
+  const pendingHours = 0;
 
   return (
     <AppLayout
@@ -294,25 +281,24 @@ export default function VolunteerHoursPage() {
             <table className="tbl">
               <thead>
                 <tr>
-                  <th>Event</th>
-                  <th>Role</th>
+                  <th>Description</th>
+                  <th>Location</th>
                   <th>Date</th>
                   <th>Hours</th>
-                  <th>Status</th>
-                  <th>Notes</th>
+                  <th>End time</th>
+                  <th>Capacity</th>
                 </tr>
               </thead>
               <tbody>
                 {shifts.map((s) => {
-                  const st = STATUS_STYLES[s.status ?? "pending"] ?? STATUS_STYLES.pending;
-                  const hrs = computeHours(s.start_time, s.end_time);
+                  const hrs = computeHours(s.starts_at, s.ends_at);
                   return (
                     <tr key={s.id}>
-                      <td style={{ fontWeight: 600 }}>{s.event_name ?? "Unknown event"}</td>
-                      <td>{s.role ?? "Volunteer"}</td>
+                      <td style={{ fontWeight: 600 }}>{s.description ?? "Volunteer shift"}</td>
+                      <td>{s.location ?? "-"}</td>
                       <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12 }}>
-                        {s.start_time
-                          ? new Date(s.start_time).toLocaleDateString("en-US", {
+                        {s.starts_at
+                          ? new Date(s.starts_at).toLocaleDateString("en-US", {
                               month: "short",
                               day: "numeric",
                             })
@@ -321,34 +307,15 @@ export default function VolunteerHoursPage() {
                       <td style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>
                         {hrs > 0 ? `${hrs}h` : "TBD"}
                       </td>
-                      <td>
-                        <span
-                          style={{
-                            padding: "3px 10px",
-                            borderRadius: 6,
-                            fontSize: 11,
-                            fontWeight: 700,
-                            background: st.bg,
-                            color: st.color,
-                            fontFamily: "Manrope, sans-serif",
-                            textTransform: "capitalize",
-                          }}
-                        >
-                          {s.status ?? "pending"}
-                        </span>
+                      <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }}>
+                        {s.ends_at
+                          ? new Date(s.ends_at).toLocaleTimeString("en-US", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : "-"}
                       </td>
-                      <td
-                        style={{
-                          fontSize: 12,
-                          color: "var(--on-mut)",
-                          maxWidth: 200,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {s.notes || "No notes"}
-                      </td>
+                      <td>{s.capacity != null ? `${s.capacity} slots` : "-"}</td>
                     </tr>
                   );
                 })}

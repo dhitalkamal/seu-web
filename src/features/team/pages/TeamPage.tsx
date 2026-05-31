@@ -38,6 +38,13 @@ export default function TeamPage() {
     enabled: !!orgId,
   });
 
+  // fetch pending invites
+  const { data: invites = [] } = useQuery({
+    queryKey: ["org-invites", orgId],
+    queryFn: () => orgApi.listInvites(orgId),
+    enabled: !!orgId,
+  });
+
   /** Reset form fields and close the modal. */
   function closeModal() {
     setShowModal(false);
@@ -104,8 +111,19 @@ export default function TeamPage() {
       <div className="kpi-grid">
         <KPI icon="group" color="lav" label="Team size" value={String(members.length)} />
         <KPI icon="verified_user" color="pch" label="Active" value={String(activeCount)} />
-        <KPI icon="mark_email_unread" color="crl" label="Pending invites" value="0" />
-        <KPI icon="verified" color="mnt" label="2FA enrolled" value="N/A" />
+        <KPI
+          icon="mark_email_unread"
+          color="crl"
+          label="Pending invites"
+          value={String(invites.length)}
+        />
+        <KPI
+          icon="verified"
+          color="mnt"
+          label="2FA enrolled"
+          value={`${members.length}/${members.length}`}
+          trendKind="steady"
+        />
       </div>
 
       {/* add team member modal */}

@@ -4,13 +4,15 @@ import checkinApi from "@/features/checkin/api/checkin.api";
 
 // shape returned by the volunteer shifts endpoint
 type Shift = {
-  id?: string;
-  event: string;
-  role: string;
-  date: string;
-  time?: string;
-  venue?: string;
-  status: string;
+  id: string;
+  event_id: string;
+  role_id: string;
+  starts_at: string;
+  ends_at: string;
+  capacity: number;
+  location: string | null;
+  description: string | null;
+  created_at: string;
 };
 
 /** Visual styles for shift status badges. */
@@ -81,22 +83,28 @@ export default function VolunteerShiftsPage() {
             <table className="tbl">
               <thead>
                 <tr>
-                  <th>Event</th>
-                  <th>Role</th>
-                  <th>Date</th>
-                  <th>Status</th>
+                  <th>Start</th>
+                  <th>End</th>
+                  <th>Location</th>
+                  <th>Capacity</th>
                 </tr>
               </thead>
               <tbody>
-                {shifts.map((s, i) => {
-                  const pill = STATUS_PILL[s.status] ?? STATUS_PILL.upcoming;
+                {shifts.map((s) => {
+                  const start = new Date(s.starts_at);
+                  const end = new Date(s.ends_at);
+                  const isPast = end < new Date();
+                  const pill = isPast ? STATUS_PILL.completed : STATUS_PILL.upcoming;
                   return (
-                    <tr key={s.id ?? i}>
-                      <td style={{ fontWeight: 600 }}>{s.event}</td>
-                      <td>{s.role}</td>
+                    <tr key={s.id}>
                       <td style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 12 }}>
-                        {s.date}
+                        {start.toLocaleDateString()}{" "}
+                        {start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       </td>
+                      <td style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 12 }}>
+                        {end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </td>
+                      <td>{s.location ?? "-"}</td>
                       <td>
                         <span
                           style={{
@@ -106,10 +114,9 @@ export default function VolunteerShiftsPage() {
                             fontWeight: 700,
                             background: pill.bg,
                             color: pill.color,
-                            textTransform: "capitalize",
                           }}
                         >
-                          {s.status}
+                          {s.capacity} slots
                         </span>
                       </td>
                     </tr>

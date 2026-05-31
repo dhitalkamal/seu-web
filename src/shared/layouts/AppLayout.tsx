@@ -38,6 +38,13 @@ const ORG_NAV: NavSection[] = [
     ],
   },
   {
+    section: "Engage",
+    items: [
+      { to: "/org/community", icon: "forum", label: "Community" },
+      { to: "/org/campaigns", icon: "campaign", label: "Campaigns" },
+    ],
+  },
+  {
     section: "Numbers",
     items: [
       { to: "/org/analytics", icon: "analytics", label: "Analytics" },

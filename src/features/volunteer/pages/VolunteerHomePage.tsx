@@ -9,10 +9,13 @@ import volunteerRolesApi from "@/features/volunteer-apps/api/volunteer-roles.api
 
 type Shift = {
   id: string;
-  event_name?: string;
-  role?: string;
-  start_time?: string;
-  end_time?: string;
+  role_id?: string;
+  event_id?: string;
+  starts_at?: string;
+  ends_at?: string;
+  capacity?: number;
+  location?: string | null;
+  description?: string | null;
 };
 
 /**
@@ -58,13 +61,13 @@ export default function VolunteerHomePage() {
   const eventsServed = passport?.events_attended ?? 0;
 
   // total hours summed across all shifts with both start and end times
-  const totalHours = shifts.reduce((sum, s) => sum + computeHours(s.start_time, s.end_time), 0);
+  const totalHours = shifts.reduce((sum, s) => sum + computeHours(s.starts_at, s.ends_at), 0);
 
-  // upcoming shifts are those with a start_time in the future
+  // upcoming shifts are those with a starts_at in the future
   const now = Date.now();
   const upcomingShifts = shifts
-    .filter((s) => s.start_time && new Date(s.start_time).getTime() > now)
-    .sort((a, b) => new Date(a.start_time!).getTime() - new Date(b.start_time!).getTime());
+    .filter((s) => s.starts_at && new Date(s.starts_at).getTime() > now)
+    .sort((a, b) => new Date(a.starts_at!).getTime() - new Date(b.starts_at!).getTime());
 
   // prefer backend profile hours when available, fall back to shift computation
   const displayHours = profile?.total_hours ?? totalHours;
@@ -84,10 +87,16 @@ export default function VolunteerHomePage() {
       bg: "#d8efe2",
       color: "#166534",
     },
-    { label: "Avg Rating", value: "N/A", icon: "star", bg: "#ffddae", color: "#604100" },
+    {
+      label: "Avg Rating",
+      value: profile?.average_rating != null ? profile.average_rating.toFixed(1) : "N/A",
+      icon: "star",
+      bg: "#ffddae",
+      color: "#604100",
+    },
     {
       label: "Certificates",
-      value: "N/A",
+      value: profile?.certificate_count != null ? String(profile.certificate_count) : "0",
       icon: "workspace_premium",
       bg: "#ffdada",
       color: "var(--secondary)",
@@ -128,14 +137,14 @@ export default function VolunteerHomePage() {
                   color: "var(--on-bg)",
                 }}
               >
-                {upcomingShifts[0].role ?? "Volunteer shift"}
+                {upcomingShifts[0].description ?? "Volunteer shift"}
               </p>
               <p
                 style={{ fontSize: 12, color: "var(--on-mut)", fontFamily: "Manrope, sans-serif" }}
               >
-                {upcomingShifts[0].event_name ?? "Event"} /{" "}
-                {upcomingShifts[0].start_time
-                  ? new Date(upcomingShifts[0].start_time).toLocaleDateString("en-US", {
+                {upcomingShifts[0].location ?? "Location TBD"} /{" "}
+                {upcomingShifts[0].starts_at
+                  ? new Date(upcomingShifts[0].starts_at).toLocaleDateString("en-US", {
                       month: "short",
                       day: "numeric",
                     })
@@ -189,7 +198,7 @@ export default function VolunteerHomePage() {
             <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
               <button
                 className="btn-sm"
-                onClick={() => navigate("/volunteer-apps")}
+                onClick={() => navigate("/volunteer/applications")}
                 style={{ padding: "10px 20px" }}
               >
                 <MS n="search" size={14} />
@@ -468,7 +477,7 @@ export default function VolunteerHomePage() {
                         color: "var(--on-bg)",
                       }}
                     >
-                      {s.role ?? "Volunteer shift"}
+                      {s.description ?? "Volunteer shift"}
                     </p>
                     <p
                       style={{
@@ -477,16 +486,16 @@ export default function VolunteerHomePage() {
                         fontFamily: "Manrope, sans-serif",
                       }}
                     >
-                      {s.event_name ?? "Event"} /{" "}
-                      {s.start_time
-                        ? new Date(s.start_time).toLocaleDateString("en-US", {
+                      {s.location ?? "Location TBD"} /{" "}
+                      {s.starts_at
+                        ? new Date(s.starts_at).toLocaleDateString("en-US", {
                             month: "short",
                             day: "numeric",
                           })
                         : "TBD"}
                     </p>
                   </div>
-                  {s.start_time && (
+                  {s.starts_at && (
                     <span
                       style={{
                         fontSize: 11,
@@ -494,7 +503,7 @@ export default function VolunteerHomePage() {
                         fontFamily: "'JetBrains Mono', monospace",
                       }}
                     >
-                      {new Date(s.start_time).toLocaleTimeString("en-US", {
+                      {new Date(s.starts_at).toLocaleTimeString("en-US", {
                         hour: "2-digit",
                         minute: "2-digit",
                       })}
@@ -564,7 +573,6 @@ export default function VolunteerHomePage() {
             </p>
             <div className="flex flex-col gap-2">
               {[
-                { to: "/volunteer/training", icon: "school", label: "Continue training" },
                 { to: "/volunteer/hours", icon: "timer", label: "Log hours" },
                 {
                   to: "/volunteer/certificates",

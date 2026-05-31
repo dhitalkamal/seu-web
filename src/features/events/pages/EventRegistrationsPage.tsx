@@ -3,6 +3,64 @@ import { useQuery } from "@tanstack/react-query";
 import AppLayout from "@/shared/layouts/AppLayout";
 import { useEvent } from "@/features/events/hooks/useEvents";
 import checkinApi from "@/features/checkin/api/checkin.api";
+import apiClient from "@/shared/api/client";
+
+// registration record returned by the participation service
+type Registration = {
+  id: string;
+  user_id: string;
+  event_id: string;
+  status: "confirmed" | "cancelled" | "waitlisted" | "checked_in";
+  ticket_tier: string | null;
+  registered_at: string;
+  checked_in_at: string | null;
+};
+
+type RegistrationsResponse = {
+  data: Registration[];
+};
+
+// map each status to a display label and badge variant
+const STATUS_META: Record<Registration["status"], { label: string; bg: string; color: string }> = {
+  confirmed: { label: "Confirmed", bg: "#d8efe2", color: "#166534" },
+  cancelled: { label: "Cancelled", bg: "#fee2e2", color: "#991b1b" },
+  waitlisted: { label: "Waitlisted", bg: "#fef9c3", color: "#854d0e" },
+  checked_in: { label: "Checked in", bg: "#dce1ff", color: "var(--primary)" },
+};
+
+/** Format an ISO date string to a short readable date. Returns "-" when null. */
+function fmtDate(iso: string | null): string {
+  if (!iso) return "-";
+  return new Date(iso).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+/** Export the given registrations as a CSV file download. */
+function exportCsv(registrations: Registration[], eventTitle: string) {
+  const header = ["User ID", "Status", "Ticket Tier", "Registered", "Checked In"];
+  const rows = registrations.map((r) => [
+    r.user_id,
+    r.status,
+    r.ticket_tier ?? "",
+    fmtDate(r.registered_at),
+    fmtDate(r.checked_in_at),
+  ]);
+
+  const csv = [header, ...rows]
+    .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+    .join("\n");
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `registrations-${eventTitle.replace(/\s+/g, "-").toLowerCase()}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 /** Organizer view of registrations for a specific event - SEU v8 design. */
 export default function EventRegistrationsPage() {
@@ -15,6 +73,18 @@ export default function EventRegistrationsPage() {
     queryFn: () => checkinApi.getEventStats(id!),
     enabled: !!id,
   });
+
+  // fetch full registrations list from the participation service
+  const { data: registrationsData, isLoading: registrationsLoading } = useQuery({
+    queryKey: ["registrations", id],
+    queryFn: () =>
+      apiClient
+        .get<RegistrationsResponse>(`/participation/api/v1/events/${id}/registrations/`)
+        .then((res) => res.data),
+    enabled: !!id,
+  });
+
+  const registrations = registrationsData?.data ?? [];
 
   const filled = event ? Math.round((event.registered_count / event.capacity) * 100) : 0;
 
@@ -232,8 +302,7 @@ export default function EventRegistrationsPage() {
         </div>
       )}
 
-      {/* attendee table - no admin endpoint exists to list per-event registrations */}
-      {/* show check-in stats and a guide to use the check-in console */}
+      {/* attendee table */}
       <div
         style={{
           background: "var(--surface)",
@@ -242,7 +311,11 @@ export default function EventRegistrationsPage() {
           overflow: "hidden",
         }}
       >
-        <div style={{ padding: "16px 20px 12px", borderBottom: "1px solid var(--outline)" }}>
+        {/* table header row with export button */}
+        <div
+          className="flex items-center justify-between"
+          style={{ padding: "16px 20px 12px", borderBottom: "1px solid var(--outline)" }}
+        >
           <p
             style={{
               fontFamily: "'Space Grotesk', sans-serif",
@@ -252,55 +325,207 @@ export default function EventRegistrationsPage() {
             }}
           >
             Attendees
+            {registrations.length > 0 && (
+              <span
+                style={{
+                  marginLeft: 8,
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: 11,
+                  color: "var(--on-mut)",
+                  fontWeight: 400,
+                }}
+              >
+                {registrations.length}
+              </span>
+            )}
           </p>
+
+          {/* export CSV - only shown when there is data */}
+          {registrations.length > 0 && (
+            <button
+              onClick={() => exportCsv(registrations, event?.title ?? "event")}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "6px 14px",
+                borderRadius: 8,
+                border: "1px solid var(--outline)",
+                background: "var(--surface)",
+                color: "var(--on-bg)",
+                fontFamily: "Manrope, sans-serif",
+                fontWeight: 600,
+                fontSize: 12,
+                cursor: "pointer",
+              }}
+            >
+              <span className="ms" style={{ fontSize: 15 }}>
+                download
+              </span>
+              Export CSV
+            </button>
+          )}
         </div>
-        <div className="py-16 text-center">
-          <span
-            className="ms"
-            style={{ fontSize: 40, color: "var(--high)", display: "block", marginBottom: 12 }}
-          >
-            how_to_reg
-          </span>
-          <p
-            style={{
-              fontFamily: "'Cormorant Garamond', serif",
-              fontStyle: "italic",
-              fontSize: 17,
-              color: "var(--on-mut)",
-            }}
-          >
-            {stats
-              ? `${totalRegistered} registered - ${checkedIn} checked in (${checkinRate}% rate)`
-              : "Registrations are managed via the participation service."}
-          </p>
-          <p
-            style={{
-              fontSize: 13,
-              color: "var(--on-mut)",
-              fontFamily: "Manrope, sans-serif",
-              marginTop: 6,
-            }}
-          >
-            View check-ins and manage attendance from the check-in terminal.
-          </p>
-          <Link
-            to="/org/checkin"
-            style={{
-              display: "inline-block",
-              marginTop: 14,
-              padding: "8px 18px",
-              borderRadius: 8,
-              background: "var(--primary)",
-              color: "#fff",
-              fontFamily: "Manrope, sans-serif",
-              fontWeight: 600,
-              fontSize: 13,
-              textDecoration: "none",
-            }}
-          >
-            Open check-in console
-          </Link>
-        </div>
+
+        {/* loading state */}
+        {registrationsLoading && (
+          <div className="py-16 text-center">
+            <span
+              className="ms"
+              style={{ fontSize: 32, color: "var(--high)", display: "block", marginBottom: 10 }}
+            >
+              hourglass_empty
+            </span>
+            <p
+              style={{
+                fontFamily: "Manrope, sans-serif",
+                fontSize: 13,
+                color: "var(--on-mut)",
+              }}
+            >
+              Loading registrations...
+            </p>
+          </div>
+        )}
+
+        {/* empty state */}
+        {!registrationsLoading && registrations.length === 0 && (
+          <div className="py-16 text-center">
+            <span
+              className="ms"
+              style={{ fontSize: 40, color: "var(--high)", display: "block", marginBottom: 12 }}
+            >
+              how_to_reg
+            </span>
+            <p
+              style={{
+                fontFamily: "'Cormorant Garamond', serif",
+                fontStyle: "italic",
+                fontSize: 17,
+                color: "var(--on-mut)",
+              }}
+            >
+              No registrations yet
+            </p>
+            <p
+              style={{
+                fontSize: 13,
+                color: "var(--on-mut)",
+                fontFamily: "Manrope, sans-serif",
+                marginTop: 6,
+              }}
+            >
+              Registrations will appear here once attendees sign up.
+            </p>
+          </div>
+        )}
+
+        {/* registrations table */}
+        {!registrationsLoading && registrations.length > 0 && (
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid var(--outline)" }}>
+                {["User ID", "Status", "Registered", "Checked In"].map((col) => (
+                  <th
+                    key={col}
+                    style={{
+                      padding: "10px 20px",
+                      textAlign: "left",
+                      fontFamily: "'JetBrains Mono', monospace",
+                      fontSize: 10,
+                      fontWeight: 700,
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                      color: "var(--on-mut)",
+                    }}
+                  >
+                    {col}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {registrations.map((reg, idx) => {
+                const meta = STATUS_META[reg.status];
+                return (
+                  <tr
+                    key={reg.id}
+                    style={{
+                      borderBottom:
+                        idx < registrations.length - 1 ? "1px solid var(--outline)" : "none",
+                    }}
+                  >
+                    {/* user id - first 8 chars shown in mono */}
+                    <td style={{ padding: "12px 20px" }}>
+                      <span
+                        style={{
+                          fontFamily: "'JetBrains Mono', monospace",
+                          fontSize: 13,
+                          color: "var(--on-bg)",
+                        }}
+                      >
+                        {reg.user_id.slice(0, 8)}
+                      </span>
+                      <span
+                        style={{
+                          fontFamily: "'JetBrains Mono', monospace",
+                          fontSize: 13,
+                          color: "var(--on-mut)",
+                        }}
+                      >
+                        …
+                      </span>
+                    </td>
+
+                    {/* status pill */}
+                    <td style={{ padding: "12px 20px" }}>
+                      <span
+                        style={{
+                          display: "inline-block",
+                          padding: "3px 10px",
+                          borderRadius: 999,
+                          background: meta.bg,
+                          color: meta.color,
+                          fontFamily: "Manrope, sans-serif",
+                          fontSize: 11,
+                          fontWeight: 700,
+                        }}
+                      >
+                        {meta.label}
+                      </span>
+                    </td>
+
+                    {/* registered date */}
+                    <td style={{ padding: "12px 20px" }}>
+                      <span
+                        style={{
+                          fontFamily: "Manrope, sans-serif",
+                          fontSize: 13,
+                          color: "var(--on-bg)",
+                        }}
+                      >
+                        {fmtDate(reg.registered_at)}
+                      </span>
+                    </td>
+
+                    {/* checked-in date or dash */}
+                    <td style={{ padding: "12px 20px" }}>
+                      <span
+                        style={{
+                          fontFamily: "Manrope, sans-serif",
+                          fontSize: 13,
+                          color: reg.checked_in_at ? "var(--on-bg)" : "var(--on-mut)",
+                        }}
+                      >
+                        {fmtDate(reg.checked_in_at)}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
     </AppLayout>
   );

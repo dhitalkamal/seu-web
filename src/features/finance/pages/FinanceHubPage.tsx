@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import AppLayout from "@/shared/layouts/AppLayout";
 import { PH, KPI, MS, useToast } from "@/shared/components/v8";
@@ -8,8 +8,38 @@ import type {
   CreatePromoCodePayload,
   RefundRecord,
 } from "@/features/payment/api/payment.api";
+import client from "@/shared/api/client";
+import { useOrgStore } from "@/shared/store/org.store";
+
+/**
+ * Trigger a CSV file download from a 2D string array.
+ * @param headers - column header labels
+ * @param rows - data rows, each an array of string cells
+ * @param filename - base filename (no extension)
+ */
+function exportCSV(headers: string[], rows: string[][], filename: string): void {
+  const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
+  const lines = [headers.map(escape).join(","), ...rows.map((r) => r.map(escape).join(","))];
+  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${filename}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 // * types
+
+type OrgRevenueAnalytics = {
+  gross_revenue: string;
+  net_revenue: string;
+  refund_total: string;
+  refund_count: number;
+  orders_count: number;
+  orders_30d: number;
+  gateway_breakdown: { gateway: string; count: number; total: string }[];
+};
 
 type FinanceTab = "overview" | "refunds" | "promo";
 
@@ -39,7 +69,10 @@ const tabBarStyle: React.CSSProperties = {
  */
 export default function FinanceHubPage() {
   const [tab, setTab] = useState<FinanceTab>("overview");
-  const { toast, toastEl } = useToast();
+  const { toastEl } = useToast();
+
+  // * export callback registered by the active tab; null when no export is available
+  const [exportFn, setExportFn] = useState<(() => void) | null>(null);
 
   return (
     <AppLayout variant="org">
@@ -49,8 +82,8 @@ export default function FinanceHubPage() {
         title="Finance"
         sub="Revenue, refunds, promo codes, and billing all in one place."
         actions={
-          tab === "overview" ? (
-            <button className="btn-sm" onClick={() => toast("Export started")}>
+          exportFn ? (
+            <button className="btn-sm" onClick={exportFn}>
               <MS n="download" size={13} />
               Export
             </button>
@@ -65,7 +98,11 @@ export default function FinanceHubPage() {
           return (
             <button
               key={t.key}
-              onClick={() => setTab(t.key)}
+              onClick={() => {
+                setTab(t.key);
+                // clear stale export fn when switching tabs; the new tab registers its own
+                setExportFn(null);
+              }}
               style={{
                 flex: 1,
                 display: "flex",
@@ -103,7 +140,7 @@ export default function FinanceHubPage() {
 
       {/* tab content */}
       {tab === "overview" && <OverviewTab />}
-      {tab === "refunds" && <RefundsTab />}
+      {tab === "refunds" && <RefundsTab onReady={setExportFn} />}
       {tab === "promo" && <PromoTab />}
       {/* billing moved to /org/pricing */}
     </AppLayout>
@@ -112,15 +149,41 @@ export default function FinanceHubPage() {
 
 // * overview tab
 
+/** Format a raw NPR decimal string from the API into a readable label. */
+function fmtNPR(raw: string | undefined): string {
+  if (!raw) return "N/A";
+  const n = parseFloat(raw);
+  if (isNaN(n)) return "N/A";
+  return `NPR ${n.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+}
+
 /** Finance ledger: revenue movement, payouts, invoices, and tax. */
 function OverviewTab() {
+  const org = useOrgStore((s) => s.org);
+
+  const { data: analytics, isLoading } = useQuery<OrgRevenueAnalytics>({
+    queryKey: ["org-revenue-analytics", org?.id],
+    queryFn: () =>
+      client
+        .get<{
+          data: OrgRevenueAnalytics;
+        }>(`/payment/api/v1/org/analytics/?organization_id=${org!.id}`)
+        .then((r) => r.data.data),
+    enabled: !!org?.id,
+  });
+
+  const gross = isLoading ? "..." : fmtNPR(analytics?.gross_revenue);
+  const net = isLoading ? "..." : fmtNPR(analytics?.net_revenue);
+  const refunds = isLoading ? "..." : fmtNPR(analytics?.refund_total);
+  const orders30d = isLoading ? "..." : String(analytics?.orders_30d ?? "N/A");
+
   return (
     <>
       <div className="kpi-grid">
-        <KPI icon="payments" color="lav" label="Gross revenue YTD" value="N/A" />
-        <KPI icon="account_balance" color="pch" label="Net revenue" value="N/A" />
-        <KPI icon="schedule" color="crl" label="Outstanding" value="N/A" />
-        <KPI icon="undo" color="mnt" label="Refunds (30d)" value="N/A" />
+        <KPI icon="payments" color="lav" label="Gross revenue YTD" value={gross} />
+        <KPI icon="account_balance" color="pch" label="Net revenue" value={net} />
+        <KPI icon="schedule" color="crl" label="Orders (30d)" value={orders30d} />
+        <KPI icon="undo" color="mnt" label="Refunds (30d)" value={refunds} />
       </div>
 
       <div className="panel" style={{ marginBottom: 18 }}>
@@ -160,16 +223,47 @@ function OverviewTab() {
             <span className="panel-title">Payment methods</span>
           </div>
           <div className="panel-body">
-            <p
-              style={{
-                textAlign: "center",
-                color: "var(--on-mut)",
-                fontSize: 13,
-                padding: "48px 0",
-              }}
-            >
-              No data yet
-            </p>
+            {!analytics?.gateway_breakdown || analytics.gateway_breakdown.length === 0 ? (
+              <p
+                style={{
+                  textAlign: "center",
+                  color: "var(--on-mut)",
+                  fontSize: 13,
+                  padding: "48px 0",
+                }}
+              >
+                No data yet
+              </p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "12px 0" }}>
+                {analytics.gateway_breakdown.map((gw) => (
+                  <div
+                    key={gw.gateway}
+                    style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}
+                  >
+                    <span
+                      style={{
+                        fontWeight: 600,
+                        color: "var(--on-bg)",
+                        textTransform: "capitalize",
+                        fontFamily: "Manrope, sans-serif",
+                      }}
+                    >
+                      {gw.gateway}
+                    </span>
+                    <span
+                      style={{
+                        color: "var(--on-var)",
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontSize: 12,
+                      }}
+                    >
+                      {gw.count} &times; {fmtNPR(gw.total)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -220,8 +314,11 @@ function OverviewTab() {
 const REFUND_FILTERS = ["All", "Pending", "Approved", "Rejected"] as const;
 type RefundFilter = (typeof REFUND_FILTERS)[number];
 
+type RefundsTabProps = { onReady: (fn: (() => void) | null) => void };
+
 /** Refunds queue: live list from payment service with status filter tabs. */
-function RefundsTab() {
+function RefundsTab({ onReady }: RefundsTabProps) {
+  const org = useOrgStore((s) => s.org);
   const [filter, setFilter] = useState<RefundFilter>("All");
 
   // map display filter to API status param
@@ -232,11 +329,50 @@ function RefundsTab() {
     queryFn: () => paymentApi.listRefunds(apiStatus),
   });
 
+  // fetch analytics to compute refund rate from orders_count and refund_count
+  const { data: analytics } = useQuery<OrgRevenueAnalytics>({
+    queryKey: ["org-revenue-analytics", org?.id],
+    queryFn: () =>
+      client
+        .get<{
+          data: OrgRevenueAnalytics;
+        }>(`/payment/api/v1/org/analytics/?organization_id=${org!.id}`)
+        .then((r) => r.data.data),
+    enabled: !!org?.id,
+  });
+
   const pending = refunds.filter((r: RefundRecord) => r.status === "pending").length;
   const approved = refunds.filter(
     (r: RefundRecord) => r.status === "approved" || r.status === "completed"
   ).length;
   const rejected = refunds.filter((r: RefundRecord) => r.status === "rejected").length;
+
+  // compute refund rate as percentage: refund_count / orders_count * 100
+  const refundRate =
+    analytics && analytics.orders_count > 0
+      ? `${((analytics.refund_count / analytics.orders_count) * 100).toFixed(1)}%`
+      : "N/A";
+
+  // register export function once data is loaded
+  useEffect(() => {
+    if (isLoading || refunds.length === 0) {
+      onReady(null);
+      return;
+    }
+    onReady(() => () => {
+      const headers = ["ID", "Order ID", "Amount", "Reason", "Gateway", "Status", "Created"];
+      const rows = refunds.map((r: RefundRecord) => [
+        r.id,
+        r.order_id,
+        r.amount != null ? String(r.amount) : "",
+        r.reason ?? "",
+        r.gateway ?? "",
+        r.status,
+        new Date(r.created_at).toLocaleDateString(),
+      ]);
+      exportCSV(headers, rows, "refunds-export");
+    });
+  }, [isLoading, refunds, onReady]);
 
   return (
     <>
@@ -244,7 +380,7 @@ function RefundsTab() {
         <KPI icon="pending" color="crl" label="Pending review" value={String(pending)} />
         <KPI icon="check_circle" color="lav" label="Approved" value={String(approved)} />
         <KPI icon="block" color="pch" label="Rejected" value={String(rejected)} />
-        <KPI icon="percent" color="mnt" label="Refund rate" value="N/A" />
+        <KPI icon="percent" color="mnt" label="Refund rate" value={refundRate} />
       </div>
 
       <div className="chart-grid-21">
@@ -468,9 +604,30 @@ function PromoTab() {
   const activeCount = promoCodes.filter((p: PromoCode) => p.is_active).length;
   const totalRedemptions = promoCodes.reduce((s: number, p: PromoCode) => s + p.used_count, 0);
 
+  function handleExport() {
+    const headers = ["Code", "Type", "Value", "Valid From", "Valid Until", "Used", "Max", "Status"];
+    const rows = (promoCodes as PromoCode[]).map((pc) => [
+      pc.code,
+      pc.discount_type === "percentage" ? "Percentage" : "Fixed",
+      pc.discount_type === "percentage" ? `${pc.discount_value}%` : `NPR ${pc.discount_value}`,
+      new Date(pc.valid_from).toLocaleDateString(),
+      new Date(pc.valid_until).toLocaleDateString(),
+      String(pc.used_count),
+      String(pc.max_usage_count),
+      pc.is_active ? "Active" : "Inactive",
+    ]);
+    exportCSV(headers, rows, "promo-codes-export");
+  }
+
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginBottom: 14 }}>
+        {promoCodes.length > 0 && (
+          <button className="btn-sm" onClick={handleExport}>
+            <MS n="download" size={13} />
+            Export CSV
+          </button>
+        )}
         <button className="btn-sm primary" onClick={() => setShow(true)}>
           <MS n="add" size={13} />
           New code

@@ -835,8 +835,6 @@ function DocumentsTab({ orgId, docs, setDocs, onDelete }: DocsTabProps) {
   const [dragOver, setDragOver] = useState(false);
   const [selectedType, setSelectedType] = useState<OrgDocType>("registration_cert");
   const [uploading, setUploading] = useState(false);
-  const org = useOrgStore((s) => s.org);
-  const canResubmit = org?.status === "pending_review" || org?.status === "suspended";
 
   /** Upload files to the backend immediately. */
   async function addFiles(files: FileList | null) {
@@ -1041,83 +1039,6 @@ function DocumentsTab({ orgId, docs, setDocs, onDelete }: DocsTabProps) {
         <MS n={uploading ? "hourglass_top" : "upload_file"} size={15} />
         {uploading ? "Uploading..." : "Choose files to upload"}
       </button>
-
-      {/* resubmit for verification */}
-      {canResubmit && docs.length > 0 && (
-        <div
-          style={{
-            padding: "16px 20px",
-            borderRadius: 12,
-            border: "1px solid var(--mid)",
-            background: "var(--low)",
-            display: "flex",
-            alignItems: "center",
-            gap: 14,
-          }}
-        >
-          <div
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 10,
-              background: "rgba(232,49,81,0.08)",
-              display: "grid",
-              placeItems: "center",
-              flexShrink: 0,
-            }}
-          >
-            <MS n="verified" size={20} style={{ color: "#e83151" }} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <p
-              style={{
-                fontSize: 13,
-                fontWeight: 700,
-                color: "var(--on-bg)",
-                fontFamily: "Manrope, sans-serif",
-              }}
-            >
-              {org?.status === "suspended" ? "Organization suspended" : "Pending verification"}
-            </p>
-            <p
-              style={{
-                fontSize: 12,
-                color: "var(--on-mut)",
-                fontFamily: "Manrope, sans-serif",
-                marginTop: 2,
-              }}
-            >
-              {org?.status === "suspended"
-                ? "Update your documents and resubmit for review to reinstate your organization."
-                : "Your documents are under review. You can update them and resubmit if needed."}
-            </p>
-          </div>
-          <button
-            onClick={() => {
-              // resubmitForReview API not yet available - notify user
-              toast.success("Resubmission coming soon");
-            }}
-            style={{
-              padding: "8px 18px",
-              borderRadius: 8,
-              border: "none",
-              background: "#e83151",
-              color: "white",
-              fontSize: 12,
-              fontWeight: 700,
-              fontFamily: "Manrope, sans-serif",
-              cursor: "pointer",
-              flexShrink: 0,
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-            }}
-          >
-            <MS n="send" size={13} />
-            Resubmit for review
-          </button>
-        </div>
-      )}
     </div>
   );
 }

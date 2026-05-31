@@ -1,10 +1,20 @@
+import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import AppLayout from "@/shared/layouts/AppLayout";
 import { PH, KPI, MS, useToast } from "@/shared/components/v8";
 import eventsApi from "@/features/events/api/events.api";
 import intelligenceApi from "@/features/intelligence/api/intelligence.api";
+import apiClient from "@/shared/api/client";
 import type { Event } from "@/features/events/types/event.types";
+
+type DateRange = "30d" | "90d" | "12m" | "all";
+const RANGE_LABELS: Record<DateRange, string> = {
+  "30d": "Last 30 days",
+  "90d": "Last 90 days",
+  "12m": "Last 12 months",
+  all: "All time",
+};
 
 /** Build a CSV blob from an array of row objects and trigger a download. */
 function downloadCsv(filename: string, rows: Record<string, unknown>[]): void {
@@ -38,6 +48,8 @@ function downloadCsv(filename: string, rows: Record<string, unknown>[]): void {
 export default function EventAnalyticsPage() {
   const { id: eventId } = useParams<{ id?: string }>();
   const { toast, toastEl } = useToast();
+  const [range, setRange] = useState<DateRange>("12m");
+  const [showRangeMenu, setShowRangeMenu] = useState(false);
 
   // fetch the specific event when we have an id
   const { data: singleEventRes, isLoading: singleLoading } = useQuery({
@@ -53,6 +65,11 @@ export default function EventAnalyticsPage() {
     queryFn: () => intelligenceApi.getEventHealth(eventId!),
     enabled: !!eventId,
   });
+
+  // growth analytics placeholder - backend endpoint exists but is not yet registered in urls.py
+  const growthData: { date: string; revenue: number; registrations: number }[] = [];
+  const growthRevenue = 0;
+  const growthRegs = 0;
 
   // always fetch all org events for aggregate / top-events table
   const { data: eventsPage, isLoading: listLoading } = useQuery({
@@ -102,6 +119,26 @@ export default function EventAnalyticsPage() {
     toast("Export downloaded");
   }
 
+  // fetch registrations for the selected event to compute funnel
+  const { data: registrations = [] } = useQuery({
+    queryKey: ["event-registrations-analytics", eventId],
+    queryFn: async () => {
+      const r = await apiClient.get(`/participation/api/v1/events/${eventId}/registrations/`);
+      return (r.data?.data ?? []) as { id: string; status: string; checked_in_at: string | null }[];
+    },
+    enabled: !!eventId,
+  });
+
+  // funnel metrics from registration data
+  const funnelCapacity = singleEvent?.capacity ?? 0;
+  const funnelRegistered = registrations.length;
+  const funnelConfirmed = registrations.filter((r) => r.status === "confirmed" || r.status === "checked_in").length;
+  const funnelCheckedIn = registrations.filter((r) => r.checked_in_at != null).length;
+
+  // event breakdown by pricing for "revenue by category" panel
+  const paidEvents = events.filter((e) => !e.is_free);
+  const freeEvents = events.filter((e) => e.is_free);
+
   // rows for the top events table
   const topEvents = [...events]
     .sort((a, b) => b.registered_count - a.registered_count)
@@ -116,10 +153,53 @@ export default function EventAnalyticsPage() {
         sub="Registration funnels, revenue trends, cohort retention, and event performance."
         actions={
           <>
-            <button className="btn-sm">
-              <MS n="date_range" size={13} />
-              Last 12 months
-            </button>
+            <div style={{ position: "relative" }}>
+              <button className="btn-sm" onClick={() => setShowRangeMenu((v) => !v)}>
+                <MS n="date_range" size={13} />
+                {RANGE_LABELS[range]}
+              </button>
+              {showRangeMenu && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "calc(100% + 4px)",
+                    right: 0,
+                    zIndex: 100,
+                    background: "var(--surface)",
+                    border: "1px solid var(--mid)",
+                    borderRadius: 10,
+                    boxShadow: "0 8px 24px rgba(0,0,0,0.1)",
+                    padding: 4,
+                    minWidth: 160,
+                  }}
+                >
+                  {(Object.entries(RANGE_LABELS) as [DateRange, string][]).map(([key, label]) => (
+                    <button
+                      key={key}
+                      onClick={() => {
+                        setRange(key);
+                        setShowRangeMenu(false);
+                      }}
+                      style={{
+                        display: "block",
+                        width: "100%",
+                        padding: "8px 12px",
+                        border: "none",
+                        background: range === key ? "var(--low)" : "transparent",
+                        cursor: "pointer",
+                        fontSize: 12,
+                        fontWeight: range === key ? 700 : 500,
+                        textAlign: "left",
+                        borderRadius: 6,
+                        fontFamily: "Manrope, sans-serif",
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <button className="btn-sm" onClick={handleExport}>
               <MS n="download" size={13} />
               Export
@@ -130,7 +210,7 @@ export default function EventAnalyticsPage() {
 
       {/* KPI row */}
       <div className="kpi-grid">
-        <KPI icon="visibility" color="lav" label="Page views" value="-" />
+        <KPI icon="event" color="lav" label="Events" value={isLoading ? "..." : events.length.toString()} trend={`${events.filter((e) => e.status === "published").length} published`} />
         <KPI icon="how_to_reg" color="pch" label="Registrations" value={kpiRegistrations} />
         <KPI icon="trending_up" color="mnt" label="Conversion" value={kpiConversion} />
         <KPI icon="star" color="crl" label="Health score" value={kpiHealthScore} />
@@ -170,7 +250,7 @@ export default function EventAnalyticsPage() {
       <div className="chart-grid-2">
         <div className="panel">
           <div className="panel-head">
-            <span className="panel-title">Revenue - 12 months</span>
+            <span className="panel-title">Revenue - {RANGE_LABELS[range].toLowerCase()}</span>
             <span
               style={{
                 fontFamily: "Space Grotesk",
@@ -179,39 +259,149 @@ export default function EventAnalyticsPage() {
                 letterSpacing: "-0.025em",
               }}
             >
-              -
+              {eventId && growthData.length > 0
+                ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
+                    growthRevenue
+                  )
+                : "-"}
             </span>
           </div>
-          <div
-            className="panel-body"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              minHeight: 220,
-              color: "var(--on-mut)",
-              fontSize: 13,
-            }}
-          >
-            Chart coming soon
+          <div className="panel-body" style={{ minHeight: 220, padding: "16px 20px" }}>
+            {!eventId ? (
+              <p
+                style={{
+                  color: "var(--on-mut)",
+                  fontSize: 13,
+                  textAlign: "center",
+                  paddingTop: 80,
+                }}
+              >
+                Select an event to view revenue data
+              </p>
+            ) : growthData.length === 0 ? (
+              <p
+                style={{
+                  color: "var(--on-mut)",
+                  fontSize: 13,
+                  textAlign: "center",
+                  paddingTop: 80,
+                }}
+              >
+                No revenue data for this period
+              </p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {growthData.slice(-10).map((d) => (
+                  <div key={d.date} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        color: "var(--on-mut)",
+                        fontFamily: "JetBrains Mono, monospace",
+                        minWidth: 70,
+                      }}
+                    >
+                      {d.date}
+                    </span>
+                    <div
+                      style={{
+                        flex: 1,
+                        height: 16,
+                        background: "var(--low)",
+                        borderRadius: 4,
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div
+                        style={{
+                          height: "100%",
+                          width: `${growthRevenue > 0 ? (d.revenue / growthRevenue) * 100 : 0}%`,
+                          background: "var(--primary)",
+                          borderRadius: 4,
+                          minWidth: d.revenue > 0 ? 2 : 0,
+                        }}
+                      />
+                    </div>
+                    <span
+                      style={{ fontSize: 11, fontWeight: 600, minWidth: 50, textAlign: "right" }}
+                    >
+                      ${d.revenue.toFixed(0)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
         <div className="panel">
           <div className="panel-head">
             <span className="panel-title">Registrations - cumulative</span>
           </div>
-          <div
-            className="panel-body"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              minHeight: 220,
-              color: "var(--on-mut)",
-              fontSize: 13,
-            }}
-          >
-            {isLoading ? "Loading..." : `${kpiRegistrations} total`}
+          <div className="panel-body" style={{ minHeight: 220, padding: "16px 20px" }}>
+            {!eventId ? (
+              <p
+                style={{
+                  color: "var(--on-mut)",
+                  fontSize: 13,
+                  textAlign: "center",
+                  paddingTop: 80,
+                }}
+              >
+                {isLoading ? "Loading..." : `${kpiRegistrations} total`}
+              </p>
+            ) : growthData.length === 0 ? (
+              <p
+                style={{
+                  color: "var(--on-mut)",
+                  fontSize: 13,
+                  textAlign: "center",
+                  paddingTop: 80,
+                }}
+              >
+                No registration data for this period
+              </p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {growthData.slice(-10).map((d) => (
+                  <div key={d.date} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        color: "var(--on-mut)",
+                        fontFamily: "JetBrains Mono, monospace",
+                        minWidth: 70,
+                      }}
+                    >
+                      {d.date}
+                    </span>
+                    <div
+                      style={{
+                        flex: 1,
+                        height: 16,
+                        background: "var(--low)",
+                        borderRadius: 4,
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div
+                        style={{
+                          height: "100%",
+                          width: `${growthRegs > 0 ? (d.registrations / growthRegs) * 100 : 0}%`,
+                          background: "#16a34a",
+                          borderRadius: 4,
+                          minWidth: d.registrations > 0 ? 2 : 0,
+                        }}
+                      />
+                    </div>
+                    <span
+                      style={{ fontSize: 11, fontWeight: 600, minWidth: 30, textAlign: "right" }}
+                    >
+                      {d.registrations}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -222,56 +412,84 @@ export default function EventAnalyticsPage() {
           <div className="panel-head">
             <span className="panel-title">Registration funnel</span>
           </div>
-          <div
-            className="panel-body"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              minHeight: 180,
-              color: "var(--on-mut)",
-              fontSize: 13,
-            }}
-          >
-            No data yet
+          <div className="panel-body" style={{ minHeight: 180, padding: "16px 20px" }}>
+            {!eventId ? (
+              <p style={{ color: "var(--on-mut)", fontSize: 13, textAlign: "center", paddingTop: 60 }}>Select an event to view the funnel</p>
+            ) : registrations.length === 0 ? (
+              <p style={{ color: "var(--on-mut)", fontSize: 13, textAlign: "center", paddingTop: 60 }}>No registrations yet</p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {[
+                  { label: "Capacity", value: funnelCapacity, color: "var(--mid)", pct: 100 },
+                  { label: "Registered", value: funnelRegistered, color: "#4338ca", pct: funnelCapacity > 0 ? (funnelRegistered / funnelCapacity) * 100 : 0 },
+                  { label: "Confirmed", value: funnelConfirmed, color: "#16a34a", pct: funnelCapacity > 0 ? (funnelConfirmed / funnelCapacity) * 100 : 0 },
+                  { label: "Checked in", value: funnelCheckedIn, color: "#050a26", pct: funnelCapacity > 0 ? (funnelCheckedIn / funnelCapacity) * 100 : 0 },
+                ].map((stage) => (
+                  <div key={stage.label}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
+                      <span style={{ color: "var(--on-var)", fontFamily: "Manrope, sans-serif" }}>{stage.label}</span>
+                      <span style={{ fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }}>{stage.value} ({Math.round(stage.pct)}%)</span>
+                    </div>
+                    <div style={{ height: 8, background: "var(--low)", borderRadius: 4, overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: `${Math.min(100, stage.pct)}%`, background: stage.color, borderRadius: 4, transition: "width 300ms" }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
         <div className="panel">
           <div className="panel-head">
-            <span className="panel-title">Revenue by category</span>
+            <span className="panel-title">Event breakdown</span>
           </div>
-          <div
-            className="panel-body"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              minHeight: 180,
-              color: "var(--on-mut)",
-              fontSize: 13,
-            }}
-          >
-            No data yet
+          <div className="panel-body" style={{ minHeight: 180, padding: "16px 20px" }}>
+            {events.length === 0 ? (
+              <p style={{ color: "var(--on-mut)", fontSize: 13, textAlign: "center", paddingTop: 60 }}>No events yet</p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                {[
+                  { label: "Total events", value: events.length, icon: "event", color: "var(--primary)" },
+                  { label: "Published", value: events.filter((e) => e.status === "published").length, icon: "check_circle", color: "#16a34a" },
+                  { label: "Draft", value: events.filter((e) => e.status === "draft").length, icon: "edit", color: "#dba13d" },
+                  { label: "Paid events", value: paidEvents.length, icon: "payments", color: "#4338ca" },
+                  { label: "Free events", value: freeEvents.length, icon: "money_off", color: "var(--on-mut)" },
+                ].map((row) => (
+                  <div key={row.label} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <MS n={row.icon} size={16} style={{ color: row.color, flexShrink: 0 }} />
+                    <span style={{ flex: 1, fontSize: 13, color: "var(--on-var)", fontFamily: "Manrope, sans-serif" }}>{row.label}</span>
+                    <span style={{ fontWeight: 700, fontSize: 14, fontFamily: "'JetBrains Mono', monospace" }}>{row.value}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
         <div className="panel">
           <div className="panel-head">
-            <span className="panel-title">NPS by event type</span>
+            <span className="panel-title">Event performance</span>
           </div>
-          <div
-            className="panel-body"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              minHeight: 180,
-              color: "var(--on-mut)",
-              fontSize: 13,
-            }}
-          >
-            No data yet
+          <div className="panel-body" style={{ minHeight: 180, padding: "16px 20px" }}>
+            {events.length === 0 ? (
+              <p style={{ color: "var(--on-mut)", fontSize: 13, textAlign: "center", paddingTop: 60 }}>No events yet</p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                {[
+                  { label: "Total registrations", value: totalRegistrations.toLocaleString() },
+                  { label: "Total capacity", value: totalCapacity.toLocaleString() },
+                  { label: "Avg fill rate", value: `${conversionPct}%` },
+                  { label: "Avg registrations/event", value: events.length > 0 ? Math.round(totalRegistrations / events.length).toString() : "0" },
+                  { label: "Highest fill", value: events.length > 0 ? `${Math.max(...events.map((e) => e.capacity > 0 ? Math.round((e.registered_count / e.capacity) * 100) : 0))}%` : "-" },
+                ].map((row) => (
+                  <div key={row.label} style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                    <span style={{ color: "var(--on-var)", fontFamily: "Manrope, sans-serif" }}>{row.label}</span>
+                    <span style={{ fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>{row.value}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -280,22 +498,30 @@ export default function EventAnalyticsPage() {
       <div className="chart-grid-2">
         <div className="panel">
           <div className="panel-head">
-            <span className="panel-title">
-              Attendee retention - % returning by months after first event
-            </span>
+            <span className="panel-title">Registration status breakdown</span>
           </div>
-          <div
-            className="panel-body"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              minHeight: 180,
-              color: "var(--on-mut)",
-              fontSize: 13,
-            }}
-          >
-            No data yet
+          <div className="panel-body" style={{ minHeight: 180, padding: "16px 20px" }}>
+            {!eventId || registrations.length === 0 ? (
+              <p style={{ color: "var(--on-mut)", fontSize: 13, textAlign: "center", paddingTop: 60 }}>{!eventId ? "Select an event" : "No registrations"}</p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {Object.entries(registrations.reduce<Record<string, number>>((acc, r) => { acc[r.status] = (acc[r.status] ?? 0) + 1; return acc; }, {})).sort((a, b) => b[1] - a[1]).map(([status, count]) => {
+                  const pct = registrations.length > 0 ? (count / registrations.length) * 100 : 0;
+                  const color = status === "confirmed" ? "#16a34a" : status === "checked_in" ? "#050a26" : status === "cancelled" ? "#e83151" : status === "waitlisted" ? "#dba13d" : "#9ca3af";
+                  return (
+                    <div key={status}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
+                        <span style={{ color: "var(--on-var)", textTransform: "capitalize" }}>{status.replace(/_/g, " ")}</span>
+                        <span style={{ fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }}>{count} ({Math.round(pct)}%)</span>
+                      </div>
+                      <div style={{ height: 8, background: "var(--low)", borderRadius: 4, overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: `${pct}%`, background: color, borderRadius: 4 }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
