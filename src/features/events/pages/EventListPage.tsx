@@ -202,7 +202,7 @@ export default function EventListPage() {
 
   // events that have coordinates - used for map markers
   const mappableEvents = events.filter(
-    (ev) => ev.latitude !== null && ev.longitude !== null
+    (ev) => ev.latitude != null && ev.longitude != null
   ) as (Event & { latitude: number; longitude: number })[];
 
   /**
@@ -957,7 +957,7 @@ export default function EventListPage() {
                 : `NPR ${parseFloat(ev.price).toLocaleString()}`;
               // compute distance badge only when user location is available and event has coords
               const distKm =
-                userLocation && ev.latitude !== null && ev.longitude !== null
+                userLocation && ev.latitude != null && ev.longitude != null
                   ? haversineKm(userLocation.lat, userLocation.lng, ev.latitude, ev.longitude)
                   : null;
               return (

@@ -83,7 +83,7 @@ export default function SearchPage() {
 
   // events with coordinates - used for map markers
   const mappableResults = results.filter(
-    (ev) => ev.latitude !== null && ev.longitude !== null
+    (ev) => ev.latitude != null && ev.longitude != null
   ) as (Event & { latitude: number; longitude: number })[];
 
   /** Commit the current input as the active search query. */
@@ -308,7 +308,7 @@ export default function SearchPage() {
             {results.map((ev) => {
               // compute haversine distance only when we have user location and event coords
               const distKm =
-                userLocation && ev.latitude !== null && ev.longitude !== null
+                userLocation && ev.latitude != null && ev.longitude != null
                   ? haversineKm(userLocation.lat, userLocation.lng, ev.latitude, ev.longitude)
                   : null;
               return (
