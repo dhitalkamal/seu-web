@@ -23,11 +23,18 @@ export default function VolunteerApplicationsPage() {
     queryFn: () => volunteerRolesApi.listRoles(),
   });
 
+  // fetch my applications
+  const { data: myApps = [] } = useQuery({
+    queryKey: ["my-volunteer-apps"],
+    queryFn: () => volunteerRolesApi.myApplications(),
+  });
+
   // apply mutation - fires apply() then invalidates the roles query so status re-renders
   const applyMutation = useMutation({
-    mutationFn: (roleId: string) => volunteerRolesApi.apply(roleId),
+    mutationFn: ({ roleId, eventId }: { roleId: string; eventId: string }) => volunteerRolesApi.apply(roleId, eventId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["volunteer-roles"] });
+      qc.invalidateQueries({ queryKey: ["my-volunteer-apps"] });
       setApplying(null);
     },
     onError: () => setApplying(null),
@@ -40,12 +47,19 @@ export default function VolunteerApplicationsPage() {
    * @returns "open" when slots remain, "full" when all slots are taken
    */
   function roleStatus(r: VolunteerRole): "open" | "full" {
-    return r.filled < r.slots ? "open" : "full";
+    const cap = r.capacity ?? r.slots ?? 0;
+    const filled = r.filled ?? 0;
+    return filled < cap ? "open" : "full";
   }
 
   // filter by tab - "browse" shows all open roles, other tabs need a /my-applications endpoint
   const filtered: VolunteerRole[] =
     tab === "browse" ? roles.filter((r) => roleStatus(r) === "open") : [];
+
+  const filteredApps = tab === "applied" ? myApps.filter((a) => a.status === "pending")
+    : tab === "accepted" ? myApps.filter((a) => a.status === "approved" || a.status === "confirmed")
+    : tab === "rejected" ? myApps.filter((a) => a.status === "rejected")
+    : [];
 
   const tabs: { key: Tab; label: string; icon: string }[] = [
     { key: "browse", label: "Browse Roles", icon: "search" },
@@ -109,8 +123,33 @@ export default function VolunteerApplicationsPage() {
         </div>
       )}
 
+      {/* my applications list for non-browse tabs */}
+      {!isLoading && tab !== "browse" && filteredApps.length > 0 && (
+        <div className="panel">
+          <div className="panel-head">
+            <span className="panel-title" style={{ textTransform: "capitalize" }}>{tab} applications</span>
+            <span style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 10.5, color: "var(--on-mut)" }}>{filteredApps.length}</span>
+          </div>
+          <div className="panel-body flush">
+            <table className="tbl">
+              <thead><tr><th>Role</th><th>Event</th><th>Status</th><th>Applied</th></tr></thead>
+              <tbody>
+                {filteredApps.map((app) => (
+                  <tr key={app.id}>
+                    <td style={{ fontWeight: 600 }}>{app.volunteer_role_id?.slice(0, 8) ?? app.role_id?.slice(0, 8)}</td>
+                    <td style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11 }}>{app.event_id?.slice(0, 8) ?? "-"}</td>
+                    <td><span className={`pill ${app.status === "approved" || app.status === "confirmed" ? "active" : app.status === "rejected" ? "suspended" : "pending"}`}>{app.status}</span></td>
+                    <td style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: "var(--on-mut)" }}>{new Date(app.created_at).toLocaleDateString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* empty state */}
-      {!isLoading && filtered.length === 0 && (
+      {!isLoading && filtered.length === 0 && filteredApps.length === 0 && (
         <div
           style={{
             background: "var(--surface)",
@@ -206,7 +245,10 @@ export default function VolunteerApplicationsPage() {
                       marginBottom: 4,
                     }}
                   >
-                    {role.title}
+                    {role.name || role.title}
+                  </p>
+                  <p style={{ fontSize: 11, color: "var(--on-mut)", fontFamily: "'JetBrains Mono', monospace", marginBottom: 4 }}>
+                    Event: {role.event_id?.slice(0, 8)}
                   </p>
                   <p
                     style={{
@@ -250,7 +292,7 @@ export default function VolunteerApplicationsPage() {
                       <span className="ms" style={{ fontSize: 14 }}>
                         group
                       </span>
-                      {role.slots - role.filled}/{role.slots} spots left
+                      {(role.capacity ?? role.slots ?? 0) - (role.filled ?? 0)}/{role.capacity ?? role.slots ?? 0} spots left
                     </span>
                   </div>
                 </div>
@@ -261,7 +303,7 @@ export default function VolunteerApplicationsPage() {
                     disabled={isApplying}
                     onClick={() => {
                       setApplying(role.id);
-                      applyMutation.mutate(role.id);
+                      applyMutation.mutate({ roleId: role.id, eventId: role.event_id });
                     }}
                     style={{
                       padding: "9px 20px",

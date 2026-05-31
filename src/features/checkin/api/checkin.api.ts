@@ -6,10 +6,8 @@ const BASE = "/participation/api/v1";
 
 export type CheckInResult = {
   registration_id: string;
-  attendee_name: string;
-  event_title: string;
+  event_id: string;
   checked_in_at: string;
-  already_checked_in: boolean;
 };
 
 export type BatchCheckInResult = {
@@ -20,9 +18,13 @@ export type BatchCheckInResult = {
 type ApiOk<T> = { data: T };
 
 const checkinApi = {
-  /** Check in a single attendee by registration and event ID. */
-  checkIn: (payload: { registration_id: string; event_id: string }) =>
-    client.post<ApiOk<CheckInResult>>(`${BASE}/check-in/`, payload).then((r) => r.data.data),
+  /** Check in a single attendee by registration code and event ID. */
+  checkIn: (payload: { registration_code: string; event_id: string; method?: string }) =>
+    client
+      .post<
+        ApiOk<CheckInResult>
+      >(`${BASE}/check-in/`, { ...payload, method: payload.method ?? "manual" })
+      .then((r) => r.data.data),
 
   /** Check in multiple attendees in one request. */
   batchCheckIn: (payload: { registration_ids: string[]; event_id: string }) =>

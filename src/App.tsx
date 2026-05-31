@@ -18,7 +18,8 @@ import VerifyResetOTPPage from "@/features/auth/pages/VerifyResetOTPPage";
 // public
 import HomePage from "@/features/events/pages/HomePage";
 import EventListPage from "@/features/events/pages/EventListPage";
-import EventDetailPage from "@/features/events/pages/EventDetailPage";
+import AttendeeEventPage from "@/features/events/pages/AttendeeEventPage";
+import OrgEventDetailPage from "@/features/events/pages/OrgEventDetailPage";
 import OrgProfilePage from "@/features/orgs/pages/OrgProfilePage";
 
 // org workspace
@@ -32,7 +33,6 @@ import EventRegistrationsPage from "@/features/events/pages/EventRegistrationsPa
 import VolunteerManagementPage from "@/features/volunteers/pages/VolunteerManagementPage";
 import ParticipationPage from "@/features/participation/pages/ParticipationPage";
 import SponsorsPage from "@/features/sponsors/pages/SponsorsPage";
-import LandingTemplatesPage from "@/features/templates/pages/LandingTemplatesPage";
 import TaxonomyPage from "@/features/taxonomy/pages/TaxonomyPage";
 import VenuesPage from "@/features/venues/pages/VenuesPage";
 import VolAppsPage from "@/features/volunteer-apps/pages/VolAppsPage";
@@ -41,7 +41,6 @@ import WaitlistPage from "@/features/waitlist/pages/WaitlistPage";
 import TeamPage from "@/features/team/pages/TeamPage";
 import FinanceHubPage from "@/features/finance/pages/FinanceHubPage";
 import ReportsPage from "@/features/finance/pages/ReportsPage";
-import AuditLogPage from "@/features/finance/pages/AuditLogPage";
 import OrgSettingsPage from "@/features/orgs/pages/OrgSettingsPage";
 import OrgCreatePage from "@/features/orgs/pages/OrgCreatePage";
 import PricingPage from "@/features/orgs/pages/PricingPage";
@@ -64,7 +63,6 @@ import VolunteerShiftsPage from "@/features/volunteer/pages/VolunteerShiftsPage"
 import VolunteerApplicationsPage from "@/features/volunteer/pages/VolunteerApplicationsPage";
 import VolunteerHoursPage from "@/features/volunteer/pages/VolunteerHoursPage";
 import VolunteerCertificatesPage from "@/features/volunteer/pages/VolunteerCertificatesPage";
-import VolunteerTrainingPage from "@/features/volunteer/pages/VolunteerTrainingPage";
 
 import PassportPage from "@/features/participation/pages/PassportPage";
 
@@ -120,7 +118,9 @@ function MaintenancePage() {
       }}
     >
       <div style={{ fontSize: 64, marginBottom: 24 }}>
-        <span className="ms" style={{ fontSize: 64, color: "#dba13d" }}>construction</span>
+        <span className="ms" style={{ fontSize: 64, color: "#dba13d" }}>
+          construction
+        </span>
       </div>
       <h1
         style={{
@@ -142,7 +142,8 @@ function MaintenancePage() {
           marginBottom: 32,
         }}
       >
-        Sansaar is currently undergoing scheduled maintenance. We're working hard to improve your experience. Please check back shortly.
+        Sansaar is currently undergoing scheduled maintenance. We're working hard to improve your
+        experience. Please check back shortly.
       </p>
       <div
         style={{
@@ -170,7 +171,9 @@ export default function App() {
   useEffect(() => {
     function checkStatus() {
       axios
-        .get(`${import.meta.env.VITE_API_BASE_URL || ""}/iam/api/v1/platform/status/`)
+        .get(
+          `${import.meta.env.VITE_RENDER_IAM || import.meta.env.VITE_API_BASE_URL || ""}/api/v1/platform/status/`
+        )
         .then((res) => {
           setMaintenance(res.data?.data?.maintenance === true);
         })
@@ -226,8 +229,22 @@ export default function App() {
             </P>
           }
         />
-        <Route path="/events/:id" element={<P><EventDetailPage /></P>} />
-        <Route path="/orgs/:id" element={<P><OrgProfilePage /></P>} />
+        <Route
+          path="/events/:id"
+          element={
+            <P>
+              <AttendeeEventPage />
+            </P>
+          }
+        />
+        <Route
+          path="/orgs/:id"
+          element={
+            <P>
+              <OrgProfilePage />
+            </P>
+          }
+        />
         <Route
           path="/search"
           element={
@@ -301,9 +318,7 @@ export default function App() {
           element={
             <P>
               <OrgGuard>
-                <OrgGuard>
-                  <OrgDashboardPage />
-                </OrgGuard>
+                <OrgDashboardPage />
               </OrgGuard>
             </P>
           }
@@ -333,7 +348,7 @@ export default function App() {
           element={
             <P>
               <OrgGuard>
-                <EventDetailPage />
+                <OrgEventDetailPage />
               </OrgGuard>
             </P>
           }
@@ -394,16 +409,6 @@ export default function App() {
             <P>
               <OrgGuard>
                 <SponsorsPage />
-              </OrgGuard>
-            </P>
-          }
-        />
-        <Route
-          path="/org/templates"
-          element={
-            <P>
-              <OrgGuard>
-                <LandingTemplatesPage />
               </OrgGuard>
             </P>
           }
@@ -499,16 +504,6 @@ export default function App() {
           }
         />
         <Route
-          path="/org/audit-log"
-          element={
-            <P>
-              <OrgGuard>
-                <AuditLogPage />
-              </OrgGuard>
-            </P>
-          }
-        />
-        <Route
           path="/org/analytics"
           element={
             <P>
@@ -548,6 +543,14 @@ export default function App() {
           element={
             <P>
               <SupportPage />
+            </P>
+          }
+        />
+        <Route
+          path="/org/community"
+          element={
+            <P>
+              <CommunityPage />
             </P>
           }
         />
@@ -658,14 +661,6 @@ export default function App() {
           element={
             <P>
               <VolunteerCertificatesPage />
-            </P>
-          }
-        />
-        <Route
-          path="/volunteer/training"
-          element={
-            <P>
-              <VolunteerTrainingPage />
             </P>
           }
         />

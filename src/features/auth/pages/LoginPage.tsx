@@ -68,7 +68,7 @@ export default function LoginPage() {
             } catch {
               // non-fatal — useProfileBootstrap will retry on next page
             }
-            navigate("/");
+            navigate("/events");
           }
         },
       }
@@ -93,7 +93,7 @@ export default function LoginPage() {
 
       {/* SSO */}
       <div className="mb-5">
-        <GoogleSignInButton onSuccess={() => navigate("/")} onError={() => loginMutation.reset()} />
+        <GoogleSignInButton onSuccess={() => navigate("/events")} onError={() => loginMutation.reset()} />
       </div>
 
       <SeuDivider label="or continue with email" />

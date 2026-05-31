@@ -6,6 +6,12 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import listPlugin from "@fullcalendar/list";
 import interactionPlugin from "@fullcalendar/interaction";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import iconUrl from "leaflet/dist/images/marker-icon.png";
+import iconRetinaUrl from "leaflet/dist/images/marker-icon-2x.png";
+import shadowUrl from "leaflet/dist/images/marker-shadow.png";
 import AppLayout from "@/shared/layouts/AppLayout";
 import { PH, MS, useToast } from "@/shared/components/v8";
 import { usePublicEvents } from "@/features/events/hooks/useEvents";
@@ -14,6 +20,12 @@ import taxonomyApi from "@/features/taxonomy/api/taxonomy.api";
 import type { EventCategory } from "@/features/taxonomy/api/taxonomy.api";
 import registrationApi from "@/features/registration/api/registration.api";
 import type { SavedEvent } from "@/features/registration/api/registration.api";
+
+// * patch leaflet icon paths once at module level - vite strips the default refs
+L.Icon.Default.mergeOptions({ iconUrl, iconRetinaUrl, shadowUrl });
+
+// nepal geographic center - fallback when no user location is available
+const NEPAL_CENTER: [number, number] = [27.7, 85.3];
 
 /**
  * Calculates the capacity-fill percentage for a given event.
@@ -53,15 +65,24 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-/** Discover events - live data, featured hero, category filter, event grid, calendar view. */
+/**
+ * Formats a kilometre distance into a concise label, e.g. "2.5 km" or "12 km".
+ * @param km - raw distance in kilometres
+ * @returns display string
+ */
+function fmtDistance(km: number): string {
+  return km < 10 ? `${km.toFixed(1)} km` : `${Math.round(km)} km`;
+}
+
+/** Discover events - live data, featured hero, category filter, event grid, calendar view, map view. */
 export default function EventListPage() {
   const navigate = useNavigate();
   const { toast, toastEl } = useToast();
   const qc = useQueryClient();
   const [searchParams] = useSearchParams();
 
-  // * toggle between card grid and FullCalendar view
-  const [viewMode, setViewMode] = useState<"grid" | "calendar">("grid");
+  // * toggle between card grid, FullCalendar view, and Leaflet map view
+  const [viewMode, setViewMode] = useState<"grid" | "calendar" | "map">("grid");
 
   // * category filter uses real category IDs from the API
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
@@ -178,6 +199,32 @@ export default function EventListPage() {
   }
 
   const featured = events.length > 0 ? events[0] : null;
+
+  // events that have coordinates - used for map markers
+  const mappableEvents = events.filter(
+    (ev) => ev.latitude != null && ev.longitude != null
+  ) as (Event & { latitude: number; longitude: number })[];
+
+  /**
+   * Triggers geolocation, shows a pulsing locating state, then on success
+   * stores the position and auto-switches to map view.
+   */
+  function requestLocation() {
+    setLocating(true);
+    setLocationError("");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setLocating(false);
+        // auto-switch to map view so the user immediately sees where they are
+        setViewMode("map");
+      },
+      (err) => {
+        setLocationError(err.message);
+        setLocating(false);
+      }
+    );
+  }
 
   /**
    * Toggle save for an event via the backend API.
@@ -417,41 +464,76 @@ export default function EventListPage() {
                 </button>
               </div>
             ) : (
-              // no location yet: show the "Near me" button
+              // no location yet: show the "Near me" button with pulsing animation while locating
               <button
                 className="btn-sm"
                 disabled={locating}
-                onClick={() => {
-                  setLocating(true);
-                  setLocationError("");
-                  navigator.geolocation.getCurrentPosition(
-                    (pos) => {
-                      setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-                      setLocating(false);
-                    },
-                    (err) => {
-                      setLocationError(err.message);
-                      setLocating(false);
-                    }
-                  );
-                }}
+                onClick={requestLocation}
+                style={{ position: "relative" }}
               >
-                <MS n="my_location" size={13} />
-                {locating ? "Locating…" : "Near me"}
+                {locating ? (
+                  // pulsing dot signals that we are waiting for the browser permission dialog
+                  <>
+                    <span
+                      style={{
+                        display: "inline-block",
+                        width: 8,
+                        height: 8,
+                        borderRadius: "50%",
+                        background: "#e83151",
+                        marginRight: 6,
+                        animation: "pulse 1.2s ease-in-out infinite",
+                      }}
+                    />
+                    Locating…
+                  </>
+                ) : (
+                  <>
+                    <MS n="my_location" size={13} />
+                    Near me
+                  </>
+                )}
               </button>
             )}
 
-            {/* calendar / grid toggle */}
-            <button
-              className={`btn-sm${viewMode === "calendar" ? " primary" : ""}`}
-              onClick={() => setViewMode((m) => (m === "grid" ? "calendar" : "grid"))}
-            >
-              <MS n={viewMode === "calendar" ? "grid_view" : "event"} size={13} />
-              {viewMode === "calendar" ? "Grid view" : "Calendar view"}
-            </button>
+            {/* view mode toggle group: grid / calendar / map */}
+            <div style={{ display: "flex", gap: 4 }}>
+              <button
+                className={`btn-sm${viewMode === "grid" ? " primary" : ""}`}
+                onClick={() => setViewMode("grid")}
+                title="Grid view"
+              >
+                <MS n="grid_view" size={13} />
+                Grid
+              </button>
+              <button
+                className={`btn-sm${viewMode === "calendar" ? " primary" : ""}`}
+                onClick={() => setViewMode("calendar")}
+                title="Calendar view"
+              >
+                <MS n="event" size={13} />
+                Calendar
+              </button>
+              <button
+                className={`btn-sm${viewMode === "map" ? " primary" : ""}`}
+                onClick={() => setViewMode("map")}
+                title="Map view"
+              >
+                <MS n="map" size={13} />
+                Map
+              </button>
+            </div>
           </>
         }
       />
+
+      {/* keyframe animation for the locating pulse dot */}
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50%       { opacity: 0.4; transform: scale(1.4); }
+        }
+      `}</style>
 
       {/* geolocation error - shown below the header bar */}
       {locationError && (
@@ -666,6 +748,152 @@ export default function EventListPage() {
         </div>
       )}
 
+      {/* map view - full-width leaflet map with one marker per event that has coordinates */}
+      {viewMode === "map" && (
+        <div
+          style={{
+            borderRadius: 16,
+            overflow: "hidden",
+            marginBottom: 24,
+            border: "1px solid var(--outline)",
+            position: "relative",
+          }}
+        >
+          {/* near me overlay button - lets the user trigger geolocation from inside the map */}
+          {!userLocation && (
+            <button
+              className="btn-sm primary"
+              disabled={locating}
+              onClick={requestLocation}
+              style={{
+                position: "absolute",
+                top: 12,
+                right: 12,
+                zIndex: 1000,
+                boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
+              }}
+            >
+              {locating ? (
+                <>
+                  <span
+                    style={{
+                      display: "inline-block",
+                      width: 8,
+                      height: 8,
+                      borderRadius: "50%",
+                      background: "white",
+                      marginRight: 6,
+                      animation: "pulse 1.2s ease-in-out infinite",
+                    }}
+                  />
+                  Locating…
+                </>
+              ) : (
+                <>
+                  <MS n="my_location" size={13} />
+                  Near me
+                </>
+              )}
+            </button>
+          )}
+
+          <MapContainer
+            center={userLocation ? [userLocation.lat, userLocation.lng] : NEPAL_CENTER}
+            zoom={userLocation ? 12 : 7}
+            style={{ width: "100%", height: 500 }}
+          >
+            <TileLayer
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution="OpenStreetMap contributors"
+            />
+
+            {/* user location marker - blue dot to distinguish from event markers */}
+            {userLocation && (
+              <Marker position={[userLocation.lat, userLocation.lng]}>
+                <Popup>
+                  <span style={{ fontFamily: "Manrope, sans-serif", fontSize: 13 }}>
+                    Your location
+                  </span>
+                </Popup>
+              </Marker>
+            )}
+
+            {/* one marker per event that has geo-coordinates */}
+            {mappableEvents.map((ev) => {
+              const priceLabel = ev.is_free
+                ? "Free"
+                : `NPR ${parseFloat(ev.price).toLocaleString()}`;
+              const distLabel = userLocation
+                ? fmtDistance(
+                    haversineKm(userLocation.lat, userLocation.lng, ev.latitude, ev.longitude)
+                  )
+                : null;
+              return (
+                <Marker key={ev.id} position={[ev.latitude, ev.longitude]}>
+                  <Popup>
+                    <div style={{ fontFamily: "Manrope, sans-serif", minWidth: 180 }}>
+                      <p
+                        style={{
+                          fontFamily: "Space Grotesk, sans-serif",
+                          fontWeight: 700,
+                          fontSize: 14,
+                          marginBottom: 4,
+                          lineHeight: 1.25,
+                        }}
+                      >
+                        {ev.title}
+                      </p>
+                      <p style={{ fontSize: 12, color: "#555", marginBottom: 2 }}>
+                        {shortDate(ev.start_date)}
+                      </p>
+                      <p style={{ fontSize: 12, color: "#555", marginBottom: 2 }}>{priceLabel}</p>
+                      {distLabel && (
+                        <p style={{ fontSize: 12, color: "#555", marginBottom: 6 }}>
+                          {distLabel} away
+                        </p>
+                      )}
+                      <button
+                        onClick={() => navigate(`/events/${ev.id}`)}
+                        style={{
+                          marginTop: 4,
+                          padding: "4px 12px",
+                          borderRadius: 6,
+                          background: "#050a26",
+                          color: "white",
+                          border: "none",
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          fontFamily: "Manrope, sans-serif",
+                        }}
+                      >
+                        View event
+                      </button>
+                    </div>
+                  </Popup>
+                </Marker>
+              );
+            })}
+          </MapContainer>
+
+          {/* caption below the map */}
+          <div
+            style={{
+              padding: "8px 16px",
+              background: "var(--surface)",
+              borderTop: "1px solid var(--outline)",
+              fontSize: 12,
+              color: "var(--on-mut)",
+              fontFamily: "JetBrains Mono, monospace",
+            }}
+          >
+            {mappableEvents.length} event{mappableEvents.length !== 1 ? "s" : ""} with location data
+            {events.length - mappableEvents.length > 0 &&
+              ` · ${events.length - mappableEvents.length} without coordinates hidden`}
+          </div>
+        </div>
+      )}
+
       {/* calendar view */}
       {viewMode === "calendar" && (
         <div
@@ -727,6 +955,11 @@ export default function EventListPage() {
               const priceLabel = ev.is_free
                 ? "Free"
                 : `NPR ${parseFloat(ev.price).toLocaleString()}`;
+              // compute distance badge only when user location is available and event has coords
+              const distKm =
+                userLocation && ev.latitude != null && ev.longitude != null
+                  ? haversineKm(userLocation.lat, userLocation.lng, ev.latitude, ev.longitude)
+                  : null;
               return (
                 <div key={ev.id} className="disc-card" onClick={() => navigate(`/events/${ev.id}`)}>
                   <div
@@ -756,6 +989,29 @@ export default function EventListPage() {
                         }}
                       >
                         Filling fast
+                      </span>
+                    )}
+                    {/* distance badge in the top-left when location is active */}
+                    {distKm !== null && (
+                      <span
+                        style={{
+                          position: "absolute",
+                          bottom: 10,
+                          right: 10,
+                          zIndex: 1,
+                          background: "rgba(5,10,38,0.8)",
+                          color: "white",
+                          padding: "3px 8px",
+                          borderRadius: 6,
+                          fontSize: 10,
+                          fontWeight: 600,
+                          fontFamily: "JetBrains Mono, monospace",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
+                      >
+                        {fmtDistance(distKm)} away
                       </span>
                     )}
                   </div>

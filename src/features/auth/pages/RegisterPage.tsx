@@ -55,9 +55,7 @@ export default function RegisterPage() {
       {/* SSO */}
       <div className="mb-5">
         <GoogleSignInButton
-          onSuccess={(isNew) =>
-            navigate("/", isNew ? undefined : { state: { flash: "Welcome back!" } })
-          }
+          onSuccess={() => navigate("/events")}
           onError={() => {}}
         />
       </div>
