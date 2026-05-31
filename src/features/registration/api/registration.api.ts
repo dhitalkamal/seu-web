@@ -18,7 +18,12 @@ const registrationApi = {
     client.get<{ data: Registration[] }>(`${BASE}/registrations/`).then((r) => r.data.data),
 
   /** Register for an event. */
-  register: (payload: { event_id: string; quantity?: number; notes?: string }) =>
+  register: (payload: {
+    event_id: string;
+    quantity?: number;
+    notes?: string;
+    networking_opt_in?: boolean;
+  }) =>
     client
       .post<{ data: RegisterResponse }>(`${BASE}/registrations/`, payload)
       .then((r) => r.data.data),
