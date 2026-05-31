@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import AppLayout from "@/shared/layouts/AppLayout";
 import { PH, KPI, useToast } from "@/shared/components/v8";
+import { useUserNames, displayName } from "@/shared/hooks/useUserNames";
 import volunteerRolesApi, { type VolunteerApplication } from "../api/volunteer-roles.api";
 
 export default function VolAppsPage() {
@@ -46,6 +47,7 @@ export default function VolAppsPage() {
   const apps = allApplications.data ?? [];
   const filtered = apps.filter((a) => a.status === tab);
   const roleMap = Object.fromEntries(roles.map((r) => [r.id, r]));
+  const { userMap } = useUserNames(apps.map((a) => a.user_id));
 
   return (
     <AppLayout variant="org">
@@ -160,9 +162,11 @@ export default function VolAppsPage() {
                   return (
                     <tr key={app.id}>
                       <td style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11 }}>
-                        {app.user_id.slice(0, 8)}
+                        {displayName(userMap, app.user_id)}
                       </td>
-                      <td style={{ fontWeight: 600 }}>{role?.title ?? app.role_id.slice(0, 8)}</td>
+                      <td style={{ fontWeight: 600 }}>
+                        {role?.title ?? app.role_id?.slice(0, 8) ?? "..."}
+                      </td>
                       <td
                         style={{
                           color: "var(--on-var)",

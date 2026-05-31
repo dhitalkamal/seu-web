@@ -65,7 +65,8 @@ export default function PricingPage() {
     onError: () => toast("Subscription failed. Please try again."),
   });
 
-  const currentPlan = currentSub?.plan ?? "free";
+  const currentPlan = org?.plan ?? currentSub?.plan ?? "free";
+  const isNgoPlan = currentPlan === "ngo";
 
   return (
     <AppLayout variant="org">
@@ -91,216 +92,218 @@ export default function PricingPage() {
           marginBottom: 28,
         }}
       >
-        {PLAN_CATALOGUE.map((plan) => {
-          const isCurrent = plan.name === currentPlan;
-          const isSelected = plan.name === selectedPlan;
-          const isFree = plan.name === "free";
-          const isNgo = plan.name === "ngo";
+        {PLAN_CATALOGUE.filter((p) => !isNgoPlan || p.name === "ngo" || p.name === "free").map(
+          (plan) => {
+            const isCurrent = plan.name === currentPlan;
+            const isSelected = plan.name === selectedPlan;
+            const isFree = plan.name === "free";
+            const isNgo = plan.name === "ngo";
 
-          // determine button label
-          let btnLabel = "Upgrade";
-          const planIdx = PLAN_CATALOGUE.findIndex((p) => p.name === plan.name);
-          const currentIdx = PLAN_CATALOGUE.findIndex((p) => p.name === currentPlan);
-          if (planIdx < currentIdx) btnLabel = "Downgrade";
-          if (isFree) btnLabel = "Free forever";
-          if (isNgo) btnLabel = "Apply for NGO status";
+            // determine button label
+            let btnLabel = "Upgrade";
+            const planIdx = PLAN_CATALOGUE.findIndex((p) => p.name === plan.name);
+            const currentIdx = PLAN_CATALOGUE.findIndex((p) => p.name === currentPlan);
+            if (planIdx < currentIdx) btnLabel = "Downgrade";
+            if (isFree) btnLabel = "Free forever";
+            if (isNgo) btnLabel = "Apply for NGO status";
 
-          return (
-            <div
-              key={plan.name}
-              style={{
-                padding: 22,
-                borderRadius: 16,
-                border: isCurrent
-                  ? "2px solid #16a34a"
-                  : isSelected
-                    ? "2px solid #050a26"
-                    : "1px solid var(--outline)",
-                background: isSelected ? "var(--low)" : "var(--surface)",
-                display: "flex",
-                flexDirection: "column",
-                gap: 0,
-                position: "relative",
-                transition: "all 0.15s",
-              }}
-            >
-              {/* current plan badge */}
-              {isCurrent && (
-                <div style={{ position: "absolute", top: 14, right: 14 }}>
-                  <span
-                    style={{
-                      padding: "3px 10px",
-                      borderRadius: 999,
-                      fontSize: 10.5,
-                      fontWeight: 700,
-                      background: "#dcfce7",
-                      color: "#166534",
-                    }}
-                  >
-                    Current Plan
-                  </span>
-                </div>
-              )}
-
-              {/* plan name */}
+            return (
               <div
+                key={plan.name}
                 style={{
-                  fontFamily: "Space Grotesk, sans-serif",
-                  fontWeight: 700,
-                  fontSize: 18,
-                  letterSpacing: "-0.02em",
-                  color: "var(--on-bg)",
-                  marginBottom: 8,
+                  padding: 22,
+                  borderRadius: 16,
+                  border: isCurrent
+                    ? "2px solid #16a34a"
+                    : isSelected
+                      ? "2px solid #050a26"
+                      : "1px solid var(--outline)",
+                  background: isSelected ? "var(--low)" : "var(--surface)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 0,
+                  position: "relative",
+                  transition: "all 0.15s",
                 }}
               >
-                {plan.label}
-              </div>
+                {/* current plan badge */}
+                {isCurrent && (
+                  <div style={{ position: "absolute", top: 14, right: 14 }}>
+                    <span
+                      style={{
+                        padding: "3px 10px",
+                        borderRadius: 999,
+                        fontSize: 10.5,
+                        fontWeight: 700,
+                        background: "#dcfce7",
+                        color: "#166534",
+                      }}
+                    >
+                      Current Plan
+                    </span>
+                  </div>
+                )}
 
-              {/* price */}
-              <div style={{ marginBottom: 4 }}>
-                <span
+                {/* plan name */}
+                <div
                   style={{
                     fontFamily: "Space Grotesk, sans-serif",
                     fontWeight: 700,
-                    fontSize: 32,
-                    letterSpacing: "-0.04em",
+                    fontSize: 18,
+                    letterSpacing: "-0.02em",
                     color: "var(--on-bg)",
+                    marginBottom: 8,
                   }}
                 >
-                  {plan.price === 0 ? "Free" : `NPR ${plan.price.toLocaleString()}`}
-                </span>
-                {plan.price > 0 && (
+                  {plan.label}
+                </div>
+
+                {/* price */}
+                <div style={{ marginBottom: 4 }}>
                   <span
                     style={{
-                      fontSize: 12,
+                      fontFamily: "Space Grotesk, sans-serif",
+                      fontWeight: 700,
+                      fontSize: 32,
+                      letterSpacing: "-0.04em",
+                      color: "var(--on-bg)",
+                    }}
+                  >
+                    {plan.price === 0 ? "Free" : `NPR ${plan.price.toLocaleString()}`}
+                  </span>
+                  {plan.price > 0 && (
+                    <span
+                      style={{
+                        fontSize: 12,
+                        color: "var(--on-mut)",
+                        fontFamily: "Manrope, sans-serif",
+                        marginLeft: 4,
+                      }}
+                    >
+                      /month
+                    </span>
+                  )}
+                </div>
+
+                {/* fee percentage */}
+                <div
+                  style={{
+                    fontSize: 11.5,
+                    color: "var(--on-mut)",
+                    fontFamily: "JetBrains Mono, monospace",
+                    marginBottom: 18,
+                  }}
+                >
+                  {plan.fee} platform fee
+                </div>
+
+                {/* feature list */}
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 8,
+                    flex: 1,
+                    marginBottom: 20,
+                  }}
+                >
+                  {plan.features.map((f) => (
+                    <div
+                      key={f}
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 8,
+                        fontSize: 12.5,
+                        color: "var(--on-var)",
+                        fontFamily: "Manrope, sans-serif",
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      <MS
+                        n="check"
+                        size={14}
+                        style={{ color: "#16a34a", flexShrink: 0, marginTop: 1 }}
+                      />
+                      {f}
+                    </div>
+                  ))}
+                </div>
+
+                {/* action button */}
+                {isCurrent ? (
+                  <div
+                    style={{
+                      padding: "10px 0",
+                      textAlign: "center",
+                      borderRadius: 10,
+                      border: "1px solid #16a34a",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: "#166534",
+                      fontFamily: "Manrope, sans-serif",
+                      background: "#f0fdf4",
+                    }}
+                  >
+                    Current Plan
+                  </div>
+                ) : isFree ? (
+                  <div
+                    style={{
+                      padding: "10px 0",
+                      textAlign: "center",
+                      borderRadius: 10,
+                      border: "1px solid var(--outline)",
+                      fontSize: 13,
+                      fontWeight: 600,
                       color: "var(--on-mut)",
                       fontFamily: "Manrope, sans-serif",
-                      marginLeft: 4,
                     }}
                   >
-                    /month
-                  </span>
-                )}
-              </div>
-
-              {/* fee percentage */}
-              <div
-                style={{
-                  fontSize: 11.5,
-                  color: "var(--on-mut)",
-                  fontFamily: "JetBrains Mono, monospace",
-                  marginBottom: 18,
-                }}
-              >
-                {plan.fee} platform fee
-              </div>
-
-              {/* feature list */}
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 8,
-                  flex: 1,
-                  marginBottom: 20,
-                }}
-              >
-                {plan.features.map((f) => (
-                  <div
-                    key={f}
+                    Free forever
+                  </div>
+                ) : isNgo ? (
+                  <a
+                    href="mailto:hello@sansaar.io?subject=NGO Plan Application"
                     style={{
-                      display: "flex",
-                      alignItems: "flex-start",
-                      gap: 8,
-                      fontSize: 12.5,
+                      display: "block",
+                      padding: "10px 0",
+                      textAlign: "center",
+                      borderRadius: 10,
+                      border: "1px solid var(--outline)",
+                      fontSize: 13,
+                      fontWeight: 600,
                       color: "var(--on-var)",
                       fontFamily: "Manrope, sans-serif",
-                      lineHeight: 1.4,
+                      textDecoration: "none",
+                      background: "var(--low)",
                     }}
                   >
-                    <MS
-                      n="check"
-                      size={14}
-                      style={{ color: "#16a34a", flexShrink: 0, marginTop: 1 }}
-                    />
-                    {f}
-                  </div>
-                ))}
+                    Apply for NGO status
+                  </a>
+                ) : (
+                  <button
+                    onClick={() => setSelectedPlan(isSelected ? null : plan.name)}
+                    style={{
+                      padding: "10px 0",
+                      borderRadius: 10,
+                      border: isSelected ? "none" : "1px solid #050a26",
+                      background: isSelected ? "#050a26" : "transparent",
+                      color: isSelected ? "white" : "#050a26",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      fontFamily: "Manrope, sans-serif",
+                      cursor: "pointer",
+                      transition: "all 120ms",
+                    }}
+                  >
+                    {isSelected ? "Selected" : btnLabel}
+                  </button>
+                )}
               </div>
-
-              {/* action button */}
-              {isCurrent ? (
-                <div
-                  style={{
-                    padding: "10px 0",
-                    textAlign: "center",
-                    borderRadius: 10,
-                    border: "1px solid #16a34a",
-                    fontSize: 13,
-                    fontWeight: 700,
-                    color: "#166534",
-                    fontFamily: "Manrope, sans-serif",
-                    background: "#f0fdf4",
-                  }}
-                >
-                  Current Plan
-                </div>
-              ) : isFree ? (
-                <div
-                  style={{
-                    padding: "10px 0",
-                    textAlign: "center",
-                    borderRadius: 10,
-                    border: "1px solid var(--outline)",
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: "var(--on-mut)",
-                    fontFamily: "Manrope, sans-serif",
-                  }}
-                >
-                  Free forever
-                </div>
-              ) : isNgo ? (
-                <a
-                  href="mailto:hello@sansaar.io?subject=NGO Plan Application"
-                  style={{
-                    display: "block",
-                    padding: "10px 0",
-                    textAlign: "center",
-                    borderRadius: 10,
-                    border: "1px solid var(--outline)",
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: "var(--on-var)",
-                    fontFamily: "Manrope, sans-serif",
-                    textDecoration: "none",
-                    background: "var(--low)",
-                  }}
-                >
-                  Apply for NGO status
-                </a>
-              ) : (
-                <button
-                  onClick={() => setSelectedPlan(isSelected ? null : plan.name)}
-                  style={{
-                    padding: "10px 0",
-                    borderRadius: 10,
-                    border: isSelected ? "none" : "1px solid #050a26",
-                    background: isSelected ? "#050a26" : "transparent",
-                    color: isSelected ? "white" : "#050a26",
-                    fontSize: 13,
-                    fontWeight: 700,
-                    fontFamily: "Manrope, sans-serif",
-                    cursor: "pointer",
-                    transition: "all 120ms",
-                  }}
-                >
-                  {isSelected ? "Selected" : btnLabel}
-                </button>
-              )}
-            </div>
-          );
-        })}
+            );
+          }
+        )}
       </div>
 
       {/* gateway selection modal overlay */}

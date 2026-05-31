@@ -31,7 +31,8 @@ export default function VolunteerApplicationsPage() {
 
   // apply mutation - fires apply() then invalidates the roles query so status re-renders
   const applyMutation = useMutation({
-    mutationFn: ({ roleId, eventId }: { roleId: string; eventId: string }) => volunteerRolesApi.apply(roleId, eventId),
+    mutationFn: ({ roleId, eventId }: { roleId: string; eventId: string }) =>
+      volunteerRolesApi.apply(roleId, eventId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["volunteer-roles"] });
       qc.invalidateQueries({ queryKey: ["my-volunteer-apps"] });
@@ -56,10 +57,14 @@ export default function VolunteerApplicationsPage() {
   const filtered: VolunteerRole[] =
     tab === "browse" ? roles.filter((r) => roleStatus(r) === "open") : [];
 
-  const filteredApps = tab === "applied" ? myApps.filter((a) => a.status === "pending")
-    : tab === "accepted" ? myApps.filter((a) => a.status === "approved" || a.status === "confirmed")
-    : tab === "rejected" ? myApps.filter((a) => a.status === "rejected")
-    : [];
+  const filteredApps =
+    tab === "applied"
+      ? myApps.filter((a) => a.status === "pending")
+      : tab === "accepted"
+        ? myApps.filter((a) => a.status === "approved" || a.status === "confirmed")
+        : tab === "rejected"
+          ? myApps.filter((a) => a.status === "rejected")
+          : [];
 
   const tabs: { key: Tab; label: string; icon: string }[] = [
     { key: "browse", label: "Browse Roles", icon: "search" },
@@ -127,19 +132,54 @@ export default function VolunteerApplicationsPage() {
       {!isLoading && tab !== "browse" && filteredApps.length > 0 && (
         <div className="panel">
           <div className="panel-head">
-            <span className="panel-title" style={{ textTransform: "capitalize" }}>{tab} applications</span>
-            <span style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 10.5, color: "var(--on-mut)" }}>{filteredApps.length}</span>
+            <span className="panel-title" style={{ textTransform: "capitalize" }}>
+              {tab} applications
+            </span>
+            <span
+              style={{
+                fontFamily: "JetBrains Mono, monospace",
+                fontSize: 10.5,
+                color: "var(--on-mut)",
+              }}
+            >
+              {filteredApps.length}
+            </span>
           </div>
           <div className="panel-body flush">
             <table className="tbl">
-              <thead><tr><th>Role</th><th>Event</th><th>Status</th><th>Applied</th></tr></thead>
+              <thead>
+                <tr>
+                  <th>Role</th>
+                  <th>Event</th>
+                  <th>Status</th>
+                  <th>Applied</th>
+                </tr>
+              </thead>
               <tbody>
                 {filteredApps.map((app) => (
                   <tr key={app.id}>
-                    <td style={{ fontWeight: 600 }}>{app.volunteer_role_id?.slice(0, 8) ?? app.role_id?.slice(0, 8)}</td>
-                    <td style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11 }}>{app.event_id?.slice(0, 8) ?? "-"}</td>
-                    <td><span className={`pill ${app.status === "approved" || app.status === "confirmed" ? "active" : app.status === "rejected" ? "suspended" : "pending"}`}>{app.status}</span></td>
-                    <td style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11, color: "var(--on-mut)" }}>{new Date(app.created_at).toLocaleDateString()}</td>
+                    <td style={{ fontWeight: 600 }}>
+                      {app.volunteer_role_id?.slice(0, 8) ?? app.role_id?.slice(0, 8) ?? "..."}
+                    </td>
+                    <td style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11 }}>
+                      {app.event_id?.slice(0, 8) ?? "..."}
+                    </td>
+                    <td>
+                      <span
+                        className={`pill ${app.status === "approved" || app.status === "confirmed" ? "active" : app.status === "rejected" ? "suspended" : "pending"}`}
+                      >
+                        {app.status}
+                      </span>
+                    </td>
+                    <td
+                      style={{
+                        fontFamily: "JetBrains Mono, monospace",
+                        fontSize: 11,
+                        color: "var(--on-mut)",
+                      }}
+                    >
+                      {new Date(app.created_at).toLocaleDateString()}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -210,13 +250,24 @@ export default function VolunteerApplicationsPage() {
         <div className="flex flex-col gap-4">
           {filtered.map((role) => {
             const isApplying = applying === role.id && applyMutation.isPending;
+            // check if user already applied for this role
+            const existingApp = myApps.find(
+              (a) =>
+                (a.volunteer_role_id === role.id || a.role_id === role.id) &&
+                a.status !== "cancelled"
+            );
+            const isPending = existingApp?.status === "pending";
+            const isApproved =
+              existingApp?.status === "approved" || existingApp?.status === "confirmed";
+            const isRejected = existingApp?.status === "rejected";
+            const alreadyApplied = !!existingApp;
 
             return (
               <div
                 key={role.id}
                 style={{
                   background: "var(--surface)",
-                  border: "1px solid var(--outline)",
+                  border: `1px solid ${isApproved ? "#16a34a" : isPending ? "#dba13d" : "var(--outline)"}`,
                   borderRadius: 14,
                   padding: 20,
                   display: "flex",
@@ -226,10 +277,21 @@ export default function VolunteerApplicationsPage() {
                 {/* icon */}
                 <div
                   className="grid place-items-center shrink-0"
-                  style={{ width: 52, height: 52, borderRadius: 13, background: "#dbeafe" }}
+                  style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: 13,
+                    background: isApproved ? "#dcfce7" : isPending ? "#fef3c7" : "#dbeafe",
+                  }}
                 >
-                  <span className="ms" style={{ fontSize: 26, color: "#1e40af" }}>
-                    assignment_ind
+                  <span
+                    className="ms"
+                    style={{
+                      fontSize: 26,
+                      color: isApproved ? "#166534" : isPending ? "#92400e" : "#1e40af",
+                    }}
+                  >
+                    {isApproved ? "check_circle" : isPending ? "hourglass_top" : "assignment_ind"}
                   </span>
                 </div>
 
@@ -247,8 +309,15 @@ export default function VolunteerApplicationsPage() {
                   >
                     {role.name || role.title}
                   </p>
-                  <p style={{ fontSize: 11, color: "var(--on-mut)", fontFamily: "'JetBrains Mono', monospace", marginBottom: 4 }}>
-                    Event: {role.event_id?.slice(0, 8)}
+                  <p
+                    style={{
+                      fontSize: 11,
+                      color: "var(--on-mut)",
+                      fontFamily: "'JetBrains Mono', monospace",
+                      marginBottom: 4,
+                    }}
+                  >
+                    Event: {role.event_id?.slice(0, 8) ?? "..."}
                   </p>
                   <p
                     style={{
@@ -292,38 +361,95 @@ export default function VolunteerApplicationsPage() {
                       <span className="ms" style={{ fontSize: 14 }}>
                         group
                       </span>
-                      {(role.capacity ?? role.slots ?? 0) - (role.filled ?? 0)}/{role.capacity ?? role.slots ?? 0} spots left
+                      {(role.capacity ?? role.slots ?? 0) - (role.filled ?? 0)}/
+                      {role.capacity ?? role.slots ?? 0} spots left
                     </span>
                   </div>
                 </div>
 
                 {/* action */}
                 <div className="flex flex-col gap-2 shrink-0 justify-center">
-                  <button
-                    disabled={isApplying}
-                    onClick={() => {
-                      setApplying(role.id);
-                      applyMutation.mutate({ roleId: role.id, eventId: role.event_id });
-                    }}
-                    style={{
-                      padding: "9px 20px",
-                      borderRadius: 9,
-                      border: "none",
-                      background: "linear-gradient(135deg, #4338ca, #6366f1)",
-                      color: "white",
-                      fontFamily: "Manrope, sans-serif",
-                      fontSize: 13,
-                      fontWeight: 700,
-                      cursor: isApplying ? "not-allowed" : "pointer",
-                      opacity: isApplying ? 0.7 : 1,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                    }}
-                  >
-                    <MS n="send" size={14} />
-                    {isApplying ? "Applying..." : "Apply"}
-                  </button>
+                  {isApproved ? (
+                    <span
+                      style={{
+                        padding: "9px 20px",
+                        borderRadius: 9,
+                        background: "#dcfce7",
+                        color: "#166534",
+                        fontFamily: "Manrope, sans-serif",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <MS n="check_circle" size={14} />
+                      Approved
+                    </span>
+                  ) : isPending ? (
+                    <span
+                      style={{
+                        padding: "9px 20px",
+                        borderRadius: 9,
+                        background: "#fef3c7",
+                        color: "#92400e",
+                        fontFamily: "Manrope, sans-serif",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <MS n="hourglass_top" size={14} />
+                      Pending
+                    </span>
+                  ) : isRejected ? (
+                    <span
+                      style={{
+                        padding: "9px 20px",
+                        borderRadius: 9,
+                        background: "#fee2e2",
+                        color: "#991b1b",
+                        fontFamily: "Manrope, sans-serif",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <MS n="cancel" size={14} />
+                      Rejected
+                    </span>
+                  ) : (
+                    <button
+                      disabled={isApplying || alreadyApplied}
+                      onClick={() => {
+                        setApplying(role.id);
+                        applyMutation.mutate({ roleId: role.id, eventId: role.event_id });
+                      }}
+                      style={{
+                        padding: "9px 20px",
+                        borderRadius: 9,
+                        border: "none",
+                        background: "linear-gradient(135deg, #4338ca, #6366f1)",
+                        color: "white",
+                        fontFamily: "Manrope, sans-serif",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        cursor: isApplying ? "not-allowed" : "pointer",
+                        opacity: isApplying ? 0.7 : 1,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <MS n="send" size={14} />
+                      {isApplying ? "Applying..." : "Apply"}
+                    </button>
+                  )}
                 </div>
               </div>
             );

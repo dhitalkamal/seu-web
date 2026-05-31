@@ -1,4 +1,4 @@
-/** Registration domain types — re-exports for feature consumers. */
+/** Registration domain types - re-exports for feature consumers. */
 
 export type Registration = {
   id: string;
@@ -12,6 +12,7 @@ export type Registration = {
   cancelled_at: string | null;
   created_at: string;
   updated_at: string;
+  networking_opt_in?: boolean;
 };
 
 export type WaitlistEntry = {
