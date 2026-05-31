@@ -160,9 +160,11 @@ export default function VolAppsPage() {
                   return (
                     <tr key={app.id}>
                       <td style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11 }}>
-                        {app.user_id.slice(0, 8)}
+                        {app.user_id?.slice(0, 8) ?? "..."}
                       </td>
-                      <td style={{ fontWeight: 600 }}>{role?.title ?? app.role_id.slice(0, 8)}</td>
+                      <td style={{ fontWeight: 600 }}>
+                        {role?.title ?? app.role_id?.slice(0, 8) ?? "..."}
+                      </td>
                       <td
                         style={{
                           color: "var(--on-var)",

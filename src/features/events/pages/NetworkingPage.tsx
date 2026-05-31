@@ -332,7 +332,7 @@ function _EventCard({
             whiteSpace: "nowrap",
           }}
         >
-          {title ?? `Event ${eventId.slice(0, 8)}`}
+          {title ?? `Event ${eventId?.slice(0, 8) ?? "..."}`}
         </p>
         <div style={{ display: "flex", gap: 10, marginTop: 3 }}>
           {date && (

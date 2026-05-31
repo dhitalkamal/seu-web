@@ -276,7 +276,7 @@ export default function EventConnectionsPage() {
                                   color: "var(--on-var)",
                                 }}
                               >
-                                {c.user_id.slice(0, 12)}…
+                                {c.user_id?.slice(0, 12) ?? "..."}
                               </span>
                             </div>
                           </td>
