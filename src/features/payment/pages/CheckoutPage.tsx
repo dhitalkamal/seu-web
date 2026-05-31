@@ -40,7 +40,7 @@ export default function CheckoutPage() {
     queryFn: () => registrationApi.listMine(),
   });
   const alreadyRegistered = myRegistrations.some(
-    (r) => r.event_id === eventId && r.status !== "cancelled"
+    (r) => r.event_id === eventId && (r.status === "confirmed" || r.status === "checked_in")
   );
 
   const orderMutation = useMutation({

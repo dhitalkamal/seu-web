@@ -36,9 +36,11 @@ export default function AttendeeEventPage() {
     queryKey: ["my-registrations"],
     queryFn: () => registrationApi.listMine(),
     enabled: !!user,
+    refetchOnWindowFocus: true,
+    staleTime: 0,
   });
   const alreadyRegistered = myRegistrations.some(
-    (r) => r.event_id === id && r.status !== "cancelled"
+    (r) => r.event_id === id && (r.status === "confirmed" || r.status === "checked_in")
   );
 
   const { data: tiers = [] } = useQuery({

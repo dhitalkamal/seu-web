@@ -47,30 +47,32 @@ export default function GoogleSignInButton({ onSuccess, onError }: Props) {
       }
 
       const { access_token, refresh_token, is_new_user } = data.data;
-      // ! set tokens first so axios interceptor can attach the Bearer header
-      setAuth(
-        {
-          id: "",
-          email: "",
-          first_name: "",
-          last_name: "",
-          avatar_url: null,
-          phone: null,
-          bio: null,
-          is_email_verified: true,
-          mfa_enabled: false,
-          date_joined: new Date().toISOString(),
-        },
-        access_token,
-        refresh_token
-      );
-      // ! fetch full profile immediately — fills in name, email, etc.
+
+      // temporarily set the Authorization header so getProfile works
+      client.defaults.headers.common["Authorization"] = `Bearer ${access_token}`;
+
+      // fetch full profile before calling setAuth to avoid GuestRoute redirect race
+      let user: Parameters<typeof setAuth>[0] = {
+        id: "",
+        email: "",
+        first_name: "",
+        last_name: "",
+        avatar_url: null,
+        phone: null,
+        bio: null,
+        is_email_verified: true,
+        mfa_enabled: false,
+        date_joined: new Date().toISOString(),
+      };
       try {
         const profile = await authApi.getProfile();
-        setAuth(profile.data, access_token, refresh_token);
+        user = profile.data;
       } catch {
-        // non-fatal — useProfileBootstrap will retry on next page load
+        // fall back to skeleton - useProfileBootstrap will retry
       }
+
+      // single setAuth call with complete data - triggers GuestRoute redirect
+      setAuth(user, access_token, refresh_token);
       onSuccess?.(is_new_user);
     } catch {
       onError?.("Google sign-in failed. Please try again.");
