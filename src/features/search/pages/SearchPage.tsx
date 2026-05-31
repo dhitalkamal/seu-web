@@ -10,6 +10,7 @@ import shadowUrl from "leaflet/dist/images/marker-shadow.png";
 import AppLayout from "@/shared/layouts/AppLayout";
 import { PH, MS } from "@/shared/components/v8";
 import eventsApi from "@/features/events/api/events.api";
+import intelligenceApi from "@/features/intelligence/api/intelligence.api";
 import type { Event } from "@/features/events/types/event.types";
 
 // fix leaflet's broken default icon paths when bundled with vite
@@ -73,6 +74,13 @@ export default function SearchPage() {
   // * map preview toggle - collapsed by default, revealed after search
   const [mapOpen, setMapOpen] = useState(false);
 
+  // nlp tokenization - runs alongside the event search for keyword extraction
+  const { data: nlpData } = useQuery({
+    queryKey: ["nlp-search", q],
+    queryFn: () => intelligenceApi.nlpSearch(q),
+    enabled: q.trim().length > 0,
+  });
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ["event-search", q],
     queryFn: () => eventsApi.listPublicEvents({ search: q }),
@@ -80,6 +88,8 @@ export default function SearchPage() {
   });
 
   const results: Event[] = data?.results ?? [];
+  const nlpKeywords = nlpData?.keywords ?? [];
+  const detectedLanguage = nlpData?.language ?? "en";
 
   // events with coordinates - used for map markers
   const mappableResults = results.filter(
@@ -284,6 +294,55 @@ export default function SearchPage() {
           >
             Something went wrong. Please try again.
           </div>
+        </div>
+      )}
+
+      {/* nlp keyword chips */}
+      {q && nlpKeywords.length > 0 && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            marginBottom: 12,
+            flexWrap: "wrap",
+          }}
+        >
+          <span
+            style={{
+              fontSize: 10,
+              fontFamily: "JetBrains Mono, monospace",
+              fontWeight: 700,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: "var(--on-mut)",
+              marginRight: 4,
+            }}
+          >
+            NLP · {detectedLanguage.toUpperCase()}
+          </span>
+          {nlpKeywords.map((kw) => (
+            <span
+              key={kw}
+              onClick={() => {
+                setInput(kw);
+                setQ(kw);
+                setParams({ q: kw });
+              }}
+              style={{
+                padding: "3px 10px",
+                borderRadius: 6,
+                background: "var(--primary)",
+                color: "white",
+                fontSize: 11,
+                fontWeight: 600,
+                fontFamily: "JetBrains Mono, monospace",
+                cursor: "pointer",
+              }}
+            >
+              {kw}
+            </span>
+          ))}
         </div>
       )}
 

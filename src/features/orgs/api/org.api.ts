@@ -108,6 +108,10 @@ const orgApi = {
   reinstate: (orgId: string) =>
     client.post<{ data: Organization }>(`${BASE}/${orgId}/reinstate/`).then(unwrap),
 
+  /** Resubmit a rejected org for review - transitions rejected to pending_review. */
+  resubmit: (orgId: string) =>
+    client.post<{ data: Organization }>(`${BASE}/${orgId}/resubmit/`).then(unwrap),
+
   // * Invites
 
   /**
