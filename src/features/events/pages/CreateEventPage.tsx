@@ -301,16 +301,20 @@ export default function CreateEventPage() {
     };
 
     async function createAndNavigate(eventId: string) {
-      
       // create ticket tiers if any
       if (!form.is_free && form.ticket_tiers.length > 0) {
         for (const tier of form.ticket_tiers) {
           if (!tier.name.trim()) continue;
           try {
             await apiClient.post(`/participation/api/v1/events/${eventId}/ticket-tiers/`, {
-              name: tier.name, price: tier.price, capacity: tier.capacity, description: tier.description,
+              name: tier.name,
+              price: tier.price,
+              capacity: tier.capacity,
+              description: tier.description,
             });
-          } catch { /* non-fatal */ }
+          } catch {
+            /* non-fatal */
+          }
         }
       }
 
@@ -326,7 +330,9 @@ export default function CreateEventPage() {
               description: role.description,
               capacity: role.capacity,
             });
-          } catch { /* non-fatal */ }
+          } catch {
+            /* non-fatal */
+          }
         }
       }
 
@@ -334,8 +340,19 @@ export default function CreateEventPage() {
     }
 
     if (savedIdRef.current) {
-      await eventsApi.updateEvent(savedIdRef.current, payload);
-      await createAndNavigate(savedIdRef.current);
+      try {
+        await eventsApi.updateEvent(savedIdRef.current, payload);
+        await createAndNavigate(savedIdRef.current);
+      } catch {
+        // draft update failed - try creating fresh instead
+        try {
+          const res = await eventsApi.createEvent(payload);
+          savedIdRef.current = res.data.id;
+          await createAndNavigate(res.data.id);
+        } catch {
+          // both paths failed
+        }
+      }
       return;
     }
 
@@ -516,7 +533,9 @@ export default function CreateEventPage() {
               categoriesLoadFailed={categoriesLoadFailed}
             />
           )}
-          {step === 1 && <StepSchedule form={form} set={set} errors={errors} orgId={org?.id ?? ""} />}
+          {step === 1 && (
+            <StepSchedule form={form} set={set} errors={errors} orgId={org?.id ?? ""} />
+          )}
           {step === 2 && (
             <StepTickets
               form={form}
@@ -903,6 +922,8 @@ function StepBasics({
 
 /** Step 2  - dates, location, online toggle, meeting URL. */
 function StepSchedule({ form, set, errors, orgId }: StepProps) {
+  const [sessionModal, setSessionModal] = useState(false);
+  const [sessionDraft, setSessionDraft] = useState({ title: "", time: "10:00", speaker: "" });
   return (
     <>
       <StepHeader
@@ -1012,7 +1033,14 @@ function StepSchedule({ form, set, errors, orgId }: StepProps) {
             }}
           />
           {form.is_online && (
-            <p style={{ fontSize: 11, color: "var(--on-mut)", marginTop: 4, fontFamily: "Manrope, sans-serif" }}>
+            <p
+              style={{
+                fontSize: 11,
+                color: "var(--on-mut)",
+                marginTop: 4,
+                fontFamily: "Manrope, sans-serif",
+              }}
+            >
               Optional for online-only events.
             </p>
           )}
@@ -1022,7 +1050,14 @@ function StepSchedule({ form, set, errors, orgId }: StepProps) {
         {!form.is_online && (
           <div>
             <label className={labelCls}>Pin location on map</label>
-            <div style={{ height: 280, borderRadius: 12, overflow: "hidden", border: "1px solid var(--mid)" }}>
+            <div
+              style={{
+                height: 280,
+                borderRadius: 12,
+                overflow: "hidden",
+                border: "1px solid var(--mid)",
+              }}
+            >
               <EventMap
                 latitude={form.latitude ?? 27.7172}
                 longitude={form.longitude ?? 85.324}
@@ -1033,7 +1068,14 @@ function StepSchedule({ form, set, errors, orgId }: StepProps) {
               />
             </div>
             {form.latitude && (
-              <p style={{ fontSize: 11, color: "var(--on-mut)", marginTop: 4, fontFamily: "'JetBrains Mono', monospace" }}>
+              <p
+                style={{
+                  fontSize: 11,
+                  color: "var(--on-mut)",
+                  marginTop: 4,
+                  fontFamily: "'JetBrains Mono', monospace",
+                }}
+              >
                 {form.latitude.toFixed(5)}, {form.longitude?.toFixed(5)}
               </p>
             )}
@@ -1042,38 +1084,174 @@ function StepSchedule({ form, set, errors, orgId }: StepProps) {
 
         {/* event agenda */}
         <div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <label className={labelCls} style={{ marginBottom: 0 }}>Event Agenda</label>
-            <button type="button" className="btn-sm primary" style={{ fontSize: 11, padding: "5px 12px" }} onClick={() => {
-              const title = prompt("Session title (e.g. Keynote Speech, Panel Discussion):");
-              if (!title?.trim()) return;
-              const time = prompt("Time (HH:MM, e.g. 10:00):", "10:00") ?? "";
-              const speaker = prompt("Speaker / presenter (optional):") ?? "";
-              set("schedule", [...form.schedule, { id: `s-${Date.now()}`, time, title: title.trim(), description: "", speaker }]);
-            }}><MS n="add" size={13} /> Add session</button>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 10,
+            }}
+          >
+            <label className={labelCls} style={{ marginBottom: 0 }}>
+              Event Agenda
+            </label>
+            <button
+              type="button"
+              className="btn-sm primary"
+              style={{ fontSize: 11, padding: "5px 12px" }}
+              onClick={() => {
+                setSessionDraft({ title: "", time: "10:00", speaker: "" });
+                setSessionModal(true);
+              }}
+            >
+              <MS n="add" size={13} /> Add session
+            </button>
           </div>
           {form.schedule.length === 0 && (
-            <p style={{ fontSize: 12, color: "var(--on-mut)", fontFamily: "Manrope, sans-serif", padding: "12px 0" }}>No agenda items. Add sessions to create the event schedule.</p>
+            <p
+              style={{
+                fontSize: 12,
+                color: "var(--on-mut)",
+                fontFamily: "Manrope, sans-serif",
+                padding: "12px 0",
+              }}
+            >
+              No agenda items. Add sessions to create the event schedule.
+            </p>
           )}
           {form.schedule.length > 0 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-              {form.schedule.sort((a, b) => a.time.localeCompare(b.time)).map((item, idx) => (
-                <div key={item.id} style={{ display: "flex", gap: 14, padding: "14px 0", borderBottom: idx < form.schedule.length - 1 ? "1px solid var(--mid)" : "none" }}>
-                  <div style={{ width: 60, flexShrink: 0, textAlign: "center" }}>
-                    <p style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 14, fontWeight: 700, color: "var(--primary)" }}>{item.time || "--:--"}</p>
+              {form.schedule
+                .sort((a, b) => a.time.localeCompare(b.time))
+                .map((item, idx) => (
+                  <div
+                    key={item.id}
+                    style={{
+                      display: "flex",
+                      gap: 14,
+                      padding: "14px 0",
+                      borderBottom:
+                        idx < form.schedule.length - 1 ? "1px solid var(--mid)" : "none",
+                    }}
+                  >
+                    <div style={{ width: 60, flexShrink: 0, textAlign: "center" }}>
+                      <p
+                        style={{
+                          fontFamily: "'JetBrains Mono',monospace",
+                          fontSize: 14,
+                          fontWeight: 700,
+                          color: "var(--primary)",
+                        }}
+                      >
+                        {item.time || "--:--"}
+                      </p>
+                    </div>
+                    <div
+                      style={{
+                        width: 2,
+                        background: "linear-gradient(to bottom, var(--primary), var(--mid))",
+                        borderRadius: 1,
+                        flexShrink: 0,
+                      }}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p
+                        style={{
+                          fontFamily: "'Space Grotesk',sans-serif",
+                          fontWeight: 700,
+                          fontSize: 14,
+                          letterSpacing: "-0.02em",
+                          marginBottom: 2,
+                        }}
+                      >
+                        {item.title}
+                      </p>
+                      {item.speaker && (
+                        <p
+                          style={{
+                            fontSize: 12,
+                            color: "var(--on-mut)",
+                            fontFamily: "Manrope, sans-serif",
+                          }}
+                        >
+                          <MS
+                            n="person"
+                            size={12}
+                            style={{ verticalAlign: "middle", marginRight: 3 }}
+                          />
+                          {item.speaker}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        set(
+                          "schedule",
+                          form.schedule.filter((_, i) => i !== idx)
+                        )
+                      }
+                      style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: 6,
+                        border: "1px solid var(--mid)",
+                        background: "transparent",
+                        cursor: "pointer",
+                        display: "grid",
+                        placeItems: "center",
+                        flexShrink: 0,
+                        alignSelf: "center",
+                      }}
+                    >
+                      <MS n="close" size={12} style={{ color: "var(--on-mut)" }} />
+                    </button>
                   </div>
-                  <div style={{ width: 2, background: "linear-gradient(to bottom, var(--primary), var(--mid))", borderRadius: 1, flexShrink: 0 }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 14, letterSpacing: "-0.02em", marginBottom: 2 }}>{item.title}</p>
-                    {item.speaker && <p style={{ fontSize: 12, color: "var(--on-mut)", fontFamily: "Manrope, sans-serif" }}><MS n="person" size={12} style={{ verticalAlign: "middle", marginRight: 3 }} />{item.speaker}</p>}
-                  </div>
-                  <button type="button" onClick={() => set("schedule", form.schedule.filter((_, i) => i !== idx))} style={{ width: 24, height: 24, borderRadius: 6, border: "1px solid var(--mid)", background: "transparent", cursor: "pointer", display: "grid", placeItems: "center", flexShrink: 0, alignSelf: "center" }}><MS n="close" size={12} style={{ color: "var(--on-mut)" }} /></button>
-                </div>
-              ))}
+                ))}
             </div>
           )}
         </div>
       </div>
+      {sessionModal && (
+        <_FormModal
+          title="Add agenda session"
+          onClose={() => setSessionModal(false)}
+          onSubmit={() => {
+            if (!sessionDraft.title.trim()) return;
+            set("schedule", [
+              ...form.schedule,
+              {
+                id: `s-${Date.now()}`,
+                time: sessionDraft.time,
+                title: sessionDraft.title.trim(),
+                description: "",
+                speaker: sessionDraft.speaker,
+              },
+            ]);
+            setSessionModal(false);
+          }}
+        >
+          <_ModalField
+            label="Session title"
+            value={sessionDraft.title}
+            onChange={(v: string) => setSessionDraft((d) => ({ ...d, title: v }))}
+            placeholder="e.g. Keynote Speech"
+            autoFocus
+          />
+          <_ModalField
+            label="Time (HH:MM)"
+            value={sessionDraft.time}
+            onChange={(v: string) => setSessionDraft((d) => ({ ...d, time: v }))}
+            placeholder="10:00"
+          />
+          <_ModalField
+            label="Speaker (optional)"
+            value={sessionDraft.speaker}
+            onChange={(v: string) => setSessionDraft((d) => ({ ...d, speaker: v }))}
+            placeholder="Speaker name"
+          />
+        </_FormModal>
+      )}
     </>
   );
 }
@@ -1098,6 +1276,15 @@ function StepTickets({
   addDomain,
   removeDomain,
 }: StepTicketsProps) {
+  const [tierModal, setTierModal] = useState(false);
+  const [tierDraft, setTierDraft] = useState({
+    name: "",
+    price: "0.00",
+    capacity: "50",
+    description: "",
+  });
+  const [roleModal, setRoleModal] = useState(false);
+  const [roleDraft, setRoleDraft] = useState({ name: "", description: "", capacity: "5" });
   return (
     <>
       <StepHeader
@@ -1180,33 +1367,148 @@ function StepTickets({
 
             {/* ticket tiers - premium cards + modal */}
             <div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                <label className={labelCls} style={{ marginBottom: 0 }}>Ticket Tiers</label>
-                <button type="button" className="btn-sm primary" style={{ fontSize: 11, padding: "5px 12px" }} onClick={() => {
-                  const name = prompt("Tier name (e.g. VIP, General, Early Bird):");
-                  if (!name?.trim()) return;
-                  const price = prompt("Price (NPR):", "0.00") ?? "0.00";
-                  const cap = parseInt(prompt("Capacity:", "50") ?? "50") || 50;
-                  const desc = prompt("Description (optional):") ?? "";
-                  set("ticket_tiers", [...form.ticket_tiers, { id: `t-${Date.now()}`, name: name.trim(), price, capacity: cap, description: desc }]);
-                }}><MS n="add" size={13} /> Add tier</button>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 10,
+                }}
+              >
+                <label className={labelCls} style={{ marginBottom: 0 }}>
+                  Ticket Tiers
+                </label>
+                <button
+                  type="button"
+                  className="btn-sm primary"
+                  style={{ fontSize: 11, padding: "5px 12px" }}
+                  onClick={() => {
+                    setTierDraft({ name: "", price: "0.00", capacity: "50", description: "" });
+                    setTierModal(true);
+                  }}
+                >
+                  <MS n="add" size={13} /> Add tier
+                </button>
               </div>
               {form.ticket_tiers.length === 0 && (
-                <p style={{ fontSize: 12, color: "var(--on-mut)", fontFamily: "Manrope, sans-serif", padding: "12px 0" }}>No tiers added. A single default ticket will be used.</p>
+                <p
+                  style={{
+                    fontSize: 12,
+                    color: "var(--on-mut)",
+                    fontFamily: "Manrope, sans-serif",
+                    padding: "12px 0",
+                  }}
+                >
+                  No tiers added. A single default ticket will be used.
+                </p>
               )}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10 }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+                  gap: 10,
+                }}
+              >
                 {form.ticket_tiers.map((tier, idx) => (
-                  <div key={tier.id} style={{ background: "var(--surface)", border: "1px solid var(--mid)", borderRadius: 14, padding: "16px 18px", position: "relative" }}>
-                    <button type="button" onClick={() => set("ticket_tiers", form.ticket_tiers.filter((_, i) => i !== idx))} style={{ position: "absolute", top: 8, right: 8, width: 22, height: 22, borderRadius: 6, border: "1px solid var(--mid)", background: "transparent", cursor: "pointer", display: "grid", placeItems: "center" }}><MS n="close" size={11} style={{ color: "var(--on-mut)" }} /></button>
-                    <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg,#050a26,#3b3a72)", display: "grid", placeItems: "center", marginBottom: 10 }}>
+                  <div
+                    key={tier.id}
+                    style={{
+                      background: "var(--surface)",
+                      border: "1px solid var(--mid)",
+                      borderRadius: 14,
+                      padding: "16px 18px",
+                      position: "relative",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() =>
+                        set(
+                          "ticket_tiers",
+                          form.ticket_tiers.filter((_, i) => i !== idx)
+                        )
+                      }
+                      style={{
+                        position: "absolute",
+                        top: 8,
+                        right: 8,
+                        width: 22,
+                        height: 22,
+                        borderRadius: 6,
+                        border: "1px solid var(--mid)",
+                        background: "transparent",
+                        cursor: "pointer",
+                        display: "grid",
+                        placeItems: "center",
+                      }}
+                    >
+                      <MS n="close" size={11} style={{ color: "var(--on-mut)" }} />
+                    </button>
+                    <div
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 10,
+                        background: "linear-gradient(135deg,#050a26,#3b3a72)",
+                        display: "grid",
+                        placeItems: "center",
+                        marginBottom: 10,
+                      }}
+                    >
                       <MS n="confirmation_number" size={18} style={{ color: "white" }} />
                     </div>
-                    <p style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 15, letterSpacing: "-0.02em", marginBottom: 4 }}>{tier.name || "Untitled"}</p>
-                    <p style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 18, fontWeight: 700, color: "var(--primary)", marginBottom: 6 }}>NPR {parseFloat(tier.price).toLocaleString()}</p>
-                    <div style={{ display: "flex", gap: 8, fontSize: 11, color: "var(--on-mut)", fontFamily: "Manrope, sans-serif" }}>
-                      <span><MS n="group" size={12} style={{ verticalAlign: "middle", marginRight: 3 }} />{tier.capacity} spots</span>
+                    <p
+                      style={{
+                        fontFamily: "'Space Grotesk',sans-serif",
+                        fontWeight: 700,
+                        fontSize: 15,
+                        letterSpacing: "-0.02em",
+                        marginBottom: 4,
+                      }}
+                    >
+                      {tier.name || "Untitled"}
+                    </p>
+                    <p
+                      style={{
+                        fontFamily: "'JetBrains Mono',monospace",
+                        fontSize: 18,
+                        fontWeight: 700,
+                        color: "var(--primary)",
+                        marginBottom: 6,
+                      }}
+                    >
+                      NPR {parseFloat(tier.price).toLocaleString()}
+                    </p>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 8,
+                        fontSize: 11,
+                        color: "var(--on-mut)",
+                        fontFamily: "Manrope, sans-serif",
+                      }}
+                    >
+                      <span>
+                        <MS
+                          n="group"
+                          size={12}
+                          style={{ verticalAlign: "middle", marginRight: 3 }}
+                        />
+                        {tier.capacity} spots
+                      </span>
                     </div>
-                    {tier.description && <p style={{ fontSize: 11, color: "var(--on-var)", marginTop: 6, lineHeight: 1.4 }}>{tier.description}</p>}
+                    {tier.description && (
+                      <p
+                        style={{
+                          fontSize: 11,
+                          color: "var(--on-var)",
+                          marginTop: 6,
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        {tier.description}
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>
@@ -1215,53 +1517,187 @@ function StepTickets({
         )}
 
         {/* volunteer toggle */}
-        <div style={{ padding: "14px 16px", background: "var(--low)", borderRadius: 12, border: "1px solid var(--mid)" }}>
+        <div
+          style={{
+            padding: "14px 16px",
+            background: "var(--low)",
+            borderRadius: 12,
+            border: "1px solid var(--mid)",
+          }}
+        >
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <div style={{ flex: 1 }}>
-              <p style={{ fontSize: 13.5, fontWeight: 600, fontFamily: "Manrope, sans-serif", color: "var(--on-bg)", marginBottom: 2 }}>
+              <p
+                style={{
+                  fontSize: 13.5,
+                  fontWeight: 600,
+                  fontFamily: "Manrope, sans-serif",
+                  color: "var(--on-bg)",
+                  marginBottom: 2,
+                }}
+              >
                 Enable Volunteering
               </p>
-              <p style={{ fontSize: 12, color: "var(--on-mut)", fontFamily: "Manrope, sans-serif" }}>
+              <p
+                style={{ fontSize: 12, color: "var(--on-mut)", fontFamily: "Manrope, sans-serif" }}
+              >
                 Allow people to apply as volunteers for this event
               </p>
             </div>
             <button
               type="button"
               onClick={() => set("volunteers_enabled", !form.volunteers_enabled)}
-              style={{ width: 44, height: 24, borderRadius: 12, border: "none", background: form.volunteers_enabled ? "#4338ca" : "var(--mid)", cursor: "pointer", position: "relative", flexShrink: 0 }}
+              style={{
+                width: 44,
+                height: 24,
+                borderRadius: 12,
+                border: "none",
+                background: form.volunteers_enabled ? "#4338ca" : "var(--mid)",
+                cursor: "pointer",
+                position: "relative",
+                flexShrink: 0,
+              }}
             >
-              <div style={{ width: 18, height: 18, borderRadius: 9, background: "white", position: "absolute", top: 3, left: form.volunteers_enabled ? 23 : 3, transition: "left 200ms", boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }} />
+              <div
+                style={{
+                  width: 18,
+                  height: 18,
+                  borderRadius: 9,
+                  background: "white",
+                  position: "absolute",
+                  top: 3,
+                  left: form.volunteers_enabled ? 23 : 3,
+                  transition: "left 200ms",
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
+                }}
+              />
             </button>
           </div>
         </div>
 
         {form.volunteers_enabled && (
           <div>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-              <label className={labelCls} style={{ marginBottom: 0 }}>Volunteer Roles</label>
-              <button type="button" className="btn-sm primary" style={{ fontSize: 11, padding: "5px 12px" }} onClick={() => {
-                const name = prompt("Role name (e.g. Stage Crew, Registration Desk):");
-                if (!name?.trim()) return;
-                const desc = prompt("Role description:") ?? "";
-                const cap = parseInt(prompt("Number of volunteer slots:", "5") ?? "5") || 5;
-                set("volunteer_roles", [...form.volunteer_roles, { name: name.trim(), description: desc, capacity: cap }]);
-              }}><MS n="add" size={13} /> Add role</button>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 10,
+              }}
+            >
+              <label className={labelCls} style={{ marginBottom: 0 }}>
+                Volunteer Roles
+              </label>
+              <button
+                type="button"
+                className="btn-sm primary"
+                style={{ fontSize: 11, padding: "5px 12px" }}
+                onClick={() => {
+                  setRoleDraft({ name: "", description: "", capacity: "5" });
+                  setRoleModal(true);
+                }}
+              >
+                <MS n="add" size={13} /> Add role
+              </button>
             </div>
             {form.volunteer_roles.length === 0 && (
-              <p style={{ fontSize: 12, color: "var(--on-mut)", fontFamily: "Manrope, sans-serif", padding: "12px 0" }}>No roles added yet. Add volunteer roles for this event.</p>
+              <p
+                style={{
+                  fontSize: 12,
+                  color: "var(--on-mut)",
+                  fontFamily: "Manrope, sans-serif",
+                  padding: "12px 0",
+                }}
+              >
+                No roles added yet. Add volunteer roles for this event.
+              </p>
             )}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+                gap: 10,
+              }}
+            >
               {form.volunteer_roles.map((role, idx) => (
-                <div key={idx} style={{ background: "var(--surface)", border: "1px solid var(--mid)", borderRadius: 14, padding: "16px 18px", position: "relative" }}>
-                  <button type="button" onClick={() => set("volunteer_roles", form.volunteer_roles.filter((_, i) => i !== idx))} style={{ position: "absolute", top: 8, right: 8, width: 22, height: 22, borderRadius: 6, border: "1px solid var(--mid)", background: "transparent", cursor: "pointer", display: "grid", placeItems: "center" }}><MS n="close" size={11} style={{ color: "var(--on-mut)" }} /></button>
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg,#16a34a,#22c55e)", display: "grid", placeItems: "center", marginBottom: 10 }}>
+                <div
+                  key={idx}
+                  style={{
+                    background: "var(--surface)",
+                    border: "1px solid var(--mid)",
+                    borderRadius: 14,
+                    padding: "16px 18px",
+                    position: "relative",
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() =>
+                      set(
+                        "volunteer_roles",
+                        form.volunteer_roles.filter((_, i) => i !== idx)
+                      )
+                    }
+                    style={{
+                      position: "absolute",
+                      top: 8,
+                      right: 8,
+                      width: 22,
+                      height: 22,
+                      borderRadius: 6,
+                      border: "1px solid var(--mid)",
+                      background: "transparent",
+                      cursor: "pointer",
+                      display: "grid",
+                      placeItems: "center",
+                    }}
+                  >
+                    <MS n="close" size={11} style={{ color: "var(--on-mut)" }} />
+                  </button>
+                  <div
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      background: "linear-gradient(135deg,#16a34a,#22c55e)",
+                      display: "grid",
+                      placeItems: "center",
+                      marginBottom: 10,
+                    }}
+                  >
                     <MS n="volunteer_activism" size={18} style={{ color: "white" }} />
                   </div>
-                  <p style={{ fontFamily: "'Space Grotesk',sans-serif", fontWeight: 700, fontSize: 15, letterSpacing: "-0.02em", marginBottom: 4 }}>{role.name || "Untitled"}</p>
-                  <div style={{ display: "flex", gap: 8, fontSize: 11, color: "var(--on-mut)", fontFamily: "Manrope, sans-serif", marginBottom: 6 }}>
-                    <span><MS n="group" size={12} style={{ verticalAlign: "middle", marginRight: 3 }} />{role.capacity} slots</span>
+                  <p
+                    style={{
+                      fontFamily: "'Space Grotesk',sans-serif",
+                      fontWeight: 700,
+                      fontSize: 15,
+                      letterSpacing: "-0.02em",
+                      marginBottom: 4,
+                    }}
+                  >
+                    {role.name || "Untitled"}
+                  </p>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 8,
+                      fontSize: 11,
+                      color: "var(--on-mut)",
+                      fontFamily: "Manrope, sans-serif",
+                      marginBottom: 6,
+                    }}
+                  >
+                    <span>
+                      <MS n="group" size={12} style={{ verticalAlign: "middle", marginRight: 3 }} />
+                      {role.capacity} slots
+                    </span>
                   </div>
-                  {role.description && <p style={{ fontSize: 11, color: "var(--on-var)", lineHeight: 1.4 }}>{role.description}</p>}
+                  {role.description && (
+                    <p style={{ fontSize: 11, color: "var(--on-var)", lineHeight: 1.4 }}>
+                      {role.description}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
@@ -1271,28 +1707,126 @@ function StepTickets({
         {/* sponsor selector */}
         <div>
           <label className={labelCls}>Event Sponsors</label>
-          <SponsorSelector orgId={orgId ?? ""} selected={form.sponsor_ids} onChange={(ids: string[]) => set("sponsor_ids", ids)} />
+          <SponsorSelector
+            orgId={orgId ?? ""}
+            selected={form.sponsor_ids}
+            onChange={(ids: string[]) => set("sponsor_ids", ids)}
+          />
         </div>
 
         {/* networking toggle */}
-        <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", background: "var(--low)", borderRadius: 12, border: "1px solid var(--mid)" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 14,
+            padding: "14px 16px",
+            background: "var(--low)",
+            borderRadius: 12,
+            border: "1px solid var(--mid)",
+          }}
+        >
           <div style={{ flex: 1 }}>
-            <p style={{ fontSize: 13.5, fontWeight: 600, fontFamily: "Manrope, sans-serif", color: "var(--on-bg)", marginBottom: 2 }}>Enable Networking</p>
-            <p style={{ fontSize: 12, color: "var(--on-mut)", fontFamily: "Manrope, sans-serif" }}>Allow attendees to connect and network with each other</p>
+            <p
+              style={{
+                fontSize: 13.5,
+                fontWeight: 600,
+                fontFamily: "Manrope, sans-serif",
+                color: "var(--on-bg)",
+                marginBottom: 2,
+              }}
+            >
+              Enable Networking
+            </p>
+            <p style={{ fontSize: 12, color: "var(--on-mut)", fontFamily: "Manrope, sans-serif" }}>
+              Allow attendees to connect and network with each other
+            </p>
           </div>
-          <button type="button" onClick={() => set("networking_enabled", !form.networking_enabled)} style={{ width: 44, height: 24, borderRadius: 12, border: "none", background: form.networking_enabled ? "#4338ca" : "var(--mid)", cursor: "pointer", position: "relative", flexShrink: 0 }}>
-            <div style={{ width: 18, height: 18, borderRadius: 9, background: "white", position: "absolute", top: 3, left: form.networking_enabled ? 23 : 3, transition: "left 200ms", boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }} />
+          <button
+            type="button"
+            onClick={() => set("networking_enabled", !form.networking_enabled)}
+            style={{
+              width: 44,
+              height: 24,
+              borderRadius: 12,
+              border: "none",
+              background: form.networking_enabled ? "#4338ca" : "var(--mid)",
+              cursor: "pointer",
+              position: "relative",
+              flexShrink: 0,
+            }}
+          >
+            <div
+              style={{
+                width: 18,
+                height: 18,
+                borderRadius: 9,
+                background: "white",
+                position: "absolute",
+                top: 3,
+                left: form.networking_enabled ? 23 : 3,
+                transition: "left 200ms",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
+              }}
+            />
           </button>
         </div>
 
         {/* auto community toggle */}
-        <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", background: "var(--low)", borderRadius: 12, border: "1px solid var(--mid)" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 14,
+            padding: "14px 16px",
+            background: "var(--low)",
+            borderRadius: 12,
+            border: "1px solid var(--mid)",
+          }}
+        >
           <div style={{ flex: 1 }}>
-            <p style={{ fontSize: 13.5, fontWeight: 600, fontFamily: "Manrope, sans-serif", color: "var(--on-bg)", marginBottom: 2 }}>Auto-create Community</p>
-            <p style={{ fontSize: 12, color: "var(--on-mut)", fontFamily: "Manrope, sans-serif" }}>Automatically create a discussion community for this event</p>
+            <p
+              style={{
+                fontSize: 13.5,
+                fontWeight: 600,
+                fontFamily: "Manrope, sans-serif",
+                color: "var(--on-bg)",
+                marginBottom: 2,
+              }}
+            >
+              Auto-create Community
+            </p>
+            <p style={{ fontSize: 12, color: "var(--on-mut)", fontFamily: "Manrope, sans-serif" }}>
+              Automatically create a discussion community for this event
+            </p>
           </div>
-          <button type="button" onClick={() => set("auto_community", !form.auto_community)} style={{ width: 44, height: 24, borderRadius: 12, border: "none", background: form.auto_community ? "#4338ca" : "var(--mid)", cursor: "pointer", position: "relative", flexShrink: 0 }}>
-            <div style={{ width: 18, height: 18, borderRadius: 9, background: "white", position: "absolute", top: 3, left: form.auto_community ? 23 : 3, transition: "left 200ms", boxShadow: "0 1px 3px rgba(0,0,0,0.15)" }} />
+          <button
+            type="button"
+            onClick={() => set("auto_community", !form.auto_community)}
+            style={{
+              width: 44,
+              height: 24,
+              borderRadius: 12,
+              border: "none",
+              background: form.auto_community ? "#4338ca" : "var(--mid)",
+              cursor: "pointer",
+              position: "relative",
+              flexShrink: 0,
+            }}
+          >
+            <div
+              style={{
+                width: 18,
+                height: 18,
+                borderRadius: 9,
+                background: "white",
+                position: "absolute",
+                top: 3,
+                left: form.auto_community ? 23 : 3,
+                transition: "left 200ms",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
+              }}
+            />
           </button>
         </div>
 
@@ -1408,6 +1942,93 @@ function StepTickets({
           )}
         </div>
       </div>
+      {tierModal && (
+        <_FormModal
+          title="Add ticket tier"
+          onClose={() => setTierModal(false)}
+          onSubmit={() => {
+            if (!tierDraft.name.trim()) return;
+            set("ticket_tiers", [
+              ...form.ticket_tiers,
+              {
+                id: `t-${Date.now()}`,
+                name: tierDraft.name.trim(),
+                price: tierDraft.price,
+                capacity: parseInt(tierDraft.capacity) || 50,
+                description: tierDraft.description,
+              },
+            ]);
+            setTierModal(false);
+          }}
+        >
+          <_ModalField
+            label="Tier name"
+            value={tierDraft.name}
+            onChange={(v: string) => setTierDraft((d) => ({ ...d, name: v }))}
+            placeholder="e.g. VIP, General"
+            autoFocus
+          />
+          <_ModalField
+            label="Price (NPR)"
+            value={tierDraft.price}
+            onChange={(v: string) => setTierDraft((d) => ({ ...d, price: v }))}
+            placeholder="0.00"
+            type="number"
+          />
+          <_ModalField
+            label="Capacity"
+            value={tierDraft.capacity}
+            onChange={(v: string) => setTierDraft((d) => ({ ...d, capacity: v }))}
+            placeholder="50"
+            type="number"
+          />
+          <_ModalField
+            label="Description (optional)"
+            value={tierDraft.description}
+            onChange={(v: string) => setTierDraft((d) => ({ ...d, description: v }))}
+            placeholder="What's included"
+          />
+        </_FormModal>
+      )}
+      {roleModal && (
+        <_FormModal
+          title="Add volunteer role"
+          onClose={() => setRoleModal(false)}
+          onSubmit={() => {
+            if (!roleDraft.name.trim()) return;
+            set("volunteer_roles", [
+              ...form.volunteer_roles,
+              {
+                name: roleDraft.name.trim(),
+                description: roleDraft.description,
+                capacity: parseInt(roleDraft.capacity) || 5,
+              },
+            ]);
+            setRoleModal(false);
+          }}
+        >
+          <_ModalField
+            label="Role name"
+            value={roleDraft.name}
+            onChange={(v: string) => setRoleDraft((d) => ({ ...d, name: v }))}
+            placeholder="e.g. Stage Crew"
+            autoFocus
+          />
+          <_ModalField
+            label="Description"
+            value={roleDraft.description}
+            onChange={(v: string) => setRoleDraft((d) => ({ ...d, description: v }))}
+            placeholder="What the volunteer will do"
+          />
+          <_ModalField
+            label="Slots"
+            value={roleDraft.capacity}
+            onChange={(v: string) => setRoleDraft((d) => ({ ...d, capacity: v }))}
+            placeholder="5"
+            type="number"
+          />
+        </_FormModal>
+      )}
     </>
   );
 }
@@ -1419,7 +2040,9 @@ function StepGallery({ eventId }: { eventId: string | null }) {
   const qc = useQueryClient();
   const [uploading, setUploading] = useState(false);
 
-  const { data: media = [] } = useQuery<{ id: string; url: string; caption: string; position: number }[]>({
+  const { data: media = [] } = useQuery<
+    { id: string; url: string; caption: string; position: number }[]
+  >({
     queryKey: ["event-media", eventId],
     queryFn: () => eventsApi.listMedia(eventId!),
     enabled: !!eventId,
@@ -1432,7 +2055,9 @@ function StepGallery({ eventId }: { eventId: string | null }) {
       try {
         const url = await eventsApi.uploadCover(file);
         await eventsApi.addMedia(eventId, { url, position: media.length });
-      } catch { /* non-fatal */ }
+      } catch {
+        /* non-fatal */
+      }
     }
     qc.invalidateQueries({ queryKey: ["event-media", eventId] });
     setUploading(false);
@@ -1440,27 +2065,101 @@ function StepGallery({ eventId }: { eventId: string | null }) {
 
   return (
     <div style={{ marginBottom: 24 }}>
-      <StepHeader icon="photo_library" title="Media Gallery" desc="Upload photos for your event gallery. You can also add more later from the edit page." />
+      <StepHeader
+        icon="photo_library"
+        title="Media Gallery"
+        desc="Upload photos for your event gallery. You can also add more later from the edit page."
+      />
       {!eventId ? (
-        <div style={{ padding: "20px 16px", borderRadius: 12, background: "var(--low)", border: "1px solid var(--mid)", textAlign: "center" }}>
-          <MS n="cloud_upload" size={28} style={{ display: "block", margin: "0 auto 8px", color: "var(--on-mut)", opacity: 0.5 }} />
-          <p style={{ fontSize: 13, color: "var(--on-mut)", fontFamily: "Manrope, sans-serif" }}>Gallery upload will be available after auto-save creates a draft (fill in title and wait ~30s), or you can add media after creation.</p>
+        <div
+          style={{
+            padding: "20px 16px",
+            borderRadius: 12,
+            background: "var(--low)",
+            border: "1px solid var(--mid)",
+            textAlign: "center",
+          }}
+        >
+          <MS
+            n="cloud_upload"
+            size={28}
+            style={{ display: "block", margin: "0 auto 8px", color: "var(--on-mut)", opacity: 0.5 }}
+          />
+          <p style={{ fontSize: 13, color: "var(--on-mut)", fontFamily: "Manrope, sans-serif" }}>
+            Gallery upload will be available after auto-save creates a draft (fill in title and wait
+            ~30s), or you can add media after creation.
+          </p>
         </div>
       ) : (
         <div>
           {media.length > 0 && (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 14 }}>
               {media.map((m) => (
-                <div key={m.id} style={{ width: 140, height: 100, borderRadius: 10, overflow: "hidden", position: "relative", border: "1px solid var(--mid)" }}>
-                  <img src={m.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  <button onClick={async () => { await eventsApi.deleteMedia(eventId, m.id); qc.invalidateQueries({ queryKey: ["event-media", eventId] }); }} style={{ position: "absolute", top: 4, right: 4, width: 22, height: 22, borderRadius: 6, background: "rgba(0,0,0,0.5)", border: "none", cursor: "pointer", display: "grid", placeItems: "center" }}><MS n="close" size={12} style={{ color: "white" }} /></button>
+                <div
+                  key={m.id}
+                  style={{
+                    width: 140,
+                    height: 100,
+                    borderRadius: 10,
+                    overflow: "hidden",
+                    position: "relative",
+                    border: "1px solid var(--mid)",
+                  }}
+                >
+                  <img
+                    src={m.url}
+                    alt=""
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                  <button
+                    onClick={async () => {
+                      await eventsApi.deleteMedia(eventId, m.id);
+                      qc.invalidateQueries({ queryKey: ["event-media", eventId] });
+                    }}
+                    style={{
+                      position: "absolute",
+                      top: 4,
+                      right: 4,
+                      width: 22,
+                      height: 22,
+                      borderRadius: 6,
+                      background: "rgba(0,0,0,0.5)",
+                      border: "none",
+                      cursor: "pointer",
+                      display: "grid",
+                      placeItems: "center",
+                    }}
+                  >
+                    <MS n="close" size={12} style={{ color: "white" }} />
+                  </button>
                 </div>
               ))}
             </div>
           )}
-          <label style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "10px 16px", borderRadius: 10, border: "1px dashed var(--mid)", cursor: uploading ? "not-allowed" : "pointer", fontSize: 12, fontWeight: 600, color: "var(--on-var)" }}>
-            <MS n="add_photo_alternate" size={15} />{uploading ? "Uploading..." : "Add media"}
-            <input type="file" accept="image/*" multiple style={{ display: "none" }} onChange={(e) => handleUpload(e.target.files)} disabled={uploading} />
+          <label
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "10px 16px",
+              borderRadius: 10,
+              border: "1px dashed var(--mid)",
+              cursor: uploading ? "not-allowed" : "pointer",
+              fontSize: 12,
+              fontWeight: 600,
+              color: "var(--on-var)",
+            }}
+          >
+            <MS n="add_photo_alternate" size={15} />
+            {uploading ? "Uploading..." : "Add media"}
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              style={{ display: "none" }}
+              onChange={(e) => handleUpload(e.target.files)}
+              disabled={uploading}
+            />
           </label>
         </div>
       )}
@@ -1519,14 +2218,25 @@ function StepReview({ form, categoryLabel }: { form: FormState; categoryLabel: s
           />
           <ReviewRow label="Price" value={priceDisplay} />
           {form.ticket_tiers.length > 0 && (
-            <ReviewRow label="Ticket Tiers" value={form.ticket_tiers.map((t) => `${t.name} (NPR ${t.price})`).join(", ")} />
+            <ReviewRow
+              label="Ticket Tiers"
+              value={form.ticket_tiers.map((t) => `${t.name} (NPR ${t.price})`).join(", ")}
+            />
           )}
-          <ReviewRow label="Volunteering" value={form.volunteers_enabled ? `Yes (${form.volunteer_roles.length} roles)` : "No"} />
+          <ReviewRow
+            label="Volunteering"
+            value={form.volunteers_enabled ? `Yes (${form.volunteer_roles.length} roles)` : "No"}
+          />
           <ReviewRow label="Networking" value={form.networking_enabled ? "Enabled" : "Disabled"} />
           <ReviewRow label="Auto Community" value={form.auto_community ? "Yes" : "No"} />
-          {form.sponsor_ids.length > 0 && <ReviewRow label="Sponsors" value={`${form.sponsor_ids.length} linked`} />}
+          {form.sponsor_ids.length > 0 && (
+            <ReviewRow label="Sponsors" value={`${form.sponsor_ids.length} linked`} />
+          )}
           {form.volunteer_roles.length > 0 && (
-            <ReviewRow label="Volunteer Roles" value={form.volunteer_roles.map((r) => `${r.name} (${r.capacity} slots)`).join(", ")} />
+            <ReviewRow
+              label="Volunteer Roles"
+              value={form.volunteer_roles.map((r) => `${r.name} (${r.capacity} slots)`).join(", ")}
+            />
           )}
           <ReviewRow
             label="Domain Restrictions"
@@ -1662,14 +2372,29 @@ function ReviewSection({ title, children }: { title: string; children: React.Rea
 
 /** Single key-value row inside a review section. */
 // select existing venue or type a new location
-function VenueSelector({ value, orgId, onChange }: { value: string; orgId: string; onChange: (loc: string, lat: number | null, lng: number | null) => void }) {
+function VenueSelector({
+  value,
+  orgId,
+  onChange,
+}: {
+  value: string;
+  orgId: string;
+  onChange: (loc: string, lat: number | null, lng: number | null) => void;
+}) {
   const [mode, setMode] = useState<"select" | "custom">(value ? "custom" : "select");
   const { data: venues = [] } = useQuery({
     queryKey: ["venues-for-event", orgId],
     queryFn: async () => {
       if (!orgId) return [];
-            const r = await apiClient.get(`/org/api/v1/venues/?organization_id=${orgId}`);
-      return (r.data?.data ?? []) as { id: string; name: string; address: string; city: string; latitude?: number; longitude?: number }[];
+      const r = await apiClient.get(`/org/api/v1/venues/?organization_id=${orgId}`);
+      return (r.data?.data ?? []) as {
+        id: string;
+        name: string;
+        address: string;
+        city: string;
+        latitude?: number;
+        longitude?: number;
+      }[];
     },
     enabled: !!orgId,
   });
@@ -1677,38 +2402,98 @@ function VenueSelector({ value, orgId, onChange }: { value: string; orgId: strin
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ display: "flex", gap: 6 }}>
-        <button type="button" onClick={() => setMode("select")} style={{ padding: "6px 12px", borderRadius: 8, border: mode === "select" ? "2px solid #050a26" : "1px solid var(--mid)", background: mode === "select" ? "#050a26" : "var(--surface)", color: mode === "select" ? "white" : "var(--on-var)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Select venue</button>
-        <button type="button" onClick={() => setMode("custom")} style={{ padding: "6px 12px", borderRadius: 8, border: mode === "custom" ? "2px solid #050a26" : "1px solid var(--mid)", background: mode === "custom" ? "#050a26" : "var(--surface)", color: mode === "custom" ? "white" : "var(--on-var)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Custom location</button>
+        <button
+          type="button"
+          onClick={() => setMode("select")}
+          style={{
+            padding: "6px 12px",
+            borderRadius: 8,
+            border: mode === "select" ? "2px solid #050a26" : "1px solid var(--mid)",
+            background: mode === "select" ? "#050a26" : "var(--surface)",
+            color: mode === "select" ? "white" : "var(--on-var)",
+            fontSize: 12,
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          Select venue
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("custom")}
+          style={{
+            padding: "6px 12px",
+            borderRadius: 8,
+            border: mode === "custom" ? "2px solid #050a26" : "1px solid var(--mid)",
+            background: mode === "custom" ? "#050a26" : "var(--surface)",
+            color: mode === "custom" ? "white" : "var(--on-var)",
+            fontSize: 12,
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          Custom location
+        </button>
       </div>
       {mode === "select" ? (
-        <select className={inputCls} value="" onChange={(e) => {
-          const found = venues.find((item: { id: string }) => item.id === e.target.value);
-          if (found) onChange(`${found.name}, ${found.address}, ${found.city}`, found.latitude ?? null, found.longitude ?? null);
-        }}>
+        <select
+          className={inputCls}
+          value=""
+          onChange={(e) => {
+            const found = venues.find((item: { id: string }) => item.id === e.target.value);
+            if (found)
+              onChange(
+                `${found.name}, ${found.address}, ${found.city}`,
+                found.latitude ?? null,
+                found.longitude ?? null
+              );
+          }}
+        >
           <option value="">Choose a venue...</option>
-          {venues.map((item: { id: string; name: string; city: string }) => <option key={item.id} value={item.id}>{item.name} - {item.city}</option>)}
+          {venues.map((item: { id: string; name: string; city: string }) => (
+            <option key={item.id} value={item.id}>
+              {item.name} - {item.city}
+            </option>
+          ))}
         </select>
       ) : (
-        <input className={inputCls} value={value} onChange={(e) => onChange(e.target.value, null, null)} placeholder="e.g. Hotel Yak & Yeti, Kathmandu" />
+        <input
+          className={inputCls}
+          value={value}
+          onChange={(e) => onChange(e.target.value, null, null)}
+          placeholder="e.g. Hotel Yak & Yeti, Kathmandu"
+        />
       )}
     </div>
   );
 }
 
 // select existing sponsors for the event
-function SponsorSelector({ orgId, selected, onChange }: { orgId: string; selected: string[]; onChange: (ids: string[]) => void }) {
+function SponsorSelector({
+  orgId,
+  selected,
+  onChange,
+}: {
+  orgId: string;
+  selected: string[];
+  onChange: (ids: string[]) => void;
+}) {
   const { data: sponsors = [] } = useQuery({
     queryKey: ["sponsors-for-event", orgId],
     queryFn: async () => {
       if (!orgId) return [];
-            const r = await apiClient.get(`/org/api/v1/campaigns/sponsors/?organization_id=${orgId}`);
+      const r = await apiClient.get(`/org/api/v1/campaigns/sponsors/?organization_id=${orgId}`);
       return (r.data?.data ?? []) as { id: string; name: string; tier: string; logo_url: string }[];
     },
     enabled: !!orgId,
   });
 
   if (sponsors.length === 0) {
-    return <p style={{ fontSize: 12, color: "var(--on-mut)", fontFamily: "Manrope, sans-serif" }}>No sponsors created yet. Add sponsors from the Sponsors page first.</p>;
+    return (
+      <p style={{ fontSize: 12, color: "var(--on-mut)", fontFamily: "Manrope, sans-serif" }}>
+        No sponsors created yet. Add sponsors from the Sponsors page first.
+      </p>
+    );
   }
 
   return (
@@ -1716,10 +2501,31 @@ function SponsorSelector({ orgId, selected, onChange }: { orgId: string; selecte
       {sponsors.map((s: { id: string; name: string; tier: string }) => {
         const active = selected.includes(s.id);
         return (
-          <button key={s.id} type="button" onClick={() => onChange(active ? selected.filter((id) => id !== s.id) : [...selected, s.id])} style={{ padding: "6px 14px", borderRadius: 10, border: active ? "2px solid #050a26" : "1px solid var(--mid)", background: active ? "#050a26" : "var(--surface)", color: active ? "white" : "var(--on-var)", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+          <button
+            key={s.id}
+            type="button"
+            onClick={() =>
+              onChange(active ? selected.filter((id) => id !== s.id) : [...selected, s.id])
+            }
+            style={{
+              padding: "6px 14px",
+              borderRadius: 10,
+              border: active ? "2px solid #050a26" : "1px solid var(--mid)",
+              background: active ? "#050a26" : "var(--surface)",
+              color: active ? "white" : "var(--on-var)",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
             <MS n="handshake" size={13} />
             {s.name}
-            <span style={{ fontSize: 10, opacity: 0.7, textTransform: "capitalize" }}>({s.tier})</span>
+            <span style={{ fontSize: 10, opacity: 0.7, textTransform: "capitalize" }}>
+              ({s.tier})
+            </span>
           </button>
         );
       })}
@@ -1759,6 +2565,151 @@ function ReviewRow({ label, value }: { label: string; value: string }) {
       >
         {value}
       </span>
+    </div>
+  );
+}
+
+// reusable form modal shell for add-session, add-tier, add-role
+function _FormModal({
+  title,
+  onClose,
+  onSubmit,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  onSubmit: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.35)",
+        display: "grid",
+        placeItems: "center",
+        zIndex: 1000,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "var(--surface)",
+          borderRadius: 20,
+          maxWidth: 440,
+          width: "100%",
+          boxShadow: "0 16px 48px rgba(0,0,0,0.15)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "20px 24px 16px",
+            borderBottom: "1px solid var(--outline)",
+          }}
+        >
+          <span style={{ fontWeight: 700, fontSize: 15 }}>{title}</span>
+          <button
+            onClick={onClose}
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              border: "1px solid var(--mid)",
+              background: "transparent",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+            }}
+          >
+            <MS n="close" size={14} />
+          </button>
+        </div>
+        <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
+          {children}
+        </div>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            justifyContent: "flex-end",
+            padding: "16px 24px 20px",
+            borderTop: "1px solid var(--outline)",
+          }}
+        >
+          <button
+            className="btn-sm"
+            onClick={onClose}
+            style={{ border: "1px solid var(--mid)", background: "transparent" }}
+          >
+            Cancel
+          </button>
+          <button
+            className="btn-sm"
+            onClick={onSubmit}
+            style={{ background: "#050a26", color: "white", border: "none" }}
+          >
+            Add
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function _ModalField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+  autoFocus,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  type?: string;
+  autoFocus?: boolean;
+}) {
+  return (
+    <div>
+      <label
+        style={{
+          fontSize: 10,
+          fontWeight: 700,
+          letterSpacing: "0.1em",
+          textTransform: "uppercase" as const,
+          color: "var(--on-mut)",
+          marginBottom: 6,
+          display: "block",
+          fontFamily: "JetBrains Mono, monospace",
+        }}
+      >
+        {label}
+      </label>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        type={type}
+        autoFocus={autoFocus}
+        style={{
+          width: "100%",
+          padding: "10px 14px",
+          borderRadius: 10,
+          border: "1px solid var(--mid)",
+          background: "var(--low)",
+          fontSize: 14,
+          fontFamily: "Manrope, sans-serif",
+          boxSizing: "border-box" as const,
+        }}
+      />
     </div>
   );
 }
