@@ -94,6 +94,19 @@ export default function EditEventPage() {
   const [coverImage, setCoverImage] = useState("");
   const [categoryId, setCategoryId] = useState("");
 
+  // modal state for add-session, add-tier, add-role
+  const [sessionModal, setSessionModal] = useState(false);
+  const [sessionDraft, setSessionDraft] = useState({ title: "", time: "10:00", speaker: "" });
+  const [tierModal, setTierModal] = useState(false);
+  const [tierDraft, setTierDraft] = useState({
+    name: "",
+    price: "0.00",
+    capacity: "50",
+    description: "",
+  });
+  const [roleModal, setRoleModal] = useState(false);
+  const [roleDraft, setRoleDraft] = useState({ name: "", description: "", capacity: "5" });
+
   // * step 1 - schedule & location
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -664,14 +677,8 @@ export default function EditEventPage() {
                       className="btn-sm primary"
                       style={{ fontSize: 11, padding: "5px 12px" }}
                       onClick={() => {
-                        const t = prompt("Session title:");
-                        if (!t) return;
-                        const time = prompt("Time (HH:MM):", "10:00") ?? "";
-                        const sp = prompt("Speaker:") ?? "";
-                        setSchedule([
-                          ...schedule,
-                          { id: `s-${Date.now()}`, time, title: t, description: "", speaker: sp },
-                        ]);
+                        setSessionDraft({ title: "", time: "10:00", speaker: "" });
+                        setSessionModal(true);
                       }}
                     >
                       <MS n="add" size={13} /> Add session
@@ -868,21 +875,13 @@ export default function EditEventPage() {
                           className="btn-sm primary"
                           style={{ fontSize: 11, padding: "5px 12px" }}
                           onClick={() => {
-                            const n = prompt("Tier name (e.g. VIP, General, Early Bird):");
-                            if (!n?.trim()) return;
-                            const p = prompt("Price (NPR):", "0.00") ?? "0.00";
-                            const c = parseInt(prompt("Capacity:", "50") ?? "50") || 50;
-                            const d = prompt("Description (optional):") ?? "";
-                            setTiers([
-                              ...tiers,
-                              {
-                                id: `t-${Date.now()}`,
-                                name: n.trim(),
-                                price: p,
-                                capacity: c,
-                                description: d,
-                              },
-                            ]);
+                            setTierDraft({
+                              name: "",
+                              price: "0.00",
+                              capacity: "50",
+                              description: "",
+                            });
+                            setTierModal(true);
                           }}
                         >
                           <MS n="add" size={13} /> Add tier
@@ -1092,15 +1091,8 @@ export default function EditEventPage() {
                         className="btn-sm primary"
                         style={{ fontSize: 11, padding: "5px 12px" }}
                         onClick={() => {
-                          const name = prompt("Role name (e.g. Stage Crew, Registration Desk):");
-                          if (!name?.trim()) return;
-                          const desc = prompt("Role description:") ?? "";
-                          const cap =
-                            parseInt(prompt("Number of volunteer slots:", "5") ?? "5") || 5;
-                          setVolunteerRoles([
-                            ...volunteerRoles,
-                            { name: name.trim(), description: desc, capacity: cap },
-                          ]);
+                          setRoleDraft({ name: "", description: "", capacity: "5" });
+                          setRoleModal(true);
                         }}
                       >
                         <MS n="add" size={13} /> Add role
@@ -1587,6 +1579,133 @@ export default function EditEventPage() {
           </div>
         </div>
       </div>
+      {sessionModal && (
+        <_FormModal
+          title="Add agenda session"
+          onClose={() => setSessionModal(false)}
+          onSubmit={() => {
+            if (!sessionDraft.title.trim()) return;
+            setSchedule([
+              ...schedule,
+              {
+                id: `s-${Date.now()}`,
+                time: sessionDraft.time,
+                title: sessionDraft.title.trim(),
+                description: "",
+                speaker: sessionDraft.speaker,
+              },
+            ]);
+            setSessionModal(false);
+          }}
+        >
+          <_ModalField
+            label="Session title"
+            value={sessionDraft.title}
+            onChange={(v: string) => setSessionDraft((d) => ({ ...d, title: v }))}
+            placeholder="e.g. Keynote Speech"
+            autoFocus
+          />
+          <_ModalField
+            label="Time (HH:MM)"
+            value={sessionDraft.time}
+            onChange={(v: string) => setSessionDraft((d) => ({ ...d, time: v }))}
+            placeholder="10:00"
+          />
+          <_ModalField
+            label="Speaker (optional)"
+            value={sessionDraft.speaker}
+            onChange={(v: string) => setSessionDraft((d) => ({ ...d, speaker: v }))}
+            placeholder="Speaker name"
+          />
+        </_FormModal>
+      )}
+      {tierModal && (
+        <_FormModal
+          title="Add ticket tier"
+          onClose={() => setTierModal(false)}
+          onSubmit={() => {
+            if (!tierDraft.name.trim()) return;
+            setTiers([
+              ...tiers,
+              {
+                id: `t-${Date.now()}`,
+                name: tierDraft.name.trim(),
+                price: tierDraft.price,
+                capacity: parseInt(tierDraft.capacity) || 50,
+                description: tierDraft.description,
+              },
+            ]);
+            setTierModal(false);
+          }}
+        >
+          <_ModalField
+            label="Tier name"
+            value={tierDraft.name}
+            onChange={(v: string) => setTierDraft((d) => ({ ...d, name: v }))}
+            placeholder="e.g. VIP, General"
+            autoFocus
+          />
+          <_ModalField
+            label="Price (NPR)"
+            value={tierDraft.price}
+            onChange={(v: string) => setTierDraft((d) => ({ ...d, price: v }))}
+            placeholder="0.00"
+            type="number"
+          />
+          <_ModalField
+            label="Capacity"
+            value={tierDraft.capacity}
+            onChange={(v: string) => setTierDraft((d) => ({ ...d, capacity: v }))}
+            placeholder="50"
+            type="number"
+          />
+          <_ModalField
+            label="Description (optional)"
+            value={tierDraft.description}
+            onChange={(v: string) => setTierDraft((d) => ({ ...d, description: v }))}
+            placeholder="What's included"
+          />
+        </_FormModal>
+      )}
+      {roleModal && (
+        <_FormModal
+          title="Add volunteer role"
+          onClose={() => setRoleModal(false)}
+          onSubmit={() => {
+            if (!roleDraft.name.trim()) return;
+            setVolunteerRoles([
+              ...volunteerRoles,
+              {
+                name: roleDraft.name.trim(),
+                description: roleDraft.description,
+                capacity: parseInt(roleDraft.capacity) || 5,
+              },
+            ]);
+            setRoleModal(false);
+          }}
+        >
+          <_ModalField
+            label="Role name"
+            value={roleDraft.name}
+            onChange={(v: string) => setRoleDraft((d) => ({ ...d, name: v }))}
+            placeholder="e.g. Stage Crew"
+            autoFocus
+          />
+          <_ModalField
+            label="Description"
+            value={roleDraft.description}
+            onChange={(v: string) => setRoleDraft((d) => ({ ...d, description: v }))}
+            placeholder="What the volunteer will do"
+          />
+          <_ModalField
+            label="Slots"
+            value={roleDraft.capacity}
+            onChange={(v: string) => setRoleDraft((d) => ({ ...d, capacity: v }))}
+            placeholder="5"
+            type="number"
+          />
+        </_FormModal>
+      )}
     </AppLayout>
   );
 }
@@ -1912,6 +2031,150 @@ function SortableImg({ item, onDelete }: { item: MediaItem; onDelete: (id: strin
       >
         <MS n="close" size={12} style={{ color: "white" }} />
       </button>
+    </div>
+  );
+}
+
+function _FormModal({
+  title,
+  onClose,
+  onSubmit,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  onSubmit: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.35)",
+        display: "grid",
+        placeItems: "center",
+        zIndex: 1000,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "var(--surface)",
+          borderRadius: 20,
+          maxWidth: 440,
+          width: "100%",
+          boxShadow: "0 16px 48px rgba(0,0,0,0.15)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "20px 24px 16px",
+            borderBottom: "1px solid var(--outline)",
+          }}
+        >
+          <span style={{ fontWeight: 700, fontSize: 15 }}>{title}</span>
+          <button
+            onClick={onClose}
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              border: "1px solid var(--mid)",
+              background: "transparent",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+            }}
+          >
+            <MS n="close" size={14} />
+          </button>
+        </div>
+        <div style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
+          {children}
+        </div>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            justifyContent: "flex-end",
+            padding: "16px 24px 20px",
+            borderTop: "1px solid var(--outline)",
+          }}
+        >
+          <button
+            className="btn-sm"
+            onClick={onClose}
+            style={{ border: "1px solid var(--mid)", background: "transparent" }}
+          >
+            Cancel
+          </button>
+          <button
+            className="btn-sm"
+            onClick={onSubmit}
+            style={{ background: "#050a26", color: "white", border: "none" }}
+          >
+            Add
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function _ModalField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+  autoFocus,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  type?: string;
+  autoFocus?: boolean;
+}) {
+  return (
+    <div>
+      <label
+        style={{
+          fontSize: 10,
+          fontWeight: 700,
+          letterSpacing: "0.1em",
+          textTransform: "uppercase" as const,
+          color: "var(--on-mut)",
+          marginBottom: 6,
+          display: "block",
+          fontFamily: "JetBrains Mono, monospace",
+        }}
+      >
+        {label}
+      </label>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        type={type}
+        autoFocus={autoFocus}
+        style={{
+          width: "100%",
+          padding: "10px 14px",
+          borderRadius: 10,
+          border: "1px solid var(--mid)",
+          background: "var(--low)",
+          fontSize: 14,
+          fontFamily: "Manrope, sans-serif",
+          boxSizing: "border-box" as const,
+        }}
+      />
     </div>
   );
 }

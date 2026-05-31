@@ -13,5 +13,18 @@ export default defineConfig({
   server: {
     host: "0.0.0.0",
     port: 5173,
+    proxy: {
+      "/iam/": "http://localhost",
+      "/event/": "http://localhost",
+      "/org/": "http://localhost",
+      "/venue/": "http://localhost",
+      "/volunteer/": "http://localhost",
+      "/community/": "http://localhost",
+      "/marketing/": "http://localhost",
+      "/participation/": "http://localhost",
+      "/payment/": "http://localhost",
+      "/notification/": "http://localhost",
+      "/intelligence/": "http://localhost",
+    },
   },
 });

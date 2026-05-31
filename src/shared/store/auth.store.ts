@@ -86,6 +86,10 @@ export const useAuthStore = create<AuthState>()(
       clearAuth: () => {
         set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
         localStorage.removeItem(REMEMBER_KEY);
+        localStorage.removeItem(WEB_AUTH_STORAGE_KEY);
+        localStorage.removeItem(LEGACY_AUTH_STORAGE_KEY);
+        localStorage.removeItem("sansaar-org");
+        sessionStorage.removeItem(WEB_AUTH_STORAGE_KEY);
       },
     }),
     { name: WEB_AUTH_STORAGE_KEY, storage: createJSONStorage(() => adaptiveStorage) }

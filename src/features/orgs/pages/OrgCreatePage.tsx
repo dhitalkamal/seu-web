@@ -5,6 +5,8 @@ import AppLayout from "@/shared/layouts/AppLayout";
 import { MS } from "@/shared/components/v8";
 import orgApi from "@/features/orgs/api/org.api";
 import { useOrgStore } from "@/shared/store/org.store";
+import { useAuthStore } from "@/shared/store/auth.store";
+import client from "@/shared/api/client";
 import type { OrgType, OrgDocType } from "@/features/orgs/types/org.types";
 
 // * Helpers
@@ -146,7 +148,13 @@ export default function OrgCreatePage() {
   function isTabComplete(t: Tab): boolean {
     switch (t) {
       case "basic":
-        return !!(form.name.trim() && form.slug.trim() && form.contact_email.trim() && form.phone.trim() && form.description.trim().length >= 20);
+        return !!(
+          form.name.trim() &&
+          form.slug.trim() &&
+          form.contact_email.trim() &&
+          form.phone.trim() &&
+          form.description.trim().length >= 20
+        );
       case "address":
         return !!(form.address.trim() && form.city.trim() && form.country.trim());
       case "social":
@@ -164,14 +172,18 @@ export default function OrgCreatePage() {
     if (!form.slug.trim()) return "Slug is required.";
     if (!form.contact_email.trim()) return "Contact email is required.";
     if (!form.phone.trim()) return "Phone number is required.";
-    if (!/^\+?\d{7,15}$/.test(form.phone.trim())) return "Phone must contain only digits (7-15), optionally starting with +.";
+    if (!/^\+?\d{7,15}$/.test(form.phone.trim()))
+      return "Phone must contain only digits (7-15), optionally starting with +.";
     if (form.description.trim().length < 20) return "Description must be at least 20 characters.";
     if (!form.address.trim()) return "Address is required.";
     if (!form.city.trim()) return "City is required.";
     if (!form.country.trim()) return "Country is required.";
-    if (form.website && !/^https?:\/\/.+\..+/.test(form.website)) return "Website must be a valid URL (https://...).";
-    if (form.logo_url && !/^https?:\/\/.+\..+/.test(form.logo_url)) return "Logo URL must be a valid URL.";
-    const hasSocial = form.facebook_url || form.twitter_url || form.instagram_url || form.linkedin_url;
+    if (form.website && !/^https?:\/\/.+\..+/.test(form.website))
+      return "Website must be a valid URL (https://...).";
+    if (form.logo_url && !/^https?:\/\/.+\..+/.test(form.logo_url))
+      return "Logo URL must be a valid URL.";
+    const hasSocial =
+      form.facebook_url || form.twitter_url || form.instagram_url || form.linkedin_url;
     if (!hasSocial) return "At least one social media link is required.";
     if (docs.length < 2) return "At least 2 verification documents are required.";
     return null;
@@ -219,6 +231,20 @@ export default function OrgCreatePage() {
       }
 
       setOrg(org);
+
+      // force token refresh so JWT includes new org_roles for this org
+      const refreshToken = useAuthStore.getState().refreshToken;
+      if (refreshToken) {
+        try {
+          const r = await client.post("/iam/api/v1/auth/token/refresh/", { refresh: refreshToken });
+          const newAccess = r.data?.access as string;
+          const newRefresh = (r.data?.refresh as string) ?? refreshToken;
+          useAuthStore.getState().updateTokens(newAccess, newRefresh);
+        } catch {
+          // non-critical, token will refresh on next 401
+        }
+      }
+
       toast.success("Organization submitted for review! You will be notified once verified.");
       navigate("/profile");
     } catch (err: unknown) {
@@ -736,7 +762,9 @@ function BasicTab({
           />
         </div>
         <div>
-          <label style={labelStyle}>Phone <span style={{ color: "#ef4444" }}>*</span></label>
+          <label style={labelStyle}>
+            Phone <span style={{ color: "#ef4444" }}>*</span>
+          </label>
           <input
             type="tel"
             required
@@ -767,7 +795,9 @@ function BasicTab({
 
       {/* description */}
       <div>
-        <label style={labelStyle}>Description <span style={{ color: "#ef4444" }}>*</span></label>
+        <label style={labelStyle}>
+          Description <span style={{ color: "#ef4444" }}>*</span>
+        </label>
         <textarea
           rows={4}
           value={form.description}
@@ -809,7 +839,9 @@ function BasicTab({
               whiteSpace: "nowrap" as const,
             }}
           >
-            <span className="ms" style={{ fontSize: 16 }}>upload_file</span>
+            <span className="ms" style={{ fontSize: 16 }}>
+              upload_file
+            </span>
             Upload
             <input
               type="file"
@@ -835,10 +867,26 @@ function BasicTab({
             <img
               src={form.logo_url}
               alt="Logo preview"
-              style={{ width: 48, height: 48, borderRadius: 8, objectFit: "cover", border: "1px solid var(--mid)" }}
-              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 8,
+                objectFit: "cover",
+                border: "1px solid var(--mid)",
+              }}
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = "none";
+              }}
             />
-            <span style={{ fontSize: 11, color: "var(--on-mut)", fontFamily: "'JetBrains Mono', monospace" }}>Preview</span>
+            <span
+              style={{
+                fontSize: 11,
+                color: "var(--on-mut)",
+                fontFamily: "'JetBrains Mono', monospace",
+              }}
+            >
+              Preview
+            </span>
           </div>
         )}
       </div>
@@ -891,7 +939,9 @@ function AddressTab({ form, onChange }: AddressProps) {
 
       {/* address */}
       <div>
-        <label style={labelStyle}>Address <span style={{ color: "#ef4444" }}>*</span></label>
+        <label style={labelStyle}>
+          Address <span style={{ color: "#ef4444" }}>*</span>
+        </label>
         <textarea
           rows={2}
           value={form.address}
