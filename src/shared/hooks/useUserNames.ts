@@ -15,10 +15,9 @@ type UserInfo = {
 /** fetch a batch of user IDs and return a map of id -> UserInfo */
 async function fetchUserNames(ids: string[]): Promise<Record<string, UserInfo>> {
   if (ids.length === 0) return {};
-  const r = await client.post<{ data: Record<string, UserInfo> }>(
-    "/iam/api/v1/internal/users/batch/",
-    { ids }
-  );
+  const r = await client.post<{ data: Record<string, UserInfo> }>("/iam/api/v1/users/resolve/", {
+    ids,
+  });
   return r.data?.data ?? {};
 }
 
