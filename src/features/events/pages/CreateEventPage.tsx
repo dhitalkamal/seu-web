@@ -68,6 +68,7 @@ type FormState = {
   ticket_tiers: TicketTier[];
   volunteers_enabled: boolean;
   volunteer_roles: { name: string; description: string; capacity: number }[];
+  waitlist_enabled: boolean;
   networking_enabled: boolean;
   auto_community: boolean;
   sponsor_ids: string[];
@@ -95,6 +96,7 @@ const INITIAL: FormState = {
   ticket_tiers: [],
   volunteers_enabled: false,
   volunteer_roles: [],
+  waitlist_enabled: true,
   networking_enabled: false,
   auto_community: true,
   sponsor_ids: [],
@@ -1515,6 +1517,64 @@ function StepTickets({
             </div>
           </>
         )}
+
+        {/* waitlist toggle */}
+        <div
+          style={{
+            padding: "14px 16px",
+            background: "var(--low)",
+            borderRadius: 12,
+            border: "1px solid var(--mid)",
+            marginBottom: 12,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ flex: 1 }}>
+              <p
+                style={{
+                  fontSize: 13.5,
+                  fontWeight: 600,
+                  fontFamily: "Manrope, sans-serif",
+                  color: "var(--on-bg)",
+                }}
+              >
+                Enable Waitlist
+              </p>
+              <p
+                style={{ fontSize: 12, color: "var(--on-mut)", fontFamily: "Manrope, sans-serif" }}
+              >
+                When event is full, allow users to join a waitlist
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => set("waitlist_enabled", !form.waitlist_enabled)}
+              style={{
+                width: 44,
+                height: 24,
+                borderRadius: 12,
+                border: "none",
+                background: form.waitlist_enabled ? "#4338ca" : "var(--mid)",
+                cursor: "pointer",
+                position: "relative",
+                flexShrink: 0,
+              }}
+            >
+              <div
+                style={{
+                  width: 18,
+                  height: 18,
+                  borderRadius: "50%",
+                  background: "white",
+                  position: "absolute",
+                  top: 3,
+                  left: form.waitlist_enabled ? 23 : 3,
+                  transition: "left 0.15s",
+                }}
+              />
+            </button>
+          </div>
+        </div>
 
         {/* volunteer toggle */}
         <div
