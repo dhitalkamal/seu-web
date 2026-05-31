@@ -28,7 +28,7 @@ export default function TeamPage() {
   const qc = useQueryClient();
 
   const [showModal, setShowModal] = useState(false);
-  const [userId, setUserId] = useState("");
+  const [email, setEmail] = useState("");
   const [role, setRole] = useState<OrgMemberRole>("member");
 
   // fetch org members
@@ -48,25 +48,26 @@ export default function TeamPage() {
   /** Reset form fields and close the modal. */
   function closeModal() {
     setShowModal(false);
-    setUserId("");
+    setEmail("");
     setRole("member");
   }
 
-  // add member mutation
+  // invite member mutation (email-based)
   const inviteMutation = useMutation({
-    mutationFn: () => orgApi.addMember(orgId, { user_id: userId.trim(), role }),
+    mutationFn: () => orgApi.createInvite(orgId, email.trim(), role),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["org-invites", orgId] });
       qc.invalidateQueries({ queryKey: ["org-members", orgId] });
-      toast("Member added");
+      toast("Invite sent");
       closeModal();
     },
-    onError: () => toast("Failed to add member"),
+    onError: () => toast("Failed to send invite"),
   });
 
-  /** Submit the add-member form after basic validation. */
+  /** Submit the invite form after basic validation. */
   function handleInvite() {
-    if (!userId.trim()) {
-      toast("User ID is required");
+    if (!email.trim()) {
+      toast("Email is required");
       return;
     }
     if (!orgId) {
@@ -95,16 +96,10 @@ export default function TeamPage() {
         title="Team members"
         sub="Roles, permissions, activity, and access controls."
         actions={
-          <>
-            <button className="btn-sm">
-              <MS n="key" size={13} />
-              Audit access
-            </button>
-            <button className="btn-sm primary" onClick={() => setShowModal(true)}>
-              <MS n="person_add" size={13} />
-              Invite
-            </button>
-          </>
+          <button className="btn-sm primary" onClick={() => setShowModal(true)}>
+            <MS n="person_add" size={13} />
+            Invite
+          </button>
         }
       />
 
@@ -162,9 +157,9 @@ export default function TeamPage() {
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <MS n="person_add" size={20} />
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 15 }}>Add team member</div>
+                  <div style={{ fontWeight: 700, fontSize: 15 }}>Invite team member</div>
                   <div style={{ fontSize: 12, color: "var(--on-mut)", marginTop: 2 }}>
-                    Grant a user access to this organization
+                    Send an invite to join this organization
                   </div>
                 </div>
               </div>
@@ -196,7 +191,7 @@ export default function TeamPage() {
                 gap: 16,
               }}
             >
-              {/* user id */}
+              {/* email */}
               <div>
                 <label
                   style={{
@@ -210,12 +205,13 @@ export default function TeamPage() {
                     fontFamily: "'JetBrains Mono', monospace",
                   }}
                 >
-                  User ID <span style={{ color: "#ef4444" }}>*</span>
+                  Email <span style={{ color: "#ef4444" }}>*</span>
                 </label>
                 <input
-                  value={userId}
-                  onChange={(e) => setUserId(e.target.value)}
-                  placeholder="UUID of the user to add"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="user@example.com"
                   style={{
                     width: "100%",
                     padding: "10px 14px",
@@ -223,7 +219,7 @@ export default function TeamPage() {
                     border: "1px solid var(--mid)",
                     background: "var(--low)",
                     fontSize: 14,
-                    fontFamily: "'JetBrains Mono', monospace",
+                    fontFamily: "'Manrope', sans-serif",
                     boxSizing: "border-box",
                   }}
                 />
@@ -287,14 +283,14 @@ export default function TeamPage() {
               <button
                 className="btn-sm"
                 onClick={handleInvite}
-                disabled={!userId.trim() || inviteMutation.isPending}
+                disabled={!email.trim() || inviteMutation.isPending}
                 style={{
-                  background: !userId.trim() || inviteMutation.isPending ? "var(--mid)" : "#050a26",
+                  background: !email.trim() || inviteMutation.isPending ? "var(--mid)" : "#050a26",
                   color: "white",
                   border: "none",
                 }}
               >
-                {inviteMutation.isPending ? "Adding..." : "Add member"}
+                {inviteMutation.isPending ? "Sending..." : "Send invite"}
               </button>
             </div>
           </div>
@@ -310,7 +306,7 @@ export default function TeamPage() {
             <table className="tbl">
               <thead>
                 <tr>
-                  <th>Member ID</th>
+                  <th>User</th>
                   <th>Role</th>
                   <th>Joined</th>
                   <th>Status</th>
