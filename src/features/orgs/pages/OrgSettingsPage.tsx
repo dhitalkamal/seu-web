@@ -316,6 +316,113 @@ export default function OrgSettingsPage() {
         </p>
       </div>
 
+      {/* status banner for rejected/pending orgs */}
+      {org && org.status === "rejected" && (
+        <div
+          style={{
+            marginBottom: 20,
+            padding: "16px 20px",
+            borderRadius: 12,
+            background: "rgba(232,49,81,0.06)",
+            border: "1px solid rgba(232,49,81,0.2)",
+            display: "flex",
+            alignItems: "center",
+            gap: 14,
+          }}
+        >
+          <MS n="error" size={22} style={{ color: "#e83151", flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <p
+              style={{
+                fontSize: 14,
+                fontWeight: 700,
+                color: "#991b1b",
+                fontFamily: "Manrope, sans-serif",
+                marginBottom: 2,
+              }}
+            >
+              Organization rejected
+            </p>
+            <p
+              style={{
+                fontSize: 13,
+                color: "#991b1b",
+                fontFamily: "Manrope, sans-serif",
+                opacity: 0.8,
+              }}
+            >
+              Review the feedback, update your details, and click Resubmit for Review.
+            </p>
+          </div>
+          <button
+            onClick={async () => {
+              try {
+                await orgApi.resubmit(org.id);
+                const updated = await orgApi.get(org.id);
+                useOrgStore.getState().setOrg(updated);
+                toast.success("Organization resubmitted for review");
+              } catch {
+                toast.error("Failed to resubmit");
+              }
+            }}
+            style={{
+              padding: "8px 20px",
+              borderRadius: 10,
+              border: "none",
+              background: "#050a26",
+              color: "white",
+              fontSize: 13,
+              fontWeight: 700,
+              fontFamily: "Manrope, sans-serif",
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Resubmit for Review
+          </button>
+        </div>
+      )}
+
+      {org && org.status === "pending_review" && (
+        <div
+          style={{
+            marginBottom: 20,
+            padding: "16px 20px",
+            borderRadius: 12,
+            background: "rgba(219,161,61,0.06)",
+            border: "1px solid rgba(219,161,61,0.2)",
+            display: "flex",
+            alignItems: "center",
+            gap: 14,
+          }}
+        >
+          <MS n="hourglass_top" size={22} style={{ color: "#dba13d", flexShrink: 0 }} />
+          <div>
+            <p
+              style={{
+                fontSize: 14,
+                fontWeight: 700,
+                color: "#92400e",
+                fontFamily: "Manrope, sans-serif",
+                marginBottom: 2,
+              }}
+            >
+              Pending verification
+            </p>
+            <p
+              style={{
+                fontSize: 13,
+                color: "#92400e",
+                fontFamily: "Manrope, sans-serif",
+                opacity: 0.8,
+              }}
+            >
+              Your organization is under review. You can still edit your details while waiting.
+            </p>
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <div
           style={{

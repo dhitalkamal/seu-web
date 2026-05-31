@@ -31,6 +31,7 @@ export default function AttendeeEventPage() {
   const [registering, setRegistering] = useState(false);
   const [regError, setRegError] = useState("");
   const [regSuccess, setRegSuccess] = useState(false);
+  const [networkingOptIn, setNetworkingOptIn] = useState(false);
 
   const { data: myRegistrations = [] } = useQuery({
     queryKey: ["my-registrations"],
@@ -73,7 +74,7 @@ export default function AttendeeEventPage() {
         );
         return;
       }
-      await registrationApi.register({ event_id: id });
+      await registrationApi.register({ event_id: id, networking_opt_in: networkingOptIn });
       setRegSuccess(true);
     } catch (err: unknown) {
       setRegError(
@@ -468,6 +469,52 @@ export default function AttendeeEventPage() {
                   >
                     {regError}
                   </p>
+                )}
+
+                {/* networking opt-in toggle */}
+                {!alreadyRegistered && !regSuccess && (
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "10px 12px",
+                      borderRadius: 10,
+                      background: networkingOptIn ? "rgba(100,130,255,0.06)" : "var(--low)",
+                      border: `1px solid ${networkingOptIn ? "rgba(100,130,255,0.25)" : "var(--outline)"}`,
+                      cursor: "pointer",
+                      transition: "all 200ms",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={networkingOptIn}
+                      onChange={(e) => setNetworkingOptIn(e.target.checked)}
+                      style={{ width: 16, height: 16, accentColor: "#050a26", cursor: "pointer" }}
+                    />
+                    <div>
+                      <p
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: "var(--on-bg)",
+                          fontFamily: "Manrope, sans-serif",
+                        }}
+                      >
+                        Enable networking
+                      </p>
+                      <p
+                        style={{
+                          fontSize: 11,
+                          color: "var(--on-mut)",
+                          fontFamily: "Manrope, sans-serif",
+                          marginTop: 1,
+                        }}
+                      >
+                        Get matched with attendees to meet at this event
+                      </p>
+                    </div>
+                  </label>
                 )}
 
                 {regSuccess || alreadyRegistered ? (
