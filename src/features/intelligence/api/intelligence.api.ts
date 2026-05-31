@@ -82,7 +82,18 @@ const intelligenceApi = {
     settings: { enabled?: boolean; max_connections?: number }
   ) =>
     client
-      .patch<{ data: unknown }>(`${BASE}/events/${eventId}/connections/settings/`, settings)
+      .patch<{ data: unknown }>(`${BASE}/events/${eventId}/connections/settings/`, {
+        opted_in: settings.enabled,
+        ...(settings.max_connections !== undefined
+          ? { max_connections: settings.max_connections }
+          : {}),
+      })
+      .then((r) => r.data.data),
+
+  /** Tokenize a search query using the NLP engine (English + Nepali). */
+  nlpSearch: (q: string) =>
+    client
+      .get<{ data: NlpSearchResult }>(`${BASE}/nlp/search/`, { params: { q } })
       .then((r) => r.data.data),
 
   /** Check text for policy violations, returning flagged categories and a score. */
