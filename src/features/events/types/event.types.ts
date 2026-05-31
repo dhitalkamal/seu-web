@@ -57,6 +57,9 @@ export type CreateEventRequest = {
   tag_ids?: string[];
   allowed_domains?: string[];
   organization_id?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  waitlist_enabled?: boolean;
 };
 
 export type UpdateEventRequest = Partial<CreateEventRequest>;

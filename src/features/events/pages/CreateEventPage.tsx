@@ -300,6 +300,9 @@ export default function CreateEventPage() {
       tag_ids: form.tag_ids.length ? form.tag_ids : undefined,
       allowed_domains: form.allowed_domains.length ? form.allowed_domains : undefined,
       organization_id: org?.id ?? null,
+      latitude: form.latitude,
+      longitude: form.longitude,
+      waitlist_enabled: form.waitlist_enabled,
     };
 
     async function createAndNavigate(eventId: string) {
