@@ -6,6 +6,7 @@ import { PH, KPI, MS, useToast } from "@/shared/components/v8";
 import UserAvatar from "@/shared/components/UserAvatar";
 import intelligenceApi from "@/features/intelligence/api/intelligence.api";
 import type { AttendeeMatch } from "@/features/intelligence/api/intelligence.api";
+import { useUserNames, displayName } from "@/shared/hooks/useUserNames";
 
 // * Score badge colors
 
@@ -77,6 +78,8 @@ export default function EventConnectionsPage() {
     },
     onError: () => toast("Could not enable networking"),
   });
+
+  const { userMap } = useUserNames(connections.map((c: AttendeeMatch) => c.user_id));
 
   // * computed stats
   const introCount = connections.filter((c: AttendeeMatch) => c.is_introduced).length;
@@ -271,12 +274,12 @@ export default function EventConnectionsPage() {
                               <UserAvatar uid={c.user_id} size={32} radius={8} />
                               <span
                                 style={{
-                                  fontFamily: "JetBrains Mono, monospace",
-                                  fontSize: 12,
-                                  color: "var(--on-var)",
+                                  fontSize: 13,
+                                  fontWeight: 600,
+                                  color: "var(--on-bg)",
                                 }}
                               >
-                                {c.user_id?.slice(0, 12) ?? "..."}
+                                {displayName(userMap, c.user_id)}
                               </span>
                             </div>
                           </td>

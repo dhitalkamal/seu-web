@@ -5,6 +5,7 @@ import { PH, KPI, MS, useToast } from "@/shared/components/v8";
 import orgApi from "@/features/orgs/api/org.api";
 import type { OrgMember, OrgMemberRole } from "@/features/orgs/types/org.types";
 import { useOrgStore } from "@/shared/store/org.store";
+import { useUserNames, displayName } from "@/shared/hooks/useUserNames";
 
 // * helpers
 
@@ -78,6 +79,7 @@ export default function TeamPage() {
   }
 
   const activeCount = members.filter((m: OrgMember) => m.is_active).length;
+  const { userMap } = useUserNames(members.map((m: OrgMember) => m.user_id));
 
   // role breakdown for sidebar
   const roleCounts = members.reduce(
@@ -345,8 +347,8 @@ export default function TeamPage() {
                 )}
                 {members.map((m: OrgMember) => (
                   <tr key={m.id}>
-                    <td style={{ fontFamily: "JetBrains Mono, monospace", fontSize: 11 }}>
-                      {m.user_id}
+                    <td style={{ fontSize: 13, fontWeight: 600 }}>
+                      {displayName(userMap, m.user_id)}
                     </td>
                     <td>
                       <span
